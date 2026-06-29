@@ -1,38 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V6.3.5 Admin One-Click Refresh Fix</title>
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
-</style>
-</head>
-<body>
-<header>
-  <div class="top"><div><div class="brand">Habesha Connect</div><div class="tag">Community • Shipping • Rentals • Marketplace • Jobs • Trucking • Business</div></div><div id="userBox"></div></div>
-  <div class="nav" id="nav"></div>
-  <div class="mobilebar"><select id="mobileNav" onchange="show(this.value)"></select></div>
-</header>
-<main class="container">
-  <section id="home" class="page"></section>
-  <section id="account" class="page hide"></section>
-  <section id="profile" class="page hide"></section>
-  <section id="services" class="page hide"></section>
-  <section id="shipping" class="page hide"></section>
-  <section id="rentals" class="page hide"></section>
-  <section id="marketplace" class="page hide"></section>
-  <section id="jobs" class="page hide"></section>
-  <section id="truck" class="page hide"></section>
-  <section id="business" class="page hide"></section>
-  <section id="messages" class="page hide"></section>
-  <section id="notifications" class="page hide"></section>
-  <section id="admin" class="page hide"></section>
-</main>
-<div class="footer">Habesha Connect V6.3.5 — Admin one-click refresh fix.</div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-config.js"></script>
-<script>
+
 const $=id=>document.getElementById(id);
 const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','business','messages','notifications','admin'];
 const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Jobs',truck:'Trucking',business:'Business Manager',messages:'Messages',notifications:'Notifications',admin:'Admin'};
@@ -245,10 +211,11 @@ async function updateSupabaseTripStatus(t,status){
 async function shipping(){
  if(authReady()){ await loadSupabaseTrips(); await loadSupabaseShipments(); recalcTripSpacesFromShipments(); }
  let role=currentUser?currentUser.role:null;
+ let canCreate=!currentUser || role==='sender' || role==='customer' || role==='admin';
  let intro = role==='traveler' ? '<div class="notice">Traveler view: accept or decline sender requests. Space is reserved only after the sender pays and admin approves the shipment.</div>' : '';
- let createBox = '';
- let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Traveler trips save to Supabase so senders can request space from the trip card.</p><button class="btn primary" onclick="addTrip()">Post My Trip</button></div>` : '';
- let revenueBox = role==='admin' ? `<div class="card"><h3>Revenue Rule</h3><p>Sender pays the admin-set rate per lb. App earns the admin-set commission per lb. Traveler commission and airline charge are tracked for admin reports.</p></div>` : `<div class="card"><h3>Shipping</h3><p>Senders should request space from an available traveler trip. Remaining space updates only after sender pays and admin approves the shipment.</p></div>`;
+ let createBox = canCreate ? `<div class="card"><h3>Create Shipment</h3>${routeSelects()}<label>Weight lb</label><input id="shipWeight" type="number" value="25"><label>Package Photo Upload</label><input id="packagePhotos" type="file" multiple accept="image/*"><label>Tracking Number</label><input id="trackingNo" placeholder="Auto-created if blank"><label>Receiver Full Name</label><input id="receiverName" placeholder="Who will receive the package?"><label>Receiver Phone Number</label><input id="receiverPhone" placeholder="Receiver phone number"><button class="btn primary" onclick="addShipment()">Post Shipment</button></div>` : '';
+ let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">V5.3 saves this trip to Supabase, so senders can see it from another device.</p><button class="btn primary" onclick="addTrip()">Post My Trip</button></div>` : '';
+ let revenueBox = role==='admin' ? `<div class="card"><h3>Revenue Rule</h3><p>Sender pays the admin-set rate per lb. App earns the admin-set commission per lb. Traveler commission and airline charge are tracked for admin reports.</p></div>` : `<div class="card"><h3>Shipping</h3><p>Senders can request traveler space. Remaining space updates only after payment is approved by admin.</p></div>`;
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();let visibleTrips=data.trips.filter(t=>(role==='admin'||t.status==='Open')&&(!shipFilter||t.route.toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)));let tripSection = (role==='sender'||role==='customer'||role==='admin'||!currentUser) ? `<h3>Available Traveler Trips</h3><div class="card"><label>Search route or date</label><input id="shipSearch" value="${shipFilter}" oninput="shipping()" placeholder="Atlanta, Addis Ababa, 2026-07"></div><div class="list">${visibleTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">No traveler trips posted yet.</div>'}</div>` : `<h3>My Traveler Trips</h3><div class="list">${data.trips.filter(t=>currentUser&&t.travelerEmail===currentUser.email).map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div>`;
  let terminalStatuses=['Completed','Delivered'];let shipments=data.shipments.filter(s=>role==='admin'||(!terminalStatuses.includes(s.status||'')&&((role==='traveler'&&((!s.travelerEmail&&s.status!=='Declined')||s.travelerEmail===currentUser.email))||(currentUser&&(s.senderEmail===currentUser.email))||(!currentUser))));
  $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>${intro}<div class="grid">${createBox}${tripBox}${revenueBox}</div>${tripSection}<h3>Shipment Requests</h3><div class="list">${shipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div>`
@@ -278,13 +245,6 @@ async function requestTrip(id){
  if(currentUser.role!=='sender'&&currentUser.role!=='customer'&&currentUser.role!=='admin')return alert('Only senders can request traveler space.');
  let t=data.trips.find(x=>x.id===id);if(!t)return;
  let w=+($('req_'+id).value)||0;if(w<=0)return alert('Enter requested pounds.');if(w>t.availableSpace)return alert('Only '+t.availableSpace+' lb is available.');
- let senderName=prompt('Sender full name:',currentUser.name||'');if(senderName===null)return;
- let senderPhone=prompt('Sender phone number:',currentUser.phone||'');if(senderPhone===null)return;
- senderName=(senderName||currentUser.name||'Sender').trim();
- senderPhone=(senderPhone||currentUser.phone||'').trim();
- if(senderName){currentUser.name=senderName;}
- if(senderPhone){currentUser.phone=senderPhone;}
- if(authReady()&&currentUser.id){await hcSupabase.from('profiles').update({name:senderName,phone:senderPhone}).eq('id',currentUser.id);}
  let desc=prompt('Package description (example: clothes, documents, electronics):','Package');if(desc===null)return;
  let receiver=prompt('Receiver name in Ethiopia:','Receiver');if(receiver===null)return;
  let receiverPhone=prompt('Receiver phone number:','');if(receiverPhone===null)return;
@@ -587,6 +547,3 @@ function adminSuccess(message){
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-test-data.json';a.click();}
 function resetDemo(){if(confirm('Clear all saved app data?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));data=seed();currentUser=null;save();location.reload();}}
 render();show('home');initAuth();
-</script>
-</body>
-</html>
