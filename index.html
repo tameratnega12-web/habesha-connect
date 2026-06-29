@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V6.3 Verification & Space Fix</title>
+<title>Habesha Connect V6.3.3 Admin Button Actions Fix</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 </style>
@@ -29,7 +29,7 @@
   <section id="notifications" class="page hide"></section>
   <section id="admin" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V6.3 — Admin verification center and automatic space update fix.</div>
+<div class="footer">Habesha Connect V6.3.3 — Admin button actions fix.</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script>
@@ -353,7 +353,7 @@ async function admin(){
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
- $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.2 Admin Scroll Fix:</b> verification updates Supabase profiles and the Admin page now supports normal scrolling/dragging on iPhone Safari and desktop.</div>
+ $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.3 Admin Button Actions Fix:</b> verification, approve, edit, and delete buttons are connected to Supabase where possible. Scrolling fix stays active.</div>
  <h3>Verify Users</h3><div class="card"><p class="muted">Click Verify after reviewing the user. This changes the real Supabase <b>profiles.verified</b> value.</p><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Status</th><th>Action</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button type="button" class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button type="button" class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`}</td></tr>`).join('')||'<tr><td colspan="6">No users found.</td></tr>'}</table></div>
  <div class="grid"><div class="card"><p>Users</p><div class="stat">${managedUsers.length}</div></div><div class="card"><p>Total Revenue</p><div class="stat">${money(revenue)}</div></div><div class="card"><p>Favorites Saved</p><div class="stat">${data.favorites.length}</div></div><div class="card"><p>Reviews</p><div class="stat">${data.reviews.length}</div></div></div>
  <h3>Admin Settings</h3><div class="grid"><div class="card"><h3>Prices</h3><label>Owner listing fee</label><input type="number" value="${settings().ownerListingFee}" onchange="setMoneySetting('ownerListingFee',this.value)"><label>Seeker viewing fee</label><input type="number" value="${settings().seekerViewingFee}" onchange="setMoneySetting('seekerViewingFee',this.value)"><label>Shipping rate per lb</label><input type="number" value="${settings().shippingRatePerLb}" onchange="setMoneySetting('shippingRatePerLb',this.value)"><label>App commission per lb</label><input type="number" value="${settings().appCommissionPerLb}" onchange="setMoneySetting('appCommissionPerLb',this.value)"><label>Traveler commission per lb</label><input type="number" value="${settings().travelerCommissionPerLb}" onchange="setMoneySetting('travelerCommissionPerLb',this.value)"></div><div class="card"><h3>Launch Controls</h3><p><b>Registration:</b> ${settings().registrationOpen?'Open':'Closed'}</p><p><b>Maintenance Mode:</b> ${settings().maintenanceMode?'On':'Off'}</p><div class="actions"><button class="btn ghost" onclick="toggleRegistration()">Toggle Registration</button><button class="btn warn" onclick="toggleMaintenance()">Toggle Maintenance</button></div><p class="muted">Use these controls before going live. Real database, Stripe/PayPal, and cloud image storage are the next deployment connections.</p></div></div><h3>Launch Checklist</h3><div class="card"><p>✅ UI complete • ✅ Admin reports • ✅ User verification • ✅ Payment records • ✅ Chat prototype • ✅ Notifications • ✅ Export data</p><p class="muted">This ZIP is still a browser-based MVP. For a live public website, connect Firebase/Supabase, Stripe/PayPal, and cloud photo storage.</p></div><h3>Search Users / Verification</h3><div class="card"><label>Search by name, email, phone, or role</label><input id="userSearch" value="${q}" oninput="admin()" placeholder="Search users"><p class="muted">Verify users after reviewing ID, ticket/booking, phone, and account details. Shipment space still updates automatically when a traveler accepts a request.</p></div><div class="tableWrap"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Active Role</th><th>Status</th><th>Actions</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${roleTitle(u.role||u.active_role||'customer')}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`} <button class="btn ghost" onclick="editUser('${u.email}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u.email}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No matching users.</td></tr>'}</table>
@@ -366,18 +366,220 @@ async function admin(){
 function reportRows(field){let rows={};(data.payments||[]).forEach(p=>{let k=p[field]||'Unknown';rows[k]=(rows[k]||0)+(+p.amount||0)});let keys=Object.keys(rows).sort().reverse();return keys.length?`<table><tr><th>Period</th><th>Total</th></tr>${keys.map(k=>`<tr><td>${k}</td><td>${money(rows[k])}</td></tr>`).join('')}</table>`:'<p class="muted">No payments yet.</p>'}
 function toggleRegistration(){settings().registrationOpen=!settings().registrationOpen;save()}
 function toggleMaintenance(){settings().maintenanceMode=!settings().maintenanceMode;save()}
-async function approveUser(email){let u=data.users.find(x=>x.email===email);if(!u)return;u.verified=true;if(authReady()){let {error}=await hcSupabase.from('profiles').update({verified:true}).eq('email',email);if(error)return alert('Could not verify user in Supabase: '+error.message)}data.trips.forEach(t=>{if(t.travelerEmail===email)t.travelerVerified=true});data.shipments.forEach(s=>{if(s.senderEmail===email)s.senderVerified=true;if(s.travelerEmail===email)s.travelerVerified=true});addNote(u.email,'Your Habesha Connect account was verified by admin.');save();alert(u.name+' is now verified.');show('admin')}
-async function unverifyUser(email){let u=data.users.find(x=>x.email===email);if(!u)return;if(!confirm('Remove verified status from '+u.name+'?'))return;u.verified=false;if(authReady()){let {error}=await hcSupabase.from('profiles').update({verified:false}).eq('email',email);if(error)return alert('Could not update Supabase: '+error.message)}data.trips.forEach(t=>{if(t.travelerEmail===email)t.travelerVerified=false});data.shipments.forEach(s=>{if(s.senderEmail===email)s.senderVerified=false;if(s.travelerEmail===email)s.travelerVerified=false});addNote(u.email,'Your Habesha Connect verification status was changed by admin.');save();show('admin')}
-function editUser(email){let u=data.users.find(x=>x.email===email);if(!u)return;let name=prompt('Edit full name:',u.name);if(name===null)return;let phone=prompt('Edit phone number:',u.phone||'');if(phone===null)return;let role=prompt('Edit role (sender, traveler, owner, rent_seeker, customer, driver, business_owner):',u.role);if(role===null)return;u.name=name.trim()||u.name;u.phone=phone.trim();u.role=role.trim()||u.role;save();}
-function deleteUser(email){let u=data.users.find(x=>x.email===email);if(!u)return;if(u.role==='admin')return alert('Admin account cannot be deleted.');if(!confirm('Delete '+u.name+'?'))return;data.users=data.users.filter(x=>x.email!==email);if(currentUser&&currentUser.email===email)currentUser=null;save();}
-function approveShipment(id){let s=data.shipments.find(x=>x.id===id);if(!s)return;s.status='Approved';addNote(s.senderEmail||'all','Your shipment '+id+' was approved by admin.');if(s.travelerEmail)addNote(s.travelerEmail,'Shipment '+id+' was approved by admin.');save();}
-function editShipment(id){let s=data.shipments.find(x=>x.id===id);if(!s)return;let route=prompt('Edit route:',s.route);if(route===null)return;let status=prompt('Edit status:',s.status);if(status===null)return;let receiver=prompt('Edit receiver name:',s.receiver||'');if(receiver===null)return;let receiverPhone=prompt('Edit receiver phone:',s.receiverPhone||'');if(receiverPhone===null)return;s.route=route.trim()||s.route;s.status=status.trim()||s.status;s.receiver=receiver.trim();s.receiverPhone=receiverPhone.trim();save();}
-function deleteShipment(id){if(!confirm('Delete shipment '+id+'?'))return;data.shipments=data.shipments.filter(x=>x.id!==id);save();}
-function approveRental(id){let r=data.rentals.find(x=>x.id===id);if(!r)return;if(!r.ownerPaid&&currentUser&&currentUser.role==='admin'){alert('Owner listing fee is not paid yet.');return;}r.status='Approved';addNote(r.ownerEmail||'all','Your rental listing '+id+' was approved by admin.');save();}
-function editRental(id){let r=data.rentals.find(x=>x.id===id);if(!r)return;let type=prompt('Edit property type (Home, Apartment, Basement, Roommate, Town House, Business):',r.propertyType||'Home');if(type===null)return;let title=prompt('Edit property title:',r.title);if(title===null)return;let city=prompt('Edit city:',r.city);if(city===null)return;let price=prompt('Edit monthly rent:',r.price);if(price===null)return;let status=prompt('Edit status:',r.status);if(status===null)return;r.propertyType=type.trim()||r.propertyType||'Home';r.title=title.trim()||r.title;r.city=city.trim()||r.city;r.price=Number(price)||r.price;r.status=status.trim()||r.status;save();}
-function deleteRental(id){if(!confirm('Delete rental listing '+id+'?'))return;data.rentals=data.rentals.filter(x=>x.id!==id);data.rentalRequests=data.rentalRequests.filter(x=>x.rentalId!==id);save();}
-function editRentalRequest(id){let q=data.rentalRequests.find(x=>x.id===id);if(!q)return;let status=prompt('Edit request status:',q.status);if(status===null)return;let seekerPhone=prompt('Edit rent seeker phone:',q.seekerPhone||'');if(seekerPhone===null)return;q.status=status.trim()||q.status;q.seekerPhone=seekerPhone.trim();save();}
-function deleteRentalRequest(id){if(!confirm('Delete rental request '+id+'?'))return;data.rentalRequests=data.rentalRequests.filter(x=>x.id!==id);save();}
+async function approveUser(email){
+  let u=data.users.find(x=>x.email===email);
+  if(!u)return alert('User not found.');
+  u.verified=true;
+  if(authReady()){
+    let {error}=await hcSupabase.from('profiles').update({verified:true}).eq('email',email);
+    if(error)return alert('Could not verify user in Supabase: '+error.message);
+  }
+  data.trips.forEach(t=>{if(t.travelerEmail===email)t.travelerVerified=true});
+  data.shipments.forEach(s=>{if(s.senderEmail===email)s.senderVerified=true;if(s.travelerEmail===email)s.travelerVerified=true});
+  addNote(u.email,'Your Habesha Connect account was verified by admin.');
+  save();
+  await refreshAdminData();
+  alert(u.name+' is now verified.');
+  show('admin');
+}
+async function unverifyUser(email){
+  let u=data.users.find(x=>x.email===email);
+  if(!u)return alert('User not found.');
+  if(!confirm('Remove verified status from '+u.name+'?'))return;
+  u.verified=false;
+  if(authReady()){
+    let {error}=await hcSupabase.from('profiles').update({verified:false}).eq('email',email);
+    if(error)return alert('Could not update Supabase: '+error.message);
+  }
+  data.trips.forEach(t=>{if(t.travelerEmail===email)t.travelerVerified=false});
+  data.shipments.forEach(s=>{if(s.senderEmail===email)s.senderVerified=false;if(s.travelerEmail===email)s.travelerVerified=false});
+  addNote(u.email,'Your Habesha Connect verification status was changed by admin.');
+  save();
+  await refreshAdminData();
+  show('admin');
+}
+async function editUser(email){
+  let u=data.users.find(x=>x.email===email);
+  if(!u)return alert('User not found.');
+  let name=prompt('Edit full name:',u.name);
+  if(name===null)return;
+  let phone=prompt('Edit phone number:',u.phone||'');
+  if(phone===null)return;
+  let role=prompt('Edit active role (sender, traveler, owner, rent_seeker, customer, driver, business_owner, admin):',u.role||u.active_role||'customer');
+  if(role===null)return;
+  name=name.trim()||u.name;
+  phone=phone.trim();
+  role=role.trim()||u.role||'customer';
+  u.name=name;u.phone=phone;u.role=role;u.active_role=role;
+  if(!Array.isArray(u.roles))u.roles=[];
+  if(!u.roles.includes(role))u.roles.push(role);
+  if(authReady()){
+    let {error}=await hcSupabase.from('profiles').update({name,phone,role,active_role:role,roles:u.roles}).eq('email',email);
+    if(error)return alert('Could not edit user in Supabase: '+error.message);
+  }
+  save();
+  await refreshAdminData();
+  show('admin');
+}
+async function deleteUser(email){
+  let u=data.users.find(x=>x.email===email);
+  if(!u)return alert('User not found.');
+  if((u.roles||[]).includes('admin')||u.role==='admin')return alert('Admin account cannot be deleted here.');
+  if(!confirm('Delete profile for '+u.name+'? This removes the profile row, not the Supabase Auth login.'))return;
+  if(authReady()){
+    let {error}=await hcSupabase.from('profiles').delete().eq('email',email);
+    if(error)return alert('Could not delete profile in Supabase: '+error.message);
+  }
+  data.users=data.users.filter(x=>x.email!==email);
+  if(currentUser&&currentUser.email===email)currentUser=null;
+  save();
+  await refreshAdminData();
+  show('admin');
+}
+async function approveShipment(id){
+  let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!s)return alert('Shipment not found.');
+  s.status='Approved';
+  if(authReady()&&s.dbId){
+    let {error}=await hcSupabase.from('shipments').update({status:'Approved'}).eq('id',s.dbId);
+    if(error)return alert('Could not approve shipment in Supabase: '+error.message);
+  }
+  addNote(s.senderEmail||'all','Your shipment '+(s.tracking||id)+' was approved by admin.');
+  if(s.travelerEmail)addNote(s.travelerEmail,'Shipment '+(s.tracking||id)+' was approved by admin.');
+  save();
+  await refreshAdminData();
+  show('admin');
+}
+async function editShipment(id){
+  let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!s)return alert('Shipment not found.');
+  let route=prompt('Edit route:',s.route||'');
+  if(route===null)return;
+  let status=prompt('Edit status:',s.status||'Requested');
+  if(status===null)return;
+  let receiver=prompt('Edit receiver name:',s.receiver||'');
+  if(receiver===null)return;
+  let receiverPhone=prompt('Edit receiver phone:',s.receiverPhone||'');
+  if(receiverPhone===null)return;
+  s.route=route.trim()||s.route;
+  s.status=status.trim()||s.status;
+  s.receiver=receiver.trim();
+  s.receiverPhone=receiverPhone.trim();
+  if(authReady()&&s.dbId){
+    let parts=(s.route||'').split('→').map(x=>x.trim());
+    let payload={status:s.status,receiver_name:s.receiver,receiver_phone:s.receiverPhone};
+    if(parts[0])payload.from_city=parts[0];
+    if(parts[1])payload.to_city=parts[1];
+    let {error}=await hcSupabase.from('shipments').update(payload).eq('id',s.dbId);
+    if(error)return alert('Could not edit shipment in Supabase: '+error.message);
+  }
+  save();
+  await refreshAdminData();
+  show('admin');
+}
+async function deleteShipment(id){
+  let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!s)return alert('Shipment not found.');
+  if(!confirm('Delete shipment '+(s.tracking||id)+'?'))return;
+  if(authReady()&&s.dbId){
+    let {error}=await hcSupabase.from('shipments').delete().eq('id',s.dbId);
+    if(error)return alert('Could not delete shipment in Supabase: '+error.message);
+  }
+  data.shipments=data.shipments.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
+  save();
+  await refreshAdminData();
+  show('admin');
+}
+async function approveRental(id){
+  let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!r)return alert('Rental not found.');
+  if(!r.ownerPaid&&currentUser&&currentUser.role==='admin'){
+    alert('Owner listing fee is not paid yet.');
+    return;
+  }
+  r.status='Approved';
+  if(authReady()&&r.dbId){
+    let {error}=await hcSupabase.from('properties').update({status:'Approved'}).eq('id',r.dbId);
+    if(error)return alert('Could not approve rental in Supabase: '+error.message);
+  }
+  addNote(r.ownerEmail||'all','Your rental listing '+id+' was approved by admin.');
+  save();
+  show('admin');
+}
+async function editRental(id){
+  let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!r)return alert('Rental not found.');
+  let type=prompt('Edit property type (Home, Apartment, Basement, Roommate, Town House, Business):',r.propertyType||'Home');
+  if(type===null)return;
+  let title=prompt('Edit property title:',r.title);
+  if(title===null)return;
+  let city=prompt('Edit city:',r.city);
+  if(city===null)return;
+  let price=prompt('Edit monthly rent:',r.price);
+  if(price===null)return;
+  let status=prompt('Edit status:',r.status);
+  if(status===null)return;
+  r.propertyType=type.trim()||r.propertyType||'Home';
+  r.title=title.trim()||r.title;
+  r.city=city.trim()||r.city;
+  r.price=Number(price)||r.price;
+  r.status=status.trim()||r.status;
+  if(authReady()&&r.dbId){
+    let {error}=await hcSupabase.from('properties').update({property_type:r.propertyType,title:r.title,city:r.city,monthly_rent:r.price,status:r.status}).eq('id',r.dbId);
+    if(error)return alert('Could not edit rental in Supabase: '+error.message);
+  }
+  save();
+  show('admin');
+}
+async function deleteRental(id){
+  let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!r)return alert('Rental not found.');
+  if(!confirm('Delete rental listing '+id+'?'))return;
+  if(authReady()&&r.dbId){
+    let {error}=await hcSupabase.from('properties').delete().eq('id',r.dbId);
+    if(error)return alert('Could not delete rental in Supabase: '+error.message);
+  }
+  data.rentals=data.rentals.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
+  data.rentalRequests=data.rentalRequests.filter(x=>x.rentalId!==id);
+  save();
+  show('admin');
+}
+async function editRentalRequest(id){
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  let status=prompt('Edit request status:',q.status);
+  if(status===null)return;
+  let seekerPhone=prompt('Edit rent seeker phone:',q.seekerPhone||'');
+  if(seekerPhone===null)return;
+  q.status=status.trim()||q.status;
+  q.seekerPhone=seekerPhone.trim();
+  if(authReady()&&q.dbId){
+    let {error}=await hcSupabase.from('rental_requests').update({status:q.status}).eq('id',q.dbId);
+    if(error)return alert('Could not edit rental request in Supabase: '+error.message);
+  }
+  save();
+  show('admin');
+}
+async function deleteRentalRequest(id){
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  if(!confirm('Delete rental request '+id+'?'))return;
+  if(authReady()&&q.dbId){
+    let {error}=await hcSupabase.from('rental_requests').delete().eq('id',q.dbId);
+    if(error)return alert('Could not delete rental request in Supabase: '+error.message);
+  }
+  data.rentalRequests=data.rentalRequests.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
+  save();
+  show('admin');
+}
+async function refreshAdminData(){
+  if(authReady()){
+    await loadAdminProfiles();
+    await loadSupabaseTrips();
+    await loadSupabaseShipments();
+  }
+}
+
 
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-test-data.json';a.click();}
 function resetDemo(){if(confirm('Clear all saved app data?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));data=seed();currentUser=null;save();location.reload();}}
