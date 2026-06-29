@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V6.3.3 Admin Button Actions Fix</title>
+<title>Habesha Connect V6.3.5 Admin One-Click Refresh Fix</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 </style>
@@ -29,7 +29,7 @@
   <section id="notifications" class="page hide"></section>
   <section id="admin" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V6.3.3 — Admin button actions fix.</div>
+<div class="footer">Habesha Connect V6.3.5 — Admin one-click refresh fix.</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script>
@@ -41,6 +41,8 @@ function authReady(){return !!hcSupabase}
 function showAuthStatus(){let el=$("authStatus"); if(el) el.textContent=authReady()?"Supabase connected":"Not connected";}
 const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post and manage rental properties.'},rent_seeker:{icon:'🔍',title:'Rent Seeker',desc:'Search rentals and request viewings.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Manage business listings and tools.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, jobs, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
 const ROLE_LIST=['traveler','sender','owner','rent_seeker','driver','business_owner','customer'];
+function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
+function persistOnly(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));}
 function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile.roles.filter(Boolean):[];let base=profile?.role||profile?.active_role||'customer';if(base&&!roles.includes(base))roles.unshift(base);roles=[...new Set(roles.length?roles:['customer'])];return roles}
 function roleTitle(role){return (ROLE_INFO[role]&&ROLE_INFO[role].title)||role}
 function upsertLocalUser(profile){if(!profile||!profile.email)return null;let u=data.users.find(x=>x.email===profile.email);let roles=normalizeRoles(profile);let savedRole=localStorage.getItem('hc_active_role_'+profile.email);let activeRole=(savedRole&&roles.includes(savedRole))?savedRole:(profile.active_role&&roles.includes(profile.active_role)?profile.active_role:(profile.role&&roles.includes(profile.role)?profile.role:roles[0]));let cleaned={id:profile.id||profile.profile_id||'',auth_user_id:profile.auth_user_id||'',name:profile.name||profile.full_name||profile.email,phone:profile.phone||'',email:profile.email,role:activeRole,active_role:activeRole,roles,verified:!!profile.verified,city:profile.city||''};if(u)Object.assign(u,cleaned);else data.users.push(cleaned);return data.users.find(x=>x.email===profile.email)}
@@ -117,7 +119,7 @@ function roleServices(){
  const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['💼','Jobs','Local jobs, employers, seekers, and applications.'],truck:['🚚','Truck Manager','Fuel, mileage, repairs, payments, and reports.'],business:['📊','Business Manager','Sales, expenses, invoices, profit, and tax summaries.']};
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.3.2 fixes Admin page scrolling/dragging on iPhone Safari and desktop while keeping verification buttons working.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.3.5 improves Admin button behavior: one click, Working status, auto-refresh, and duplicate-click protection.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" placeholder="you@example.com"><label>Password</label><input id="loginPass" type="password"><button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail"><label>Password</label><input id="regPass" type="password"><label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
@@ -131,9 +133,9 @@ function roleDashboardCards(){
  if(currentUser.role==='admin')return `<div class="grid"><div class="card"><h3>⚙️ Admin Center</h3><p class="muted">Manage users, verification, payments, reports, and settings.</p><button class="btn primary" onclick="show('admin')">Open Admin</button></div><div class="card"><h3>🏠 Rentals</h3><p class="muted">Approve properties and manage requests.</p></div><div class="card"><h3>📦 Shipping</h3><p class="muted">Review trips, shipments, and payments.</p></div></div>`;
  return `<div class="card"><h3>Welcome</h3><p class="muted">Your role is ${currentUser.role}. Your available tools are shown in the top menu.</p></div>`;
 }
-function services(){if(!requireLogin())return;let roles=currentUser.roles||[currentUser.role||'customer'];let cards=roles.map(r=>{let info=ROLE_INFO[r]||ROLE_INFO.customer;let active=r===currentUser.role;return `<div class="card ${active?'':'locked'}"><div class="service-icon">${info.icon}</div><h3>${info.title} ${active?'<span class="pill good">Active</span>':''}</h3><p class="muted">${info.desc}</p><button class="btn ${active?'ghost':'primary'}" onclick="switchRole('${r}')">${active?'Current Dashboard':'Continue as '+info.title}</button></div>`}).join('');let options=ROLE_LIST.map(r=>{let has=roles.includes(r);let info=ROLE_INFO[r];return `<label style="display:block;margin:8px 0"><input class="svcCheck" type="checkbox" value="${r}" ${has?'checked':''} style="width:auto;margin-right:8px">${info.icon} ${info.title}</label>`}).join('');$('services').innerHTML=`<h2>🧭 My Services</h2><div class="hero"><h1>Welcome back, ${currentUser.name}</h1><p><b>What would you like to do today?</b></p><p>One Habesha Connect account can be a traveler today, sender tomorrow, property owner later, and business owner in the future. This is the final account foundation before we continue with payments, chat, and launch features.</p></div><h3 style="margin-top:22px">Continue as</h3><div class="grid">${cards}</div><div class="card" style="margin-top:18px"><h3>Manage My Roles</h3><p class="muted">Turn services on or off for this account. Your email, phone, messages, and profile stay the same.</p><div class="grid"><div>${options}</div><div><p><b>Current active role:</b> <span class="pill">${roleTitle(currentUser.role)}</span></p><p class="muted">The active role controls which dashboard and menu you see. Your messages, profile, and notifications stay in one account.</p><button class="btn primary" onclick="saveRoleChoices()">Save My Services</button></div></div></div>`}
+function services(){if(!requireLogin())return;let roles=currentUser.roles||[currentUser.role||'customer'];let cards=roles.map(r=>{let info=ROLE_INFO[r]||ROLE_INFO.customer;let active=r===currentUser.role;return `<div class="card ${active?'':'locked'}"><div class="service-icon">${info.icon}</div><h3>${info.title} ${active?'<span class="pill good">Active</span>':''}</h3><p class="muted">${info.desc}</p><button class="btn ${active?'ghost':'primary'}" onclick="switchRole('${r}')">${active?'Current Dashboard':'Continue as '+info.title}</button></div>`}).join('');let options=serviceRoleChoices(roles).map(r=>{let has=roles.includes(r);let info=ROLE_INFO[r];let adminNote=r==='admin'?'<span class="small"> — owner only</span>':'';return `<label style="display:block;margin:8px 0"><input class="svcCheck" type="checkbox" value="${r}" ${has?'checked':''} ${r==='admin'?'disabled':''} style="width:auto;margin-right:8px">${info.icon} ${info.title}${adminNote}</label>`}).join('');$('services').innerHTML=`<h2>🧭 My Services</h2><div class="hero"><h1>Welcome back, ${currentUser.name}</h1><p><b>What would you like to do today?</b></p><p>One Habesha Connect account can be a traveler today, sender tomorrow, property owner later, and business owner in the future.</p></div><h3 style="margin-top:22px">Continue as</h3><div class="grid">${cards}</div><div class="card" style="margin-top:18px"><h3>Manage My Roles</h3><p class="muted">Turn services on or off for this account. Admin is protected and cannot be removed from this page.</p><div class="grid"><div>${options}</div><div><p><b>Current active role:</b> <span class="pill">${roleTitle(currentUser.role)}</span></p><p class="muted">The active role controls which dashboard and menu you see.</p><button class="btn primary" onclick="saveRoleChoices()">Save My Services</button></div></div></div>`}
 async function switchRole(role){if(!currentUser)return;if(!(currentUser.roles||[]).includes(role))return alert('Please add this service to your profile first.');currentUser.role=role;currentUser.active_role=role;localStorage.setItem('hc_active_role_'+currentUser.email,role);let u=data.users.find(x=>x.email===currentUser.email);if(u){u.role=role;u.active_role=role}if(authReady()&&currentUser.id){let {error}=await hcSupabase.from('profiles').update({active_role:role,role:role}).eq('id',currentUser.id);if(error)console.warn('Could not update active role',error)}save();show('profile')}
-async function saveRoleChoices(){if(!currentUser)return;let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);if(!roles.length)return alert('Choose at least one service.');if(!roles.includes(currentUser.role))currentUser.role=roles[0];currentUser.roles=roles;currentUser.active_role=currentUser.role;let u=data.users.find(x=>x.email===currentUser.email);if(u){u.roles=roles;u.role=currentUser.role;u.active_role=currentUser.role}if(authReady()&&currentUser.id){let {error}=await hcSupabase.from('profiles').update({roles,active_role:currentUser.role,role:currentUser.role}).eq('id',currentUser.id);if(error)return alert('Could not save roles. Please run the V6 SQL migration first: '+error.message)}save();alert('Your services were saved. Use the top role switcher to change dashboards.');show('services')}
+async function saveRoleChoices(){if(!currentUser)return;let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);if((currentUser.roles||[]).includes('admin')&&!roles.includes('admin'))roles.push('admin');if(!roles.length)return alert('Choose at least one service.');if(!roles.includes(currentUser.role))currentUser.role=roles[0];currentUser.roles=[...new Set(roles)];currentUser.active_role=currentUser.role;let u=data.users.find(x=>x.email===currentUser.email);if(u){u.roles=currentUser.roles;u.role=currentUser.role;u.active_role=currentUser.role}if(authReady()){let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:currentUser.role,role:currentUser.role});let res=currentUser.id?await query.eq('id',currentUser.id):await query.eq('email',currentUser.email);if(res.error)return alert('Could not save roles in Supabase: '+res.error.message)}persistOnly();alert('Your services were saved. Use the top role switcher to change dashboards.');show('services')}
 function profile(){if(!requireLogin())return;let payments=data.payments.filter(p=>p.user===currentUser.email);let myShips=data.shipments.filter(x=>x.senderEmail===currentUser.email||x.travelerEmail===currentUser.email).length;let myRentals=data.rentals.filter(x=>x.ownerEmail===currentUser.email).length;let myReqs=(data.rentalRequests||[]).filter(x=>x.seekerEmail===currentUser.email||x.ownerEmail===currentUser.email).length;let myTrips=data.trips.filter(x=>x.travelerEmail===currentUser.email).length;$('profile').innerHTML=`<h2>👤 My Dashboard</h2>${roleDashboardCards()}<h3 style="margin-top:22px">My Activity</h3><div class="grid"><div class="card"><p>Shipping</p><div class="stat">${myShips}</div></div><div class="card"><p>Trips</p><div class="stat">${myTrips}</div></div><div class="card"><p>Rentals</p><div class="stat">${myRentals}</div></div><div class="card"><p>Viewing Requests</p><div class="stat">${myReqs}</div></div></div><div class="grid"><div class="card"><h3>Account Information</h3><label>Name</label><input id="profName" value="${currentUser.name}"><label>Phone</label><input id="profPhone" value="${currentUser.phone||''}" placeholder="Phone number"><label>City</label><input id="profCity" value="${currentUser.city||''}" placeholder="City"><p>Active Role: <span class="pill">${roleTitle(currentUser.role)}</span></p><p>Services: ${(currentUser.roles||[currentUser.role]).map(r=>`<span class="pill">${roleTitle(r)}</span>`).join(' ')}</p><button class="btn ghost" onclick="show('services')">Switch / Manage Services</button><p>Verification: <span class="pill ${currentUser.verified?'good':'warn'}">${currentUser.verified?'Verified':'Not verified'}</span></p><button class="btn primary" onclick="saveProfile()">Save Profile</button></div><div class="card"><h3>Account Tools</h3><p class="muted">Your account is connected to Supabase. Test Shipping, Rentals, Payments, Messages, Notifications, and Admin reports by role.</p><button class="btn" onclick="show('messages')">Open Messages</button><button class="btn" onclick="show('notifications')">Open Notifications</button></div></div><h3>My Payment History</h3><table><tr><th>Service</th><th>Description</th><th>Amount</th><th>Time</th></tr>${payments.map(p=>`<tr><td>${p.service}</td><td>${p.desc}</td><td>${money(p.amount)}</td><td>${p.time}</td></tr>`).join('')||'<tr><td colspan="4">No payments yet.</td></tr>'}</table>`}
 function saveProfile(){currentUser.name=$('profName').value;currentUser.phone=$('profPhone').value;currentUser.city=$('profCity').value;let u=data.users.find(x=>x.email===currentUser.email);Object.assign(u,currentUser);addNote(currentUser.email,'Profile updated.');save();show('profile')}
 function sendMessage(){if(!requireLogin())return;let to=$('msgTo').value||'support@habeshaconnect.com',txt=$('msgText').value;if(!txt)return alert('Write a message first');data.messages.unshift({from:currentUser.email,to,text:txt,time:new Date().toLocaleString()});addNote(to,'New message from '+currentUser.name);save();show('messages')}
@@ -353,7 +355,7 @@ async function admin(){
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
- $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.3 Admin Button Actions Fix:</b> verification, approve, edit, and delete buttons are connected to Supabase where possible. Scrolling fix stays active.</div>
+ $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.5 Admin One-Click Refresh Fix:</b> admin buttons now show Working, prevent duplicate clicks, and refresh the admin tables after each action.</div>
  <h3>Verify Users</h3><div class="card"><p class="muted">Click Verify after reviewing the user. This changes the real Supabase <b>profiles.verified</b> value.</p><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Status</th><th>Action</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button type="button" class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button type="button" class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`}</td></tr>`).join('')||'<tr><td colspan="6">No users found.</td></tr>'}</table></div>
  <div class="grid"><div class="card"><p>Users</p><div class="stat">${managedUsers.length}</div></div><div class="card"><p>Total Revenue</p><div class="stat">${money(revenue)}</div></div><div class="card"><p>Favorites Saved</p><div class="stat">${data.favorites.length}</div></div><div class="card"><p>Reviews</p><div class="stat">${data.reviews.length}</div></div></div>
  <h3>Admin Settings</h3><div class="grid"><div class="card"><h3>Prices</h3><label>Owner listing fee</label><input type="number" value="${settings().ownerListingFee}" onchange="setMoneySetting('ownerListingFee',this.value)"><label>Seeker viewing fee</label><input type="number" value="${settings().seekerViewingFee}" onchange="setMoneySetting('seekerViewingFee',this.value)"><label>Shipping rate per lb</label><input type="number" value="${settings().shippingRatePerLb}" onchange="setMoneySetting('shippingRatePerLb',this.value)"><label>App commission per lb</label><input type="number" value="${settings().appCommissionPerLb}" onchange="setMoneySetting('appCommissionPerLb',this.value)"><label>Traveler commission per lb</label><input type="number" value="${settings().travelerCommissionPerLb}" onchange="setMoneySetting('travelerCommissionPerLb',this.value)"></div><div class="card"><h3>Launch Controls</h3><p><b>Registration:</b> ${settings().registrationOpen?'Open':'Closed'}</p><p><b>Maintenance Mode:</b> ${settings().maintenanceMode?'On':'Off'}</p><div class="actions"><button class="btn ghost" onclick="toggleRegistration()">Toggle Registration</button><button class="btn warn" onclick="toggleMaintenance()">Toggle Maintenance</button></div><p class="muted">Use these controls before going live. Real database, Stripe/PayPal, and cloud image storage are the next deployment connections.</p></div></div><h3>Launch Checklist</h3><div class="card"><p>✅ UI complete • ✅ Admin reports • ✅ User verification • ✅ Payment records • ✅ Chat prototype • ✅ Notifications • ✅ Export data</p><p class="muted">This ZIP is still a browser-based MVP. For a live public website, connect Firebase/Supabase, Stripe/PayPal, and cloud photo storage.</p></div><h3>Search Users / Verification</h3><div class="card"><label>Search by name, email, phone, or role</label><input id="userSearch" value="${q}" oninput="admin()" placeholder="Search users"><p class="muted">Verify users after reviewing ID, ticket/booking, phone, and account details. Shipment space still updates automatically when a traveler accepts a request.</p></div><div class="tableWrap"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Active Role</th><th>Status</th><th>Actions</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${roleTitle(u.role||u.active_role||'customer')}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`} <button class="btn ghost" onclick="editUser('${u.email}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u.email}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No matching users.</td></tr>'}</table>
@@ -364,213 +366,151 @@ async function admin(){
  <h3>Rental Requests Management</h3><table><tr><th>ID</th><th>Property</th><th>Owner</th><th>Rent Seeker</th><th>Status</th><th>Actions</th></tr>${data.rentalRequests.map(q=>`<tr><td>${q.id}</td><td>${q.propertyTitle}</td><td>${q.ownerName}</td><td>${q.seekerName}</td><td>${q.status}</td><td><button class="btn primary" onclick="approveRentalReq('${q.id}')">Approve</button> <button class="btn ghost" onclick="editRentalRequest('${q.id}')">Edit</button> <button class="btn bad" onclick="deleteRentalRequest('${q.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No rental requests yet.</td></tr>'}</table><div class='actions'><button class='btn ghost' onclick='exportData()'>Export Data</button></div>`
 }
 function reportRows(field){let rows={};(data.payments||[]).forEach(p=>{let k=p[field]||'Unknown';rows[k]=(rows[k]||0)+(+p.amount||0)});let keys=Object.keys(rows).sort().reverse();return keys.length?`<table><tr><th>Period</th><th>Total</th></tr>${keys.map(k=>`<tr><td>${k}</td><td>${money(rows[k])}</td></tr>`).join('')}</table>`:'<p class="muted">No payments yet.</p>'}
-function toggleRegistration(){settings().registrationOpen=!settings().registrationOpen;save()}
-function toggleMaintenance(){settings().maintenanceMode=!settings().maintenanceMode;save()}
+async function saveAppSettingsToSupabase(){if(!authReady())return {error:null};let payload={id:1,owner_listing_fee:settings().ownerListingFee,seeker_viewing_fee:settings().seekerViewingFee,shipping_rate_per_lb:settings().shippingRatePerLb,traveler_commission_per_lb:settings().travelerCommissionPerLb,app_commission_per_lb:settings().appCommissionPerLb,registration_open:settings().registrationOpen,maintenance_mode:settings().maintenanceMode,updated_at:new Date().toISOString()};return await hcSupabase.from('app_settings').upsert(payload,{onConflict:'id'});}
+async function toggleRegistration(){settings().registrationOpen=!settings().registrationOpen;let res=await saveAppSettingsToSupabase();if(res.error){settings().registrationOpen=!settings().registrationOpen;return alert('Could not update registration setting: '+res.error.message)}persistOnly();adminSuccess()}
+async function toggleMaintenance(){settings().maintenanceMode=!settings().maintenanceMode;let res=await saveAppSettingsToSupabase();if(res.error){settings().maintenanceMode=!settings().maintenanceMode;return alert('Could not update maintenance setting: '+res.error.message)}persistOnly();adminSuccess()}
 async function approveUser(email){
   let u=data.users.find(x=>x.email===email);
   if(!u)return alert('User not found.');
-  u.verified=true;
-  if(authReady()){
-    let {error}=await hcSupabase.from('profiles').update({verified:true}).eq('email',email);
-    if(error)return alert('Could not verify user in Supabase: '+error.message);
-  }
+  let old=!!u.verified; u.verified=true;
+  let res={error:null};
+  if(authReady())res=await hcSupabase.from('profiles').update({verified:true}).eq('email',email);
+  if(res.error){u.verified=old;return alert('Could not verify user in Supabase: '+res.error.message)}
   data.trips.forEach(t=>{if(t.travelerEmail===email)t.travelerVerified=true});
   data.shipments.forEach(s=>{if(s.senderEmail===email)s.senderVerified=true;if(s.travelerEmail===email)s.travelerVerified=true});
   addNote(u.email,'Your Habesha Connect account was verified by admin.');
-  save();
+  persistOnly();
   await refreshAdminData();
-  alert(u.name+' is now verified.');
-  show('admin');
+  adminSuccess();
 }
 async function unverifyUser(email){
   let u=data.users.find(x=>x.email===email);
   if(!u)return alert('User not found.');
   if(!confirm('Remove verified status from '+u.name+'?'))return;
-  u.verified=false;
-  if(authReady()){
-    let {error}=await hcSupabase.from('profiles').update({verified:false}).eq('email',email);
-    if(error)return alert('Could not update Supabase: '+error.message);
-  }
+  let old=!!u.verified; u.verified=false;
+  let res={error:null};
+  if(authReady())res=await hcSupabase.from('profiles').update({verified:false}).eq('email',email);
+  if(res.error){u.verified=old;return alert('Could not unverify user in Supabase: '+res.error.message)}
   data.trips.forEach(t=>{if(t.travelerEmail===email)t.travelerVerified=false});
   data.shipments.forEach(s=>{if(s.senderEmail===email)s.senderVerified=false;if(s.travelerEmail===email)s.travelerVerified=false});
   addNote(u.email,'Your Habesha Connect verification status was changed by admin.');
-  save();
+  persistOnly();
   await refreshAdminData();
-  show('admin');
+  adminSuccess();
 }
 async function editUser(email){
   let u=data.users.find(x=>x.email===email);
   if(!u)return alert('User not found.');
-  let name=prompt('Edit full name:',u.name);
-  if(name===null)return;
-  let phone=prompt('Edit phone number:',u.phone||'');
-  if(phone===null)return;
-  let role=prompt('Edit active role (sender, traveler, owner, rent_seeker, customer, driver, business_owner, admin):',u.role||u.active_role||'customer');
-  if(role===null)return;
-  name=name.trim()||u.name;
-  phone=phone.trim();
-  role=role.trim()||u.role||'customer';
-  u.name=name;u.phone=phone;u.role=role;u.active_role=role;
-  if(!Array.isArray(u.roles))u.roles=[];
-  if(!u.roles.includes(role))u.roles.push(role);
-  if(authReady()){
-    let {error}=await hcSupabase.from('profiles').update({name,phone,role,active_role:role,roles:u.roles}).eq('email',email);
-    if(error)return alert('Could not edit user in Supabase: '+error.message);
-  }
-  save();
-  await refreshAdminData();
-  show('admin');
+  let name=prompt('Edit full name:',u.name); if(name===null)return;
+  let phone=prompt('Edit phone number:',u.phone||''); if(phone===null)return;
+  let role=prompt('Edit active role (sender, traveler, owner, rent_seeker, customer, driver, business_owner, admin):',u.role||u.active_role||'customer'); if(role===null)return;
+  name=name.trim()||u.name; phone=phone.trim(); role=role.trim()||u.role||'customer';
+  let old={name:u.name,phone:u.phone,role:u.role,active_role:u.active_role,roles:[...(u.roles||[])]};
+  u.name=name;u.phone=phone;u.role=role;u.active_role=role;if(!Array.isArray(u.roles))u.roles=[];if(!u.roles.includes(role))u.roles.push(role);
+  let res={error:null};
+  if(authReady())res=await hcSupabase.from('profiles').update({name,phone,role,active_role:role,roles:u.roles}).eq('email',email);
+  if(res.error){Object.assign(u,old);return alert('Could not edit user in Supabase: '+res.error.message)}
+  persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function deleteUser(email){
   let u=data.users.find(x=>x.email===email);
   if(!u)return alert('User not found.');
   if((u.roles||[]).includes('admin')||u.role==='admin')return alert('Admin account cannot be deleted here.');
   if(!confirm('Delete profile for '+u.name+'? This removes the profile row, not the Supabase Auth login.'))return;
-  if(authReady()){
-    let {error}=await hcSupabase.from('profiles').delete().eq('email',email);
-    if(error)return alert('Could not delete profile in Supabase: '+error.message);
-  }
+  let backup=[...data.users];
   data.users=data.users.filter(x=>x.email!==email);
-  if(currentUser&&currentUser.email===email)currentUser=null;
-  save();
-  await refreshAdminData();
-  show('admin');
+  let res={error:null};
+  if(authReady())res=await hcSupabase.from('profiles').delete().eq('email',email);
+  if(res.error){data.users=backup;return alert('Could not delete profile in Supabase: '+res.error.message)}
+  persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function approveShipment(id){
   let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!s)return alert('Shipment not found.');
-  s.status='Approved';
-  if(authReady()&&s.dbId){
-    let {error}=await hcSupabase.from('shipments').update({status:'Approved'}).eq('id',s.dbId);
-    if(error)return alert('Could not approve shipment in Supabase: '+error.message);
-  }
+  let old=s.status; s.status='Approved';
+  let res={error:null};
+  if(authReady()&&s.dbId)res=await hcSupabase.from('shipments').update({status:'Approved'}).eq('id',s.dbId);
+  if(res.error){s.status=old;return alert('Could not approve shipment in Supabase: '+res.error.message)}
   addNote(s.senderEmail||'all','Your shipment '+(s.tracking||id)+' was approved by admin.');
   if(s.travelerEmail)addNote(s.travelerEmail,'Shipment '+(s.tracking||id)+' was approved by admin.');
-  save();
-  await refreshAdminData();
-  show('admin');
+  persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function editShipment(id){
   let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!s)return alert('Shipment not found.');
-  let route=prompt('Edit route:',s.route||'');
-  if(route===null)return;
-  let status=prompt('Edit status:',s.status||'Requested');
-  if(status===null)return;
-  let receiver=prompt('Edit receiver name:',s.receiver||'');
-  if(receiver===null)return;
-  let receiverPhone=prompt('Edit receiver phone:',s.receiverPhone||'');
-  if(receiverPhone===null)return;
-  s.route=route.trim()||s.route;
-  s.status=status.trim()||s.status;
-  s.receiver=receiver.trim();
-  s.receiverPhone=receiverPhone.trim();
-  if(authReady()&&s.dbId){
-    let parts=(s.route||'').split('→').map(x=>x.trim());
-    let payload={status:s.status,receiver_name:s.receiver,receiver_phone:s.receiverPhone};
-    if(parts[0])payload.from_city=parts[0];
-    if(parts[1])payload.to_city=parts[1];
-    let {error}=await hcSupabase.from('shipments').update(payload).eq('id',s.dbId);
-    if(error)return alert('Could not edit shipment in Supabase: '+error.message);
-  }
-  save();
-  await refreshAdminData();
-  show('admin');
+  let route=prompt('Edit route:',s.route||''); if(route===null)return;
+  let status=prompt('Edit status:',s.status||'Requested'); if(status===null)return;
+  let receiver=prompt('Edit receiver name:',s.receiver||''); if(receiver===null)return;
+  let receiverPhone=prompt('Edit receiver phone:',s.receiverPhone||''); if(receiverPhone===null)return;
+  let old={route:s.route,status:s.status,receiver:s.receiver,receiverPhone:s.receiverPhone};
+  s.route=route.trim()||s.route; s.status=status.trim()||s.status; s.receiver=receiver.trim(); s.receiverPhone=receiverPhone.trim();
+  let res={error:null};
+  if(authReady()&&s.dbId){let parts=(s.route||'').split('→').map(x=>x.trim());let payload={status:s.status,receiver_name:s.receiver,receiver_phone:s.receiverPhone};if(parts[0])payload.from_city=parts[0];if(parts[1])payload.to_city=parts[1];res=await hcSupabase.from('shipments').update(payload).eq('id',s.dbId)}
+  if(res.error){Object.assign(s,old);return alert('Could not edit shipment in Supabase: '+res.error.message)}
+  persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function deleteShipment(id){
   let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!s)return alert('Shipment not found.');
   if(!confirm('Delete shipment '+(s.tracking||id)+'?'))return;
-  if(authReady()&&s.dbId){
-    let {error}=await hcSupabase.from('shipments').delete().eq('id',s.dbId);
-    if(error)return alert('Could not delete shipment in Supabase: '+error.message);
-  }
-  data.shipments=data.shipments.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
-  save();
-  await refreshAdminData();
-  show('admin');
+  let backup=[...data.shipments]; data.shipments=data.shipments.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
+  let res={error:null};
+  if(authReady()&&s.dbId)res=await hcSupabase.from('shipments').delete().eq('id',s.dbId);
+  if(res.error){data.shipments=backup;return alert('Could not delete shipment in Supabase: '+res.error.message)}
+  persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function approveRental(id){
   let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!r)return alert('Rental not found.');
-  if(!r.ownerPaid&&currentUser&&currentUser.role==='admin'){
-    alert('Owner listing fee is not paid yet.');
-    return;
-  }
+  if(!r.ownerPaid&&currentUser&&currentUser.role==='admin')return alert('Owner listing fee is not paid yet.');
   r.status='Approved';
-  if(authReady()&&r.dbId){
-    let {error}=await hcSupabase.from('properties').update({status:'Approved'}).eq('id',r.dbId);
-    if(error)return alert('Could not approve rental in Supabase: '+error.message);
-  }
+  let res={error:null};
+  if(authReady()&&r.dbId)res=await hcSupabase.from('properties').update({status:'Approved'}).eq('id',r.dbId);
+  if(res.error)return alert('Could not approve rental in Supabase: '+res.error.message);
   addNote(r.ownerEmail||'all','Your rental listing '+id+' was approved by admin.');
-  save();
-  show('admin');
+  persistOnly(); adminSuccess();
 }
 async function editRental(id){
   let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!r)return alert('Rental not found.');
-  let type=prompt('Edit property type (Home, Apartment, Basement, Roommate, Town House, Business):',r.propertyType||'Home');
-  if(type===null)return;
-  let title=prompt('Edit property title:',r.title);
-  if(title===null)return;
-  let city=prompt('Edit city:',r.city);
-  if(city===null)return;
-  let price=prompt('Edit monthly rent:',r.price);
-  if(price===null)return;
-  let status=prompt('Edit status:',r.status);
-  if(status===null)return;
-  r.propertyType=type.trim()||r.propertyType||'Home';
-  r.title=title.trim()||r.title;
-  r.city=city.trim()||r.city;
-  r.price=Number(price)||r.price;
-  r.status=status.trim()||r.status;
-  if(authReady()&&r.dbId){
-    let {error}=await hcSupabase.from('properties').update({property_type:r.propertyType,title:r.title,city:r.city,monthly_rent:r.price,status:r.status}).eq('id',r.dbId);
-    if(error)return alert('Could not edit rental in Supabase: '+error.message);
-  }
-  save();
-  show('admin');
+  let type=prompt('Edit property type (Home, Apartment, Basement, Roommate, Town House, Business):',r.propertyType||'Home'); if(type===null)return;
+  let title=prompt('Edit property title:',r.title); if(title===null)return;
+  let city=prompt('Edit city:',r.city); if(city===null)return;
+  let price=prompt('Edit monthly rent:',r.price); if(price===null)return;
+  let status=prompt('Edit status:',r.status); if(status===null)return;
+  r.propertyType=type.trim()||r.propertyType||'Home'; r.title=title.trim()||r.title; r.city=city.trim()||r.city; r.price=Number(price)||r.price; r.status=status.trim()||r.status;
+  let res={error:null};
+  if(authReady()&&r.dbId)res=await hcSupabase.from('properties').update({property_type:r.propertyType,title:r.title,city:r.city,monthly_rent:r.price,status:r.status}).eq('id',r.dbId);
+  if(res.error)return alert('Could not edit rental in Supabase: '+res.error.message);
+  persistOnly(); adminSuccess();
 }
 async function deleteRental(id){
   let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!r)return alert('Rental not found.');
   if(!confirm('Delete rental listing '+id+'?'))return;
-  if(authReady()&&r.dbId){
-    let {error}=await hcSupabase.from('properties').delete().eq('id',r.dbId);
-    if(error)return alert('Could not delete rental in Supabase: '+error.message);
-  }
-  data.rentals=data.rentals.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
-  data.rentalRequests=data.rentalRequests.filter(x=>x.rentalId!==id);
-  save();
-  show('admin');
+  let res={error:null}; if(authReady()&&r.dbId)res=await hcSupabase.from('properties').delete().eq('id',r.dbId);
+  if(res.error)return alert('Could not delete rental in Supabase: '+res.error.message);
+  data.rentals=data.rentals.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id)); data.rentalRequests=data.rentalRequests.filter(x=>x.rentalId!==id);
+  persistOnly(); adminSuccess();
 }
 async function editRentalRequest(id){
   let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!q)return alert('Rental request not found.');
-  let status=prompt('Edit request status:',q.status);
-  if(status===null)return;
-  let seekerPhone=prompt('Edit rent seeker phone:',q.seekerPhone||'');
-  if(seekerPhone===null)return;
-  q.status=status.trim()||q.status;
-  q.seekerPhone=seekerPhone.trim();
-  if(authReady()&&q.dbId){
-    let {error}=await hcSupabase.from('rental_requests').update({status:q.status}).eq('id',q.dbId);
-    if(error)return alert('Could not edit rental request in Supabase: '+error.message);
-  }
-  save();
-  show('admin');
+  let status=prompt('Edit request status:',q.status); if(status===null)return;
+  let seekerPhone=prompt('Edit rent seeker phone:',q.seekerPhone||''); if(seekerPhone===null)return;
+  q.status=status.trim()||q.status; q.seekerPhone=seekerPhone.trim();
+  let res={error:null}; if(authReady()&&q.dbId)res=await hcSupabase.from('rental_requests').update({status:q.status}).eq('id',q.dbId);
+  if(res.error)return alert('Could not edit rental request in Supabase: '+res.error.message);
+  persistOnly(); adminSuccess();
 }
 async function deleteRentalRequest(id){
   let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!q)return alert('Rental request not found.');
   if(!confirm('Delete rental request '+id+'?'))return;
-  if(authReady()&&q.dbId){
-    let {error}=await hcSupabase.from('rental_requests').delete().eq('id',q.dbId);
-    if(error)return alert('Could not delete rental request in Supabase: '+error.message);
-  }
+  let res={error:null}; if(authReady()&&q.dbId)res=await hcSupabase.from('rental_requests').delete().eq('id',q.dbId);
+  if(res.error)return alert('Could not delete rental request in Supabase: '+res.error.message);
   data.rentalRequests=data.rentalRequests.filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
-  save();
-  show('admin');
+  persistOnly(); adminSuccess();
 }
 async function refreshAdminData(){
   if(authReady()){
@@ -578,6 +518,45 @@ async function refreshAdminData(){
     await loadSupabaseTrips();
     await loadSupabaseShipments();
   }
+}
+
+
+function setupAdminOneClickProtection(){
+  document.addEventListener('click', function(e){
+    const btn=e.target.closest('#admin button, #services button');
+    if(!btn) return;
+    if(btn.dataset.busy==='1'){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return false;
+    }
+    const isActionButton = /Verify|Unverify|Approve|Delete|Edit|Toggle|Save My Services/.test((btn.textContent||''));
+    if(!isActionButton) return;
+    btn.dataset.busy='1';
+    btn.dataset.oldText=btn.textContent;
+    setTimeout(()=>{
+      btn.disabled=true;
+      btn.textContent='Working...';
+      btn.style.opacity='0.65';
+      btn.style.cursor='wait';
+    },0);
+    // Re-enable fallback in case a prompt is cancelled or Supabase is slow.
+    setTimeout(()=>{
+      if(document.body.contains(btn)){
+        btn.disabled=false;
+        btn.textContent=btn.dataset.oldText||btn.textContent;
+        btn.dataset.busy='0';
+        btn.style.opacity='';
+        btn.style.cursor='';
+      }
+    },6500);
+  }, true);
+}
+setupAdminOneClickProtection();
+function adminSuccess(message){
+  if(message) console.log(message);
+  persistOnly();
+  setTimeout(()=>show('admin'),150);
 }
 
 
