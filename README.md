@@ -1,11 +1,31 @@
-# Habesha Connect V5.3 Real Traveler Trips
+# Habesha Connect V6.0 Multi-Role Accounts
 
-Added:
-- Real Supabase traveler trip saving
-- Traveler posts trip to the `trips` table
-- Traveler sees only their own trips
-- Senders can see open trips from Supabase
-- Trip status can be closed by the traveler
-- Keeps V5.2 real auth and role-based dashboards
+V6.0 changes Habesha Connect from **one account = one role** to **one account = many services**.
 
-Upload/replace these files in GitHub, commit changes, then Vercel will redeploy.
+A user can now use one email and phone number for:
+- Traveler
+- Sender
+- Property Owner
+- Rent Seeker
+- Truck Driver
+- Business Owner
+- Customer
+
+## Important Supabase step
+
+Before testing V6.0, run this file in Supabase SQL Editor:
+
+`supabase/v6_multi_role_migration.sql`
+
+This adds:
+- `profiles.roles`
+- `profiles.active_role`
+
+## Upload steps
+
+1. Upload/replace these files in GitHub.
+2. Commit changes.
+3. Wait for Vercel to redeploy.
+4. Open the live site.
+5. Go to **My Services** and add/switch roles.
+
