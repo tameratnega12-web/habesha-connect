@@ -1,12 +1,5 @@
-# Habesha Connect V6.3 Verification and Space Fix
+# Habesha Connect V6.3.1 Admin Page Fix
 
-Adds/keeps:
-- Admin Verification Center updates Supabase `profiles.verified`
-- Traveler/Sender verified badges read from Supabase profiles
-- Accepted/Paid shipments recalculate traveler remaining space
-- Accept button is styled green
-- Optional SQL: `supabase/v6_3_make_admin_optional.sql` to make Tamerat admin
+Bug-fix release: fixes Admin Verification Center scrolling/clicking reliability and moves user verification to the top of the Admin page.
 
-Upload/replace all files in GitHub and commit as:
-
-`V6.3 Verification and Space Fix`
+Commit message: `V6.3.1 Admin Page Fix`
