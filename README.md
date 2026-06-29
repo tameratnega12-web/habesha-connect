@@ -1,3 +1,5 @@
-# Habesha Connect V6.2.1 Public Menu Fix
+# Habesha Connect V6.2.2 Trucking Menu Fix
 
-Fixes the public homepage/menu so logged-out users can see Shipping, Rentals, Marketplace, Jobs, and Business services. Keeps V6.2 Admin Verification Center and V6.1 multi-role account switcher.
+This update keeps the V6.2 Admin Verification Center and restores the public Trucking menu button.
+
+Upload/replace all files in GitHub and commit as: `V6.2.2 Trucking Menu Fix`.

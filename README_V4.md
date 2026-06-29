@@ -1,9 +1,5 @@
-# Habesha Connect V4.0 Supabase Starter
+# Habesha Connect V6.2.2 Trucking Menu Fix
 
-This version includes:
-- The working V3.6 app UI
-- Supabase database schema
-- Supabase config example
-- GitHub/Vercel setup steps
+This update keeps the V6.2 Admin Verification Center and restores the public Trucking menu button.
 
-Next development step: connect `index.html` functions to Supabase tables.
+Upload/replace all files in GitHub and commit as: `V6.2.2 Trucking Menu Fix`.
