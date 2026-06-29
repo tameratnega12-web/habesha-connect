@@ -1,14 +1,16 @@
-# Habesha Connect V5.1 Production Cleanup
+# Habesha Connect V5.2 Role Dashboards
 
-This version keeps real Supabase authentication and removes demo reset controls.
+This version keeps real Supabase Authentication and adds role-based navigation/dashboards.
 
-## Added / changed
-- Removed the red Reset Test Data button from the header.
-- Removed Reset Test Data from admin actions.
-- Admin navigation is visible only to admin users.
-- Admin dashboard card on home page is visible only to admin users.
-- Top-right user display shows real signed-in name and role.
-- Logout continues to use Supabase sign-out.
+## Added in V5.2
+- Traveler, Sender, Owner, Rent Seeker, Admin role views
+- Users only see menu items for their role
+- Admin menu remains hidden from non-admin users
+- Home page and Profile page now show role-specific dashboard cards
+- Reset Test Data remains removed
 
-## Live deployment
-Upload these files to GitHub and commit. Vercel will redeploy automatically.
+## Test after upload
+1. Upload/replace files in GitHub.
+2. Wait for Vercel redeploy.
+3. Login as a traveler and confirm only traveler tools show.
+4. Create/sign in as other roles to test each dashboard.
