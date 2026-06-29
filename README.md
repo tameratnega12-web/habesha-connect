@@ -1,5 +1,3 @@
-# Habesha Connect V6.3.1 Admin Page Fix
+# Habesha Connect V6.3.2 Admin Scroll Fix
 
-Bug-fix release: fixes Admin Verification Center scrolling/clicking reliability and moves user verification to the top of the Admin page.
-
-Commit message: `V6.3.1 Admin Page Fix`
+Fixes Admin page scrolling/dragging on iPhone Safari and desktop. Keeps V6.3.1 admin verification button behavior and does not change shipping space reduction logic.
