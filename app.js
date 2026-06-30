@@ -1,7 +1,41 @@
 
+
 const $=id=>document.getElementById(id);
 const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','business','messages','notifications','admin'];
 const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Jobs',truck:'Trucking',business:'Business Manager',messages:'Messages',notifications:'Notifications',admin:'Admin'};
+const LANG_KEY='hc_lang';
+let currentLang=localStorage.getItem(LANG_KEY)||'en';
+const I18N={
+  am:{
+    'Community • Shipping • Rentals • Marketplace • Jobs • Trucking • Business':'ማህበረሰብ • መላኪያ • ኪራይ • ገበያ • ስራ • ትራኪንግ • ቢዝነስ',
+    'Home':'መነሻ','Account':'መለያ','Profile':'ፕሮፋይል','My Services':'አገልግሎቶቼ','Shipping':'መላኪያ','Rentals':'ኪራይ','Marketplace':'ገበያ','Jobs':'ስራዎች','Trucking':'ትራኪንግ','Business Manager':'ቢዝነስ ማኔጀር','Messages':'መልዕክቶች','Notifications':'ማሳወቂያዎች','Admin':'አድሚን',
+    'Login / Register':'ግባ / መዝገብ','Signed in:':'ገብተዋል፡','Logout':'ውጣ','Login':'ግባ','Create Account':'መለያ ፍጠር','Forgot Password':'የይለፍ ቃል ረሳሁ','Full Name':'ሙሉ ስም','Phone Number':'ስልክ ቁጥር','Email':'ኢሜይል','Password':'የይለፍ ቃል','Choose your services':'አገልግሎቶችዎን ይምረጡ','I agree to the Terms and Privacy Policy':'በውሎች እና በግላዊነት ፖሊሲ እስማማለሁ',
+    'Habesha Connect':'ሀበሻ ኮኔክት','Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.':'የኢትዮጵያን ማህበረሰብ በመላኪያ፣ በኪራይ፣ በስራ፣ በገበያ፣ በአገልግሎቶች እና በቢዝነስ መሳሪያዎች ያገናኛል።','Available Services':'ያሉ አገልግሎቶች','Open My Dashboard':'ዳሽቦርዴን ክፈት','Start Shipping':'መላኪያ ጀምር','Find Rentals':'ኪራይ ፈልግ','Admin Dashboard':'የአድሚን ዳሽቦርድ',
+    'Traveler':'ተጓዥ','Sender':'ላኪ','Property Owner':'ቤት ባለቤት','Rent Seeker':'ኪራይ ፈላጊ','Truck Driver':'የትራክ ሾፌር','Business Owner':'ቢዝነስ ባለቤት','Customer':'ደንበኛ','Active':'ንቁ','Current Dashboard':'የአሁኑ ዳሽቦርድ','Continue as':'ቀጥል እንደ','Manage My Roles':'ሚናዎቼን አስተዳድር','Save My Services':'አገልግሎቶቼን አስቀምጥ','Current active role:':'የአሁኑ ንቁ ሚና፡','What would you like to do today?':'ዛሬ ምን ማድረግ ይፈልጋሉ?','Welcome back,':'እንኳን ደህና መጡ፣',
+    'My Dashboard':'ዳሽቦርዴ','My Activity':'እንቅስቃሴዬ','Total Trips':'ጠቅላላ ጉዞዎች','Total Shipments':'ጠቅላላ መላኪያዎች','Paid Shipments':'የተከፈሉ መላኪያዎች','Shipment Requests':'የመላኪያ ጥያቄዎች','No shipment requests yet.':'እስካሁን የመላኪያ ጥያቄ የለም።','Shipping Connect':'መላኪያ ኮኔክት','Rental Connect':'ኪራይ ኮኔክት',
+    'Add Property':'ቤት አክል','Property Photos':'የቤት ፎቶዎች','Property Type':'የቤት አይነት','Title':'ርዕስ','City':'ከተማ','Monthly Rent':'ወርሃዊ ኪራይ','Security Deposit':'የዋስትና ተቀማጭ','Bedrooms':'መኝታ ክፍሎች','Bathrooms':'መታጠቢያ ቤቶች','Available Move-in Date':'መግቢያ ቀን','Lease Term':'የሊዝ ጊዜ','Pets Allowed':'የቤት እንስሳ ይፈቀዳል?','Parking':'ፓርኪንግ','Furnished':'በእቃ የተሟላ','Utilities Included':'ዩቲሊቲዎች ተካተዋል','Search Filters':'የፍለጋ ማጣሪያዎች','Max Price':'ከፍተኛ ዋጋ','Filter':'አጣራ','Show All':'ሁሉንም አሳይ','Rental Requests / Contacts':'የኪራይ ጥያቄዎች / እውቂያዎች',
+    'Post Item':'እቃ ለጥፍ','Buy / Reserve':'ግዛ / ያዝ','Message Seller':'ሻጩን መልዕክት ላክ','Post Job':'ስራ ለጥፍ','Apply':'አመልክት','Save':'አስቀምጥ','Add Trip / Expense':'ጉዞ / ወጪ አክል','Save Truck Record':'የትራክ መዝገብ አስቀምጥ','Reports':'ሪፖርቶች','Add Business Report':'የቢዝነስ ሪፖርት አክል','Save Report':'ሪፖርት አስቀምጥ','Tax Ready Reports':'ለታክስ ዝግጁ ሪፖርቶች',
+    'Send Message':'መልዕክት ላክ','Choose User':'ተጠቃሚ ምረጥ','To Email':'ወደ ኢሜይል','Message':'መልዕክት','Send':'ላክ','Chat Features':'የቻት ባህሪዎች','Visible messages':'የሚታዩ መልዕክቶች','No messages yet.':'እስካሁን መልዕክት የለም።','Mark All Read':'ሁሉንም እንደተነበበ ምልክት አድርግ','No notifications yet.':'እስካሁን ማሳወቂያ የለም።',
+    'Pending':'በመጠባበቅ ላይ','Approved':'ተፈቅዷል','Declined':'ውድቅ ተደርጓል','Available':'ይገኛል','Open':'ክፍት','Paid':'ተከፍሏል','Approve':'ፍቀድ','Decline':'ውድቅ አድርግ','Action':'እርምጃ','Status':'ሁኔታ','Payment':'ክፍያ','Property':'ቤት','Owner':'ባለቤት','Owner Phone':'የባለቤት ስልክ','Rent Seeker':'ኪራይ ፈላጊ','Phone':'ስልክ',
+    'Admin Access Required':'የአድሚን መግቢያ ያስፈልጋል','Please login as admin or switch to the Admin role.':'እባክዎ እንደ አድሚን ይግቡ ወይም ወደ አድሚን ሚና ይቀይሩ።','Admin Verification Center':'የአድሚን ማረጋገጫ ማዕከል','Loading Supabase users and verification records...':'የSupabase ተጠቃሚዎችን እና የማረጋገጫ መዝገቦችን በመጫን ላይ...'
+  }
+};
+const PH_AM={
+ 'you@example.com':'you@example.com','404-555-1234':'404-555-1234','Phone number':'ስልክ ቁጥር','City':'ከተማ','Search city':'ከተማ ፈልግ','2000':'2000','3 Bedroom House':'3 መኝታ ቤት','Water, trash, internet...':'ውሃ፣ ቆሻሻ፣ ኢንተርኔት...','Item name':'የእቃ ስም','Price':'ዋጋ','Job title':'የስራ ርዕስ','Company':'ኩባንያ','$15/hr':'$15/ሰዓት','Truck / Unit':'ትራክ / ዩኒት','Driver':'ሾፌር','Income':'ገቢ','Fuel, toll, repair, permit expenses':'ነዳጅ፣ ቶል፣ ጥገና፣ ፈቃድ ወጪ','Mileage':'ማይሌጅ','Business name':'የቢዝነስ ስም','Sales':'ሽያጭ','Expenses':'ወጪዎች','Write your message':'መልዕክትዎን ይጻፉ','user@email.com':'user@email.com'
+};
+function tr(text){return currentLang==='am'?(I18N.am[text]||text):text}
+function setLanguage(lang){currentLang=lang;localStorage.setItem(LANG_KEY,lang);document.documentElement.lang=lang==='am'?'am':'en';render();}
+function renderLangBox(){let el=$('langBox');if(!el)return;el.innerHTML=`<select id="langSelect" onchange="setLanguage(this.value)" style="width:auto;min-width:120px;margin:0;padding:9px;border-radius:10px;font-weight:700"><option value="en" ${currentLang==='en'?'selected':''}>English</option><option value="am" ${currentLang==='am'?'selected':''}>አማርኛ</option></select>`;}
+function applyTranslations(){
+ if(currentLang!=='am')return;
+ document.querySelectorAll('.tag').forEach(el=>{el.textContent=tr(el.textContent.trim())});
+ const skip=new Set(['SCRIPT','STYLE','TEXTAREA','INPUT','SELECT','OPTION']);
+ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode(node){let p=node.parentElement;if(!p||skip.has(p.tagName))return NodeFilter.FILTER_REJECT;let txt=node.nodeValue.trim();return txt?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;}});
+ const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+ nodes.forEach(node=>{let raw=node.nodeValue;let trimmed=raw.trim();let translated=tr(trimmed);if(translated!==trimmed)node.nodeValue=raw.replace(trimmed,translated);});
+ document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{let ph=el.getAttribute('placeholder');el.setAttribute('placeholder',PH_AM[ph]||tr(ph)||ph);});
+}
+
 const hcSupabase=(window.supabase&&window.SUPABASE_URL&&window.SUPABASE_ANON_KEY)?window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY):null;
 function authReady(){return !!hcSupabase}
 function showAuthStatus(){let el=$("authStatus"); if(el) el.textContent=authReady()?"Supabase connected":"Not connected";}
@@ -57,7 +91,7 @@ const ROLE_PAGES={
 function rolePages(){return currentUser?(ROLE_PAGES[currentUser.role]||ROLE_PAGES.customer):ROLE_PAGES.guest}
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
-function nav(){let visible=visiblePages();let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
+function nav(){let visible=visiblePages();let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${tr(labels[p])}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${tr(labels[p])}</option>`).join('');renderLangBox();}
 function show(p){if(!isAllowedPage(p)){p=currentUser?'services':'account'}pages.forEach(x=>$(x).classList.add('hide'));$(p).classList.remove('hide');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));let nb=$('nav_'+p);if(nb)nb.classList.add('active');$('mobileNav').value=p;renderPage(p)}
 function roleSwitcherHtml(){if(!currentUser)return '';let roles=currentUser.roles||[currentUser.role||'customer'];let opts=roles.map(r=>`<option value="${r}" ${r===currentUser.role?'selected':''}>${(ROLE_INFO[r]?.icon||'')+' '+roleTitle(r)}</option>`).join('');return `<select id="topRoleSwitch" onchange="switchRole(this.value)" style="width:auto;min-width:150px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700">${opts}</select>`}
 function render(){nav();$('userBox').innerHTML=currentUser?`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn ghost" onclick="show('services')">My Services</button> <button class="btn" onclick="logout()">Logout</button>`:`<button class="btn" onclick="show('account')">Login / Register</button>`;let active=pages.find(p=>!$(p).classList.contains('hide'))||'home';if(!isAllowedPage(active))active='home';renderPage(active)}
@@ -69,7 +103,7 @@ async function logout(){if(authReady())await hcSupabase.auth.signOut();currentUs
 function resetDemo(){if(confirm('Clear all saved Habesha Connect app data and reload?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));location.reload();}}
 function addNote(to,text){data.notifications.unshift({to,text,time:new Date().toLocaleString(),read:false})}
 function pay(service,amount,desc){if(!requireLogin())return;let d=new Date();data.payments.unshift({user:currentUser.email,service,amount,desc,time:d.toLocaleString(),month:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),quarter:d.getFullYear()+' Q'+(Math.floor(d.getMonth()/3)+1),year:String(d.getFullYear())});addNote(currentUser.email,`Payment recorded: ${money(amount)} for ${desc}`);save();alert('Prototype payment recorded successfully.')}
-function renderPage(p){if(p==='home')home();if(p==='account')account();if(p==='profile')profile();if(p==='services')services();if(p==='shipping')shipping();if(p==='rentals')rentals();if(p==='marketplace')marketplace();if(p==='jobs')jobs();if(p==='truck')truck();if(p==='business')business();if(p==='messages')messages();if(p==='notifications')notifications();if(p==='admin')admin()}
+function renderPage(p){if(p==='home')home();if(p==='account')account();if(p==='profile')profile();if(p==='services')services();if(p==='shipping')shipping();if(p==='rentals')rentals();if(p==='marketplace')marketplace();if(p==='jobs')jobs();if(p==='truck')truck();if(p==='business')business();if(p==='messages')messages();if(p==='notifications')notifications();if(p==='admin')admin();applyTranslations();}
 function roleWelcome(){
  if(!currentUser)return '<p>Create an account or sign in to open your dashboard.</p>';
  const role=currentUser.role;
@@ -127,7 +161,7 @@ function mapDbTrip(row){
     travelerId:row.traveler_id||'',
     status:row.status||'Open',
     listingFeePaid:!!row.listing_fee_paid,
-    listingFeeAmount:Number(row.listing_fee_amount||settings().travelerTripListingFee||10),
+    listingFeeAmount:Number(row.listing_fee||settings().travelerTripListingFee||10),
     listingFeeRefunded:!!row.listing_fee_refunded,
     listingFeePaidAt:row.listing_fee_paid_at||'',
     source:'supabase'
@@ -173,7 +207,7 @@ function mapDbShipment(row){
     travelerId:row.traveler_id||'',
     travelerPaid:!!row.traveler_paid,
     travelerPaidAt:row.traveler_paid_at||'',
-    travelerListingFeeRefund:Number(row.traveler_listing_fee_refund||0),
+    travelerListingFeeRefund:Number(row.listing_fee_refund||0),
     travelerPayoutAmount:Number(row.traveler_payout_amount||0),
     travelerPayoutMethod:row.traveler_payout_method||'',
     travelerPayoutNote:row.traveler_payout_note||'',
@@ -255,7 +289,7 @@ function shipCard(s,role){
  else actions=`${s.paid?'<button class="btn ghost" disabled>Payment sent - waiting admin approval</button>':(s.status==='Accepted'?`<button class="btn primary" onclick="payShipment('${s.id}')">Pay Now</button>`:'<button class="btn ghost" disabled>Waiting traveler approval</button>')}<button class="btn ghost" onclick="reviewUser('${s.travelerEmail||''}','traveler')">Review Traveler</button>`;
  return `<div class="item"><div class="item-head"><b>${s.id} ${s.route}</b><span class="pill ${statusClass}">${s.status}</span></div>${info}<div class="actions">${actions}</div></div>`;
 }
-async function addTrip(){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can post trips.');let from=$('tripFrom').value,to=$('tripTo').value;if(from===to)return alert('From and To cannot be the same.');let space=+$('tripSpace').value||0;if(space<=0)return alert('Enter available space.');let fee=settings().travelerTripListingFee||10;let msg='Publishing this trip costs '+money(fee)+'\n\nThis helps reduce fake trips. If you successfully complete at least one shipment on this trip, this '+money(fee)+' is added back to your traveler payout.\n\nContinue and record payment?';if(!confirm(msg))return;pay('Shipping',fee,'Traveler trip listing fee '+from+' → '+to);if(authReady()&&currentUser.id){let payload={traveler_id:currentUser.id,from_city:from,to_city:to,travel_date:$('tripDate').value||null,original_space_lb:space,remaining_space_lb:space,status:'Open',listing_fee_paid:true,listing_fee_amount:fee,listing_fee_refunded:false,listing_fee_paid_at:new Date().toISOString()};let {data:row,error}=await hcSupabase.from('trips').insert(payload).select('*, profiles:traveler_id(name,email,phone,verified)').single();if(error){if(String(error.message||'').toLowerCase().includes('column'))return alert('Please run supabase/v6_7_traveler_listing_fee_migration.sql once, then try again.');return alert('Could not save trip to Supabase: '+error.message);}data.trips.unshift(mapDbTrip(row));addNote('all','New traveler trip posted by '+currentUser.name+' with '+space+' lb available.');addNote('admin@habeshaconnect.com','Traveler listing fee paid by '+currentUser.name+' for '+from+' → '+to+'.');save();show('shipping');return;}let id='T'+Date.now().toString().slice(-5);data.trips.unshift({id,route:from+' → '+to,travelDate:$('tripDate').value||'',totalSpace:space,availableSpace:space,traveler:currentUser.name,travelerPhone:currentUser.phone||'',travelerEmail:currentUser.email,travelerVerified:!!currentUser.verified,status:'Open',listingFeePaid:true,listingFeeAmount:fee,listingFeeRefunded:false,listingFeePaidAt:new Date().toLocaleString()});addNote('all','New traveler trip posted by '+currentUser.name+' with '+space+' lb available.');save();shipping()}
+async function addTrip(){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can post trips.');let from=$('tripFrom').value,to=$('tripTo').value;if(from===to)return alert('From and To cannot be the same.');let space=+$('tripSpace').value||0;if(space<=0)return alert('Enter available space.');let fee=settings().travelerTripListingFee||10;let msg='Publishing this trip costs '+money(fee)+'\n\nThis helps reduce fake trips. If you successfully complete at least one shipment on this trip, this '+money(fee)+' is added back to your traveler payout.\n\nContinue and record payment?';if(!confirm(msg))return;pay('Shipping',fee,'Traveler trip listing fee '+from+' → '+to);if(authReady()&&currentUser.id){let payload={traveler_id:currentUser.id,from_city:from,to_city:to,travel_date:$('tripDate').value||null,original_space_lb:space,remaining_space_lb:space,status:'Open',listing_fee_paid:true,listing_fee:fee,listing_fee_refunded:false,listing_fee_paid_at:new Date().toISOString()};let {data:row,error}=await hcSupabase.from('trips').insert(payload).select('*, profiles:traveler_id(name,email,phone,verified)').single();if(error){if(String(error.message||'').toLowerCase().includes('column'))return alert('Please run supabase/v6_7_traveler_listing_fee_migration.sql once, then try again.');return alert('Could not save trip to Supabase: '+error.message);}data.trips.unshift(mapDbTrip(row));addNote('all','New traveler trip posted by '+currentUser.name+' with '+space+' lb available.');addNote('admin@habeshaconnect.com','Traveler listing fee paid by '+currentUser.name+' for '+from+' → '+to+'.');save();show('shipping');return;}let id='T'+Date.now().toString().slice(-5);data.trips.unshift({id,route:from+' → '+to,travelDate:$('tripDate').value||'',totalSpace:space,availableSpace:space,traveler:currentUser.name,travelerPhone:currentUser.phone||'',travelerEmail:currentUser.email,travelerVerified:!!currentUser.verified,status:'Open',listingFeePaid:true,listingFeeAmount:fee,listingFeeRefunded:false,listingFeePaidAt:new Date().toLocaleString()});addNote('all','New traveler trip posted by '+currentUser.name+' with '+space+' lb available.');save();shipping()}
 async function requestTrip(id){
  if(!requireLogin())return;
  if(currentUser.role!=='sender'&&currentUser.role!=='customer'&&currentUser.role!=='admin')return alert('Only senders can request traveler space.');
@@ -460,7 +494,7 @@ async function payTraveler(id){
   data.payments.unshift({user:s.travelerEmail||'traveler',service:'Traveler Payout',amount:amount,desc:'Traveler commission payout for shipment '+(s.tracking||s.id)+(listingRefund?' including '+money(listingRefund)+' trip listing fee refund':'')+' via '+s.travelerPayoutMethod,time:s.travelerPaidAt,month:new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'),quarter:new Date().getFullYear()+' Q'+(Math.floor(new Date().getMonth()/3)+1),year:String(new Date().getFullYear())});
   let res={error:null};
   if(authReady()&&s.dbId){
-    res=await hcSupabase.from('shipments').update({traveler_paid:true,traveler_paid_at:new Date().toISOString(),traveler_payout_method:s.travelerPayoutMethod,traveler_payout_note:s.travelerPayoutNote,traveler_listing_fee_refund:listingRefund,traveler_payout_amount:amount}).eq('id',s.dbId);
+    res=await hcSupabase.from('shipments').update({traveler_paid:true,traveler_paid_at:new Date().toISOString(),traveler_payout_method:s.travelerPayoutMethod,traveler_payout_note:s.travelerPayoutNote,listing_fee_refund:listingRefund}).eq('id',s.dbId);
     if(res.error&&String(res.error.message||'').toLowerCase().includes('column')){
       alert('Traveler payout was recorded locally. To save it in Supabase, run supabase/v6_6_traveler_payout_migration.sql once.');
       res={error:null};
@@ -601,3 +635,4 @@ function adminSuccess(message){
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-test-data.json';a.click();}
 function resetDemo(){if(confirm('Clear all saved app data?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));data=seed();currentUser=null;save();location.reload();}}
 render();show('home');initAuth();
+
