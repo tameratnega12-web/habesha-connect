@@ -1,4 +1,4 @@
-# Habesha Connect V6.7 Traveler Listing Fee & Refund
+# Habesha Connect V6.7.1 Listing Fee Validation Fix
 
 Added:
 - Traveler pays a $10 trip listing fee before publishing a trip.
@@ -15,3 +15,7 @@ Run once in SQL Editor:
 
 ## Commit message
 V6.7 Traveler Listing Fee Refund
+
+
+## V6.7.1
+Fixes false listing fee migration warning by using the correct Supabase column names (`listing_fee` and `listing_fee_refund`). No new SQL required if V6.7 SQL already succeeded.
