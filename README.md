@@ -1,20 +1,22 @@
-# Habesha Connect V6.5 Rentals Workflow Completion
+# Habesha Connect V6.6 - Shipping Payout Plan
 
-Upload these files to GitHub and commit as:
+This update adds the Version 1 payout workflow for shipping:
 
-`V6.5 Rentals Workflow Completion`
+1. Sender requests traveler space.
+2. Traveler accepts.
+3. Sender pays Habesha Connect.
+4. Admin approves payment and space is reserved.
+5. Contact information is shown after admin approval.
+6. Package is delivered.
+7. Admin manually pays traveler commission by Zelle, PayPal, Cash App, bank transfer, or cash.
+8. Admin clicks **Pay Traveler** to record the payout.
 
-This package is based on the latest working V6.4.1/V6.3.5 app and focuses on the Rentals module.
+Optional SQL migration:
 
-## Rentals workflow included
-- Owner can add property listings
-- Owner listing fee workflow
-- Seeker can request paid viewing
-- Owner can approve/decline rental requests
-- Rented properties are hidden from public search
-- Owner sees only their own properties and requests
-- Admin can approve, edit, and delete rentals and rental requests
-- Favorites, property details, deposits, lease term, pets, parking, furnished, utilities, and owner rating remain available
+`supabase/v6_6_traveler_payout_migration.sql`
 
-## Commit message
-V6.5 Rentals Workflow Completion
+Run it once in Supabase SQL Editor to store traveler payout status in the cloud database.
+
+Commit message:
+
+`V6.6 Shipping Payout Plan`
