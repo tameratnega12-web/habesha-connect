@@ -1,22 +1,17 @@
-# Habesha Connect V6.6 - Shipping Payout Plan
+# Habesha Connect V6.7 Traveler Listing Fee & Refund
 
-This update adds the Version 1 payout workflow for shipping:
+Added:
+- Traveler pays a $10 trip listing fee before publishing a trip.
+- The trip becomes visible after the listing fee is recorded.
+- If at least one shipment is completed for that trip, the $10 is added back to the traveler payout.
+- Admin dashboard includes Traveler Listing Fees.
+- Admin Settings includes Traveler Trip Listing Fee so the amount can be changed later.
+- Old manual Create Shipment form stays removed; senders request space from traveler trip cards.
 
-1. Sender requests traveler space.
-2. Traveler accepts.
-3. Sender pays Habesha Connect.
-4. Admin approves payment and space is reserved.
-5. Contact information is shown after admin approval.
-6. Package is delivered.
-7. Admin manually pays traveler commission by Zelle, PayPal, Cash App, bank transfer, or cash.
-8. Admin clicks **Pay Traveler** to record the payout.
+## Supabase step
+Run once in SQL Editor:
 
-Optional SQL migration:
+`supabase/v6_7_traveler_listing_fee_migration.sql`
 
-`supabase/v6_6_traveler_payout_migration.sql`
-
-Run it once in Supabase SQL Editor to store traveler payout status in the cloud database.
-
-Commit message:
-
-`V6.6 Shipping Payout Plan`
+## Commit message
+V6.7 Traveler Listing Fee Refund
