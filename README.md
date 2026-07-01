@@ -1,3 +1,3 @@
-Habesha Connect V6.8.6 Rental Request Save Fix
+# Habesha Connect V6.9.1 Rental Request Mobile Save Fix
 
-Fixes seeker viewing requests not saving to Supabase rental_requests table.
+Complete release package. Fixes iPhone Safari rental viewing request saving so requests are inserted into Supabase before the app shows Paid / Request Sent.

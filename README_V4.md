@@ -1,3 +1,7 @@
-Habesha Connect V6.8.6 Rental Request Save Fix
+# V6.9.1 Notes
 
-Fixes seeker viewing requests not saving to Supabase rental_requests table.
+- Supabase is now the source of truth for rental requests.
+- Removes stale local-only rental request display.
+- Saves rental_requests first, then records payment locally.
+- Shows real Supabase error if saving fails.
+- No SQL required.

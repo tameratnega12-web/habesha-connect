@@ -169,7 +169,7 @@ function roleServices(){
  const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['💼','Jobs','Local jobs, employers, seekers, and applications.'],truck:['🚚','Truck Manager','Fuel, mileage, repairs, payments, and reports.'],business:['📊','Business Manager','Sales, expenses, invoices, profit, and tax summaries.']};
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.8.6 fixes rental request saving so seeker viewing requests appear for Admin and Owner dashboards.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.9.1 fixes mobile rental viewing requests so Admin and Owner dashboards see them immediately.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
@@ -568,8 +568,10 @@ async function loadSupabaseRentalRequests(){
   }
   if(error){console.warn('Rental request load error', error);return;}
   let dbRequests=(rows||[]).map(mapDbRentalRequest);
-  let localOnly=(data.rentalRequests||[]).filter(x=>x.source!=='supabase'&&!x.dbId);
-  data.rentalRequests=[...dbRequests,...localOnly];
+  // Important: when Supabase is connected, use Supabase as the source of truth.
+  // Old local-only rental requests can make iPhone Safari show "Pending" even when
+  // nothing was saved for Admin/Owner to review. Do not merge stale local requests.
+  data.rentalRequests=dbRequests;
 }
 
 
@@ -662,24 +664,27 @@ async function payPublishRental(id){
 }
 async function requestViewing(id){
  if(!requireLogin())return;
+ if(!authReady())return alert('Supabase is required to send rental viewing requests. Please refresh the page and log in again.');
+ if(!currentUser.id)return alert('Your profile ID is missing. Please log out, log back in, and try again.');
+ await loadSupabaseRentals();
+ await loadSupabaseRentalRequests();
  let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
  if(!r)return alert('Rental listing not found. Please refresh and try again.');
  let propertyKey=r.dbId||r.id;
- let existing=data.rentalRequests.find(q=>(String(q.rentalId)===String(r.id)||String(q.rentalId)===String(r.dbId))&&q.seekerEmail===currentUser.email);
+ if(!propertyKey)return alert('Property ID is missing. Please refresh and try again.');
+ let existing=data.rentalRequests.find(q=>(String(q.rentalId)===String(r.id)||String(q.rentalId)===String(r.dbId)||String(q.rentalId)===String(propertyKey))&&(String(q.seekerId||'')===String(currentUser.id||'')||q.seekerEmail===currentUser.email));
  if(existing){alert('You already paid and sent a viewing request for this property.');await rentals();return;}
- let fee=r.appFee||settings().seekerViewingFee;
- pay('Rentals',fee,'Viewing request '+friendlyRentalId(r,0));
- let localReq={id:'RQ'+Date.now().toString().slice(-5),rentalId:r.id,propertyTitle:r.title,seekerName:currentUser.name,seekerPhone:currentUser.phone||'',seekerEmail:currentUser.email,seekerId:currentUser.id||'',ownerName:r.owner,ownerPhone:r.ownerPhone||'',ownerEmail:r.ownerEmail||'',ownerId:r.ownerId||'',status:'Pending',paymentStatus:'Paid',paid:true,amountPaid:fee,time:new Date().toLocaleString()};
- if(authReady()){
-   if(!currentUser.id)return alert('Your profile ID is missing. Please log out and log back in, then try again.');
-   let payload={property_id:propertyKey,seeker_id:currentUser.id,paid:true,status:'Pending'};
-   let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
-   if(res.error){
-     if(String(res.error.message||'').toLowerCase().includes('duplicate'))return alert('You already submitted a viewing request for this property.');
-     return alert('Payment was recorded, but the viewing request could not be saved to Supabase: '+res.error.message);
-   }
-   localReq.dbId=res.data.id; localReq.id=res.data.id; localReq.source='supabase';
+ let fee=Number(r.appFee||settings().seekerViewingFee||10);
+ let payload={property_id:propertyKey,seeker_id:currentUser.id,paid:true,status:'Pending'};
+ let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
+ if(res.error){
+   console.error('Rental request save failed',res.error,payload);
+   if(String(res.error.message||'').toLowerCase().includes('duplicate'))return alert('You already submitted a viewing request for this property.');
+   return alert('Viewing request could not be saved to Supabase: '+res.error.message+'\nNo payment was recorded. Please send this message so we can fix it.');
  }
+ // Record the viewing fee only after the Supabase request is saved successfully.
+ pay('Rentals',fee,'Viewing request '+friendlyRentalId(r,0));
+ let localReq={id:res.data.id,dbId:res.data.id,rentalId:propertyKey,propertyTitle:r.title,seekerName:currentUser.name,seekerPhone:currentUser.phone||'',seekerEmail:currentUser.email,seekerId:currentUser.id||'',ownerName:r.owner,ownerPhone:r.ownerPhone||'',ownerEmail:r.ownerEmail||'',ownerId:r.ownerId||'',status:'Pending',paymentStatus:'Paid',paid:true,amountPaid:fee,time:new Date().toLocaleString(),source:'supabase'};
  data.rentalRequests.unshift(localReq);
  addNote(r.ownerEmail||'all','New paid rental viewing request from '+currentUser.name+'.');
  addNote('admin@habeshaconnect.com','New paid rental viewing request for '+r.title+' from '+currentUser.name+'.');
