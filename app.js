@@ -92,7 +92,42 @@ function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
-async function forgotPass(){let defaultEmail=cleanEmail($('loginEmail')?.value||'');let e=prompt('Enter the email address for password reset',defaultEmail);if(!e)return;e=cleanEmail(e);if(!e.includes('@'))return alert('Please enter a valid full email address.');if(authReady()){let redirect=location.origin+location.pathname;let {error}=await hcSupabase.auth.resetPasswordForEmail(e,{redirectTo:redirect});if(error)return alert('Password reset could not be sent: '+error.message);alert('Password reset request sent. If the email does not arrive, check that the email is registered and check Supabase Authentication email/SMTP settings.');return;}addNote(e,'Password reset requested. In the real app, an email reset link will be sent.');save();alert('Password reset demo notification created.');}
+async function forgotPass(){let defaultEmail=cleanEmail($('loginEmail')?.value||'');let e=prompt('Enter the email address for password reset',defaultEmail);if(!e)return;e=cleanEmail(e);if(!e.includes('@'))return alert('Please enter a valid full email address.');if(authReady()){let redirect=location.origin+location.pathname;let {error}=await hcSupabase.auth.resetPasswordForEmail(e,{redirectTo:redirect});if(error)return alert('Password reset could not be sent: '+error.message);alert('Password reset email sent. Open the email and click the reset link. It will show New Password and Confirm Password boxes.');return;}addNote(e,'Password reset requested. In the real app, an email reset link will be sent.');save();alert('Password reset demo notification created.');}
+function recoveryParams(){let url=new URL(location.href);let hash=new URLSearchParams((location.hash||'').replace(/^#/,''));return {url,hash,type:url.searchParams.get('type')||hash.get('type'),code:url.searchParams.get('code')||hash.get('code'),access_token:hash.get('access_token')}}
+function isPasswordRecoveryUrl(){let r=recoveryParams();return r.type==='recovery'||!!r.code||!!r.access_token}
+function showPasswordResetForm(msg=''){
+  nav();
+  $('userBox').innerHTML='<span class="pill warn">Password reset</span>';
+  pages.forEach(x=>$(x).classList.add('hide'));
+  $('account').classList.remove('hide');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  let nb=$('nav_account'); if(nb)nb.classList.add('active');
+  if($('mobileNav'))$('mobileNav').value='account';
+  $('account').innerHTML=`<div class="card" style="max-width:560px;margin:0 auto"><h2>Reset Password</h2><p class="muted">Enter a new password for your Habesha Connect account.</p>${msg?`<div class="notice">${msg}</div>`:''}<label>New Password</label>${passwordField('newResetPass','New password','new-password')}<label>Confirm Password</label>${passwordField('confirmResetPass','Confirm new password','new-password')}<button class="btn primary" onclick="updatePasswordFromReset()">Update Password</button><button class="btn ghost" onclick="location.href=location.origin+location.pathname">Back to Login</button><p class="small">If this page does not update your password, open the reset email again and use the newest link.</p></div>`;
+}
+async function handlePasswordRecovery(){
+  if(!authReady()||!isPasswordRecoveryUrl())return false;
+  let r=recoveryParams();
+  if(r.code){
+    let {error}=await hcSupabase.auth.exchangeCodeForSession(r.code);
+    if(error){console.warn('Recovery code exchange failed',error);showPasswordResetForm('Reset link opened, but Supabase could not validate it. Please request a new reset email if update fails.');return true;}
+  }
+  showPasswordResetForm();
+  try{history.replaceState(null,'',location.origin+location.pathname)}catch(e){}
+  return true;
+}
+async function updatePasswordFromReset(){
+  if(!authReady())return alert('Supabase is not connected.');
+  let p=String($('newResetPass')?.value||'');let c=String($('confirmResetPass')?.value||'');
+  if(p.length<8)return alert('Password must be at least 8 characters.');
+  if(p!==c)return alert('Passwords do not match.');
+  let {error}=await hcSupabase.auth.updateUser({password:p});
+  if(error)return alert('Could not update password: '+error.message+'
+Please request a new reset link and try again.');
+  await hcSupabase.auth.signOut();
+  alert('Password updated successfully. Please log in with your new password.');
+  location.href=location.origin+location.pathname;
+}
 function roleDashboardCards(){
  if(!currentUser)return '';
  if(currentUser.role==='traveler')return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="show('shipping')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn" onclick="show('shipping')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn" onclick="show('messages')">Messages</button></div></div>`;
@@ -681,4 +716,4 @@ function adminSuccess(message){
 
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-test-data.json';a.click();}
 function resetDemo(){if(confirm('Clear all saved app data?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));data=seed();currentUser=null;save();location.reload();}}
-render();show('home');initAuth();
+render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await initAuth();}})();

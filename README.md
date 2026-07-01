@@ -1,10 +1,3 @@
-# Habesha Connect V6.7.4 Traveler Commission Display Fix
+# Habesha Connect V6.7.6 Password Reset Page Fix
 
-Fixes traveler dashboard payout display so it shows:
-- Traveler commission
-- Trip listing fee refund
-- Total traveler payout
-
-Commit message: V6.7.4 Traveler Commission Display Fix
-
-No SQL needed.
+Fixes Supabase password reset links so users see New Password and Confirm Password boxes instead of returning directly to login. Adds show/hide password eye icons on reset fields. No SQL needed.

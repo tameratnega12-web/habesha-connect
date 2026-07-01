@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V6.5 Rentals Workflow Completion</title>
+<title>Habesha Connect V6.7.6 Password Reset Page Fix</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 </style>
@@ -29,7 +29,7 @@
   <section id="notifications" class="page hide"></section>
   <section id="admin" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V6.5 — Rentals workflow completion.</div>
+<div class="footer">Habesha Connect V6.7.6 — Password reset page fix.</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script>
@@ -127,7 +127,42 @@ function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
-async function forgotPass(){let defaultEmail=cleanEmail($('loginEmail')?.value||'');let e=prompt('Enter the email address for password reset',defaultEmail);if(!e)return;e=cleanEmail(e);if(!e.includes('@'))return alert('Please enter a valid full email address.');if(authReady()){let redirect=location.origin+location.pathname;let {error}=await hcSupabase.auth.resetPasswordForEmail(e,{redirectTo:redirect});if(error)return alert('Password reset could not be sent: '+error.message);alert('Password reset request sent. If the email does not arrive, check that the email is registered and check Supabase Authentication email/SMTP settings.');return;}addNote(e,'Password reset requested. In the real app, an email reset link will be sent.');save();alert('Password reset demo notification created.');}
+async function forgotPass(){let defaultEmail=cleanEmail($('loginEmail')?.value||'');let e=prompt('Enter the email address for password reset',defaultEmail);if(!e)return;e=cleanEmail(e);if(!e.includes('@'))return alert('Please enter a valid full email address.');if(authReady()){let redirect=location.origin+location.pathname;let {error}=await hcSupabase.auth.resetPasswordForEmail(e,{redirectTo:redirect});if(error)return alert('Password reset could not be sent: '+error.message);alert('Password reset email sent. Open the email and click the reset link. It will show New Password and Confirm Password boxes.');return;}addNote(e,'Password reset requested. In the real app, an email reset link will be sent.');save();alert('Password reset demo notification created.');}
+function recoveryParams(){let url=new URL(location.href);let hash=new URLSearchParams((location.hash||'').replace(/^#/,''));return {url,hash,type:url.searchParams.get('type')||hash.get('type'),code:url.searchParams.get('code')||hash.get('code'),access_token:hash.get('access_token')}}
+function isPasswordRecoveryUrl(){let r=recoveryParams();return r.type==='recovery'||!!r.code||!!r.access_token}
+function showPasswordResetForm(msg=''){
+  nav();
+  $('userBox').innerHTML='<span class="pill warn">Password reset</span>';
+  pages.forEach(x=>$(x).classList.add('hide'));
+  $('account').classList.remove('hide');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  let nb=$('nav_account'); if(nb)nb.classList.add('active');
+  if($('mobileNav'))$('mobileNav').value='account';
+  $('account').innerHTML=`<div class="card" style="max-width:560px;margin:0 auto"><h2>Reset Password</h2><p class="muted">Enter a new password for your Habesha Connect account.</p>${msg?`<div class="notice">${msg}</div>`:''}<label>New Password</label>${passwordField('newResetPass','New password','new-password')}<label>Confirm Password</label>${passwordField('confirmResetPass','Confirm new password','new-password')}<button class="btn primary" onclick="updatePasswordFromReset()">Update Password</button><button class="btn ghost" onclick="location.href=location.origin+location.pathname">Back to Login</button><p class="small">If this page does not update your password, open the reset email again and use the newest link.</p></div>`;
+}
+async function handlePasswordRecovery(){
+  if(!authReady()||!isPasswordRecoveryUrl())return false;
+  let r=recoveryParams();
+  if(r.code){
+    let {error}=await hcSupabase.auth.exchangeCodeForSession(r.code);
+    if(error){console.warn('Recovery code exchange failed',error);showPasswordResetForm('Reset link opened, but Supabase could not validate it. Please request a new reset email if update fails.');return true;}
+  }
+  showPasswordResetForm();
+  try{history.replaceState(null,'',location.origin+location.pathname)}catch(e){}
+  return true;
+}
+async function updatePasswordFromReset(){
+  if(!authReady())return alert('Supabase is not connected.');
+  let p=String($('newResetPass')?.value||'');let c=String($('confirmResetPass')?.value||'');
+  if(p.length<8)return alert('Password must be at least 8 characters.');
+  if(p!==c)return alert('Passwords do not match.');
+  let {error}=await hcSupabase.auth.updateUser({password:p});
+  if(error)return alert('Could not update password: '+error.message+'
+Please request a new reset link and try again.');
+  await hcSupabase.auth.signOut();
+  alert('Password updated successfully. Please log in with your new password.');
+  location.href=location.origin+location.pathname;
+}
 function roleDashboardCards(){
  if(!currentUser)return '';
  if(currentUser.role==='traveler')return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="show('shipping')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn" onclick="show('shipping')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn" onclick="show('messages')">Messages</button></div></div>`;
@@ -716,7 +751,7 @@ function adminSuccess(message){
 
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-test-data.json';a.click();}
 function resetDemo(){if(confirm('Clear all saved app data?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));data=seed();currentUser=null;save();location.reload();}}
-render();show('home');initAuth();
+render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await initAuth();}})();
 
 </script>
 </body>
