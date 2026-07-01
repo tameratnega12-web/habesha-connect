@@ -157,8 +157,7 @@ async function updatePasswordFromReset(){
   if(p.length<8)return alert('Password must be at least 8 characters.');
   if(p!==c)return alert('Passwords do not match.');
   let {error}=await hcSupabase.auth.updateUser({password:p});
-  if(error)return alert('Could not update password: '+error.message+'
-Please request a new reset link and try again.');
+ if(error)return alert('Could not update password: '+error.message+'\nPlease request a new reset link and try again.');
   await hcSupabase.auth.signOut();
   alert('Password updated successfully. Please log in with your new password.');
   location.href=location.origin+location.pathname;
