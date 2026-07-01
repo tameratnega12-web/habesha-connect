@@ -169,7 +169,7 @@ function roleServices(){
  const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['💼','Jobs','Local jobs, employers, seekers, and applications.'],truck:['🚚','Truck Manager','Fuel, mileage, repairs, payments, and reports.'],business:['📊','Business Manager','Sales, expenses, invoices, profit, and tax summaries.']};
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.8.5 fixes the Admin request loop and scrollbar vibration and keeps dashboard navigation stable.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.8.6 fixes rental request saving so seeker viewing requests appear for Admin and Owner dashboards.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
@@ -530,6 +530,48 @@ async function loadSupabaseRentals(){
   data.rentals=[...dbRentals,...localOnly];
 }
 
+function mapDbRentalRequest(row){
+  const prop=row.property||row.properties||{};
+  const seeker=row.seeker||{};
+  const owner=prop.owner||{};
+  let localRental=data.rentals.find(r=>String(r.dbId||r.id)===String(row.property_id||prop.id));
+  return {
+    id: row.id || ('RQ'+Date.now().toString().slice(-5)),
+    dbId: row.id || '',
+    rentalId: row.property_id || prop.id || (localRental&&localRental.id) || '',
+    propertyTitle: (localRental&&localRental.title) || prop.title || prop.property || 'Rental Property',
+    seekerName: seeker.name || row.seeker_name || 'Rent Seeker',
+    seekerPhone: seeker.phone || row.seeker_phone || '',
+    seekerEmail: seeker.email || row.seeker_email || '',
+    seekerId: row.seeker_id || '',
+    ownerName: (localRental&&localRental.owner) || owner.name || prop.owner_name || 'Owner',
+    ownerPhone: (localRental&&localRental.ownerPhone) || owner.phone || prop.owner_phone || '',
+    ownerEmail: (localRental&&localRental.ownerEmail) || owner.email || prop.owner_email || '',
+    ownerId: prop.owner_id || (localRental&&localRental.ownerId) || '',
+    status: row.status || 'Pending',
+    paymentStatus: row.paid===false?'Unpaid':'Paid',
+    paid: row.paid!==false,
+    amountPaid: Number(row.amount_paid || settings().seekerViewingFee || 10),
+    time: row.created_at || new Date().toLocaleString(),
+    source:'supabase'
+  };
+}
+async function loadSupabaseRentalRequests(){
+  if(!authReady())return;
+  let rows=[], error=null;
+  let res=await hcSupabase.from('rental_requests').select('*, property:property_id(*, owner:owner_id(name,email,phone,verified)), seeker:seeker_id(name,email,phone,verified)').order('created_at',{ascending:false});
+  rows=res.data||[]; error=res.error;
+  if(error){
+    console.warn('Rental request relationship load error, retrying basic select', error);
+    let retry=await hcSupabase.from('rental_requests').select('*').order('created_at',{ascending:false});
+    rows=retry.data||[]; error=retry.error;
+  }
+  if(error){console.warn('Rental request load error', error);return;}
+  let dbRequests=(rows||[]).map(mapDbRentalRequest);
+  let localOnly=(data.rentalRequests||[]).filter(x=>x.source!=='supabase'&&!x.dbId);
+  data.rentalRequests=[...dbRequests,...localOnly];
+}
+
 
 function friendlyRentalId(r,i){
   let raw=String((r&&r.id)||'');
@@ -563,6 +605,7 @@ function rentalStatsCards(title,st){
 }
 
 async function rentals(){
+ if(authReady()){await loadSupabaseRentals();await loadSupabaseRentalRequests();}
  let role=currentUser?currentUser.role:'guest';
  let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin'));
  let seekerReqs=data.rentalRequests.filter(q=>currentUser&&q.seekerEmail===currentUser.email);
@@ -617,11 +660,38 @@ async function payPublishRental(id){
   addNote('admin@habeshaconnect.com','Paid rental listing from '+r.owner+' needs approval.');
   addNote(r.ownerEmail,'Payment received. Your property is waiting for admin approval.');save();rentals();
 }
-function requestViewing(id){if(!requireLogin())return;let r=data.rentals.find(x=>x.id===id);let existing=data.rentalRequests.find(q=>q.rentalId===id&&q.seekerEmail===currentUser.email);if(existing){alert('You already paid and sent a viewing request for this property.');rentals();return;}pay('Rentals',r.appFee||settings().seekerViewingFee,'Viewing request '+r.id);r.status='Viewing Pending';data.rentalRequests.unshift({id:'RQ'+Date.now().toString().slice(-5),rentalId:r.id,propertyTitle:r.title,seekerName:currentUser.name,seekerPhone:currentUser.phone||'',seekerEmail:currentUser.email,ownerName:r.owner,ownerPhone:r.ownerPhone||'',ownerEmail:r.ownerEmail||'',status:'Pending',paymentStatus:'Paid',amountPaid:r.appFee||settings().seekerViewingFee,time:new Date().toLocaleString()});addNote(r.ownerEmail||'all','New paid rental viewing request from '+currentUser.name+'.');addNote(currentUser.email,'Payment received. Your viewing request was sent to the owner.');save()}
+async function requestViewing(id){
+ if(!requireLogin())return;
+ let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+ if(!r)return alert('Rental listing not found. Please refresh and try again.');
+ let propertyKey=r.dbId||r.id;
+ let existing=data.rentalRequests.find(q=>(String(q.rentalId)===String(r.id)||String(q.rentalId)===String(r.dbId))&&q.seekerEmail===currentUser.email);
+ if(existing){alert('You already paid and sent a viewing request for this property.');await rentals();return;}
+ let fee=r.appFee||settings().seekerViewingFee;
+ pay('Rentals',fee,'Viewing request '+friendlyRentalId(r,0));
+ let localReq={id:'RQ'+Date.now().toString().slice(-5),rentalId:r.id,propertyTitle:r.title,seekerName:currentUser.name,seekerPhone:currentUser.phone||'',seekerEmail:currentUser.email,seekerId:currentUser.id||'',ownerName:r.owner,ownerPhone:r.ownerPhone||'',ownerEmail:r.ownerEmail||'',ownerId:r.ownerId||'',status:'Pending',paymentStatus:'Paid',paid:true,amountPaid:fee,time:new Date().toLocaleString()};
+ if(authReady()){
+   if(!currentUser.id)return alert('Your profile ID is missing. Please log out and log back in, then try again.');
+   let payload={property_id:propertyKey,seeker_id:currentUser.id,paid:true,status:'Pending'};
+   let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
+   if(res.error){
+     if(String(res.error.message||'').toLowerCase().includes('duplicate'))return alert('You already submitted a viewing request for this property.');
+     return alert('Payment was recorded, but the viewing request could not be saved to Supabase: '+res.error.message);
+   }
+   localReq.dbId=res.data.id; localReq.id=res.data.id; localReq.source='supabase';
+ }
+ data.rentalRequests.unshift(localReq);
+ addNote(r.ownerEmail||'all','New paid rental viewing request from '+currentUser.name+'.');
+ addNote('admin@habeshaconnect.com','New paid rental viewing request for '+r.title+' from '+currentUser.name+'.');
+ addNote(currentUser.email,'Payment received. Your viewing request was sent to the owner and admin.');
+ persistOnly();
+ alert('Viewing request submitted. Admin/owner can now review it.');
+ await rentals();
+}
 function toggleFavorite(id){if(!requireLogin())return;let i=data.favorites.findIndex(f=>f.user===currentUser.email&&f.rentalId===id);if(i>=0){data.favorites.splice(i,1);addNote(currentUser.email,'Property removed from favorites.')}else{data.favorites.push({user:currentUser.email,rentalId:id,time:new Date().toLocaleString()});addNote(currentUser.email,'Property saved to favorites.')}save();}
 function messageOwner(email){if(!requireLogin())return;show('messages');setTimeout(()=>{if($('msgTo'))$('msgTo').value=email||''},50)}
-function approveRentalReq(id){let q=data.rentalRequests.find(x=>x.id===id);if(!q)return;q.status='Approved';let r=data.rentals.find(x=>x.id===q.rentalId);if(r)r.status='Rented';addNote(q.seekerEmail,'Your rental request was approved. Owner contact is now available.');save()}
-function declineRentalReq(id){let q=data.rentalRequests.find(x=>x.id===id);if(!q)return;q.status='Declined';let r=data.rentals.find(x=>x.id===q.rentalId);if(r&&r.status==='Viewing Pending')r.status='Approved';addNote(q.seekerEmail,'Your rental request was declined.');save()}
+async function approveRentalReq(id){let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!q)return;q.status='Approved';let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));if(r)r.status='Rented';if(authReady()&&q.dbId){let {error}=await hcSupabase.from('rental_requests').update({status:'Approved'}).eq('id',q.dbId);if(error)return alert('Could not approve rental request: '+error.message);}if(authReady()&&r&&r.dbId){await hcSupabase.from('properties').update({status:'Rented'}).eq('id',r.dbId);}addNote(q.seekerEmail,'Your rental request was approved. Owner contact is now available.');persistOnly();await rentals()}
+async function declineRentalReq(id){let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!q)return;q.status='Declined';let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));if(r&&r.status==='Viewing Pending')r.status='Approved';if(authReady()&&q.dbId){let {error}=await hcSupabase.from('rental_requests').update({status:'Declined'}).eq('id',q.dbId);if(error)return alert('Could not decline rental request: '+error.message);}addNote(q.seekerEmail,'Your rental request was declined.');persistOnly();await rentals()}
 function marketplace(){$('marketplace').innerHTML=`<h2>🛒 Marketplace</h2><div class="grid"><div class="card"><h3>Post Item</h3><input id="mTitle" placeholder="Item name"><input id="mPrice" type="number" placeholder="Price"><input id="mCity" placeholder="City"><button class="btn primary" onclick="addMarket()">Post Item</button></div>${data.market.map(m=>`<div class="card"><h3>${m.title}</h3><p>${m.city}</p><p><b>${money(m.price)}</b></p><span class="pill good">${m.status}</span><div class="actions"><button class="btn primary" onclick="pay('Marketplace',${Math.max(1,Math.round(m.price*.03))},'Marketplace service fee ${m.id}')">Buy / Reserve</button><button class="btn ghost">Message Seller</button></div></div>`).join('')}</div>`}
 function addMarket(){if(!requireLogin())return;data.market.unshift({id:'M'+Date.now().toString().slice(-5),title:$('mTitle').value||'Item',price:+$('mPrice').value||0,city:$('mCity').value||'Atlanta',seller:currentUser.name,status:'Available'});save()}
 function jobs(){$('jobs').innerHTML=`<h2>💼 Jobs</h2><div class="grid"><div class="card"><h3>Post Job</h3><input id="jTitle" placeholder="Job title"><input id="jCompany" placeholder="Company"><input id="jCity" placeholder="City"><input id="jPay" placeholder="$15/hr"><button class="btn primary" onclick="addJob()">Post Job</button></div>${data.jobs.map(j=>`<div class="card"><h3>${j.title}</h3><p>${j.company} • ${j.city}</p><p><b>${j.pay}</b></p><span class="pill good">${j.status}</span><div class="actions"><button class="btn primary" onclick="applyJob('${j.id}')">Apply</button><button class="btn">Save</button></div></div>`).join('')}</div>`}
@@ -872,6 +942,8 @@ async function refreshAdminData(){
     await loadAdminProfiles();
     await loadSupabaseTrips();
     await loadSupabaseShipments();
+    await loadSupabaseRentals();
+    await loadSupabaseRentalRequests();
   }
 }
 

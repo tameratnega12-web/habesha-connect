@@ -1,3 +1,3 @@
-Habesha Connect V6.8.5 Admin Request Loop Fix
+Habesha Connect V6.8.6 Rental Request Save Fix
 
-Fixes Admin navigation button reload/scroll vibration. No SQL needed.
+Fixes seeker viewing requests not saving to Supabase rental_requests table.
