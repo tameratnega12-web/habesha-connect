@@ -1,3 +1,5 @@
-# Habesha Connect V6.9.1 Rental Request Mobile Save Fix
+# Habesha Connect V6.9.2 Admin Rental Requests Display Fix
 
-Complete release package. Fixes iPhone Safari rental viewing request saving so requests are inserted into Supabase before the app shows Paid / Request Sent.
+This release fixes Admin Rental Requests Management so Supabase rental_requests rows display in the Admin dashboard for approval.
+
+No SQL required.

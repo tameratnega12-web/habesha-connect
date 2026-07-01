@@ -726,6 +726,10 @@ async function admin(){
  adminLoading=true;
  if(!adminDataLoaded)$('admin').innerHTML='<div class="card"><h2>⚙️ Admin Dashboard</h2><p>Loading Supabase users and verification records...</p></div>';
  try{
+   if(authReady()){
+     await loadSupabaseRentals();
+     await loadSupabaseRentalRequests();
+   }
    if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
  let managedRoles=['sender','traveler','owner','rent_seeker','customer','driver','business_owner','admin'];

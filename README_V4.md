@@ -1,7 +1,6 @@
-# V6.9.1 Notes
+# V6.9.2 Admin Rental Requests Display Fix
 
-- Supabase is now the source of truth for rental requests.
-- Removes stale local-only rental request display.
-- Saves rental_requests first, then records payment locally.
-- Shows real Supabase error if saving fails.
+- Loads rental_requests on Admin dashboard.
+- Shows saved seeker viewing requests in Admin Rental Requests Management.
+- Keeps mobile rental request save fix from V6.9.1.
 - No SQL required.
