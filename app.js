@@ -72,7 +72,7 @@ async function logout(){if(authReady())await hcSupabase.auth.signOut();currentUs
 function resetDemo(){if(confirm('Clear all saved Habesha Connect app data and reload?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));location.reload();}}
 function addNote(to,text){data.notifications.unshift({to,text,time:new Date().toLocaleString(),read:false})}
 function pay(service,amount,desc){if(!requireLogin())return;let d=new Date();data.payments.unshift({user:currentUser.email,service,amount,desc,time:d.toLocaleString(),month:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),quarter:d.getFullYear()+' Q'+(Math.floor(d.getMonth()/3)+1),year:String(d.getFullYear())});addNote(currentUser.email,`Payment recorded: ${money(amount)} for ${desc}`);save();alert('Prototype payment recorded successfully.')}
-function renderPage(p){if(p==='home')home();if(p==='account')account();if(p==='profile')profile();if(p==='services')services();if(p==='shipping')shipping();if(p==='rentals')rentals();if(p==='marketplace')marketplace();if(p==='jobs')jobs();if(p==='truck')truck();if(p==='business')business();if(p==='messages')messages();if(p==='notifications')notifications();if(p==='admin')admin()}
+async function renderPage(p){try{if(p==='home')return home();if(p==='account')return account();if(p==='profile')return await profile();if(p==='services')return services();if(p==='shipping')return await shipping();if(p==='rentals')return await rentals();if(p==='marketplace')return marketplace();if(p==='jobs')return jobs();if(p==='truck')return truck();if(p==='business')return business();if(p==='messages')return messages();if(p==='notifications')return notifications();if(p==='admin')return await admin();}catch(err){console.error('Page render error for '+p,err);let el=$(p);if(el)el.innerHTML=`<div class="card"><h2>Could not load ${labels[p]||p}</h2><p class="muted">Please refresh the page. Error: ${err.message||err}</p></div>`;}}
 function roleWelcome(){
  if(!currentUser)return '<p>Create an account or sign in to open your dashboard.</p>';
  const role=currentUser.role;
@@ -450,6 +450,10 @@ async function loadSupabaseRentals(){
 }
 
 async function rentals(){
+ if(authReady()){
+   $('rentals').innerHTML='<div class="card"><h2>🏠 Loading rentals...</h2><p class="muted">Refreshing listings from Supabase.</p></div>';
+   await loadSupabaseRentals();
+ }
  let role=currentUser?currentUser.role:'guest';
  let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin'));
  let seekerReqs=data.rentalRequests.filter(q=>currentUser&&q.seekerEmail===currentUser.email);
@@ -750,6 +754,7 @@ async function refreshAdminData(){
     await loadAdminProfiles();
     await loadSupabaseTrips();
     await loadSupabaseShipments();
+    await loadSupabaseRentals();
   }
 }
 
