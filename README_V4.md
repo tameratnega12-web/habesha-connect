@@ -1,3 +1,1 @@
-# Habesha Connect V6.7.7
-
-Rentals workflow fix: pay at listing time, save property to Supabase, admin approval, seeker visibility.
+V6.8.2: Safari refresh + payment privacy fix. No SQL needed.

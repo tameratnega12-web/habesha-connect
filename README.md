@@ -1,3 +1,3 @@
-# Habesha Connect V6.8.1 Rental Analytics Safe Merge
+# Habesha Connect V6.8.2 Safari Dashboard Payments Fix
 
-Keeps the stable V6.7.7 rental workflow and adds safe rental analytics without changing property save, approval, or seeker visibility logic.
+Fixes iPhone Safari dashboard refresh for Shipping/Rentals/Marketplace/Truck/Business/Admin and adds payment privacy so only Admin can see all party payments.
