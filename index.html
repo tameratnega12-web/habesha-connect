@@ -29,7 +29,7 @@
   <section id="notifications" class="page hide"></section>
   <section id="admin" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V6.8.2 — Safari dashboard refresh and payment privacy fix.</div>
+<div class="footer">Habesha Connect V6.8.3 — Admin scroll stability fix.</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script>
@@ -668,7 +668,7 @@ async function admin(){
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
- $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.5 Admin One-Click Refresh Fix:</b> admin buttons now show Working, prevent duplicate clicks, and refresh the admin tables after each action.</div>
+ $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.8.3 Admin Scroll Stability Fix:</b> admin page no longer continuously refreshes while scrolling. Buttons refresh once after actions and keep your scroll position stable.</div>
  <h3>Verify Users</h3><div class="card"><p class="muted">Click Verify after reviewing the user. This changes the real Supabase <b>profiles.verified</b> value.</p><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Status</th><th>Action</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button type="button" class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button type="button" class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`}</td></tr>`).join('')||'<tr><td colspan="6">No users found.</td></tr>'}</table></div>
  <div class="grid"><div class="card"><p>Users</p><div class="stat">${managedUsers.length}</div></div><div class="card"><p>Total Revenue</p><div class="stat">${money(revenue)}</div></div><div class="card"><p>Favorites Saved</p><div class="stat">${data.favorites.length}</div></div><div class="card"><p>Reviews</p><div class="stat">${data.reviews.length}</div></div></div>
  <h3>Admin Settings</h3><div class="grid"><div class="card"><h3>Prices</h3><label>Owner listing fee</label><input type="number" value="${settings().ownerListingFee}" onchange="setMoneySetting('ownerListingFee',this.value)"><label>Seeker viewing fee</label><input type="number" value="${settings().seekerViewingFee}" onchange="setMoneySetting('seekerViewingFee',this.value)"><label>Shipping rate per lb</label><input type="number" value="${settings().shippingRatePerLb}" onchange="setMoneySetting('shippingRatePerLb',this.value)"><label>App commission per lb</label><input type="number" value="${settings().appCommissionPerLb}" onchange="setMoneySetting('appCommissionPerLb',this.value)"><label>Traveler commission per lb</label><input type="number" value="${settings().travelerCommissionPerLb}" onchange="setMoneySetting('travelerCommissionPerLb',this.value)"><label>Traveler trip listing fee</label><input type="number" value="${settings().travelerTripListingFee}" onchange="setMoneySetting('travelerTripListingFee',this.value)"></div><div class="card"><h3>Launch Controls</h3><p><b>Registration:</b> ${settings().registrationOpen?'Open':'Closed'}</p><p><b>Maintenance Mode:</b> ${settings().maintenanceMode?'On':'Off'}</p><div class="actions"><button class="btn ghost" onclick="toggleRegistration()">Toggle Registration</button><button class="btn warn" onclick="toggleMaintenance()">Toggle Maintenance</button></div><p class="muted">Use these controls before going live. Real database, Stripe/PayPal, and cloud image storage are the next deployment connections.</p></div></div><h3>Launch Checklist</h3><div class="card"><p>✅ UI complete • ✅ Admin reports • ✅ User verification • ✅ Payment records • ✅ Chat prototype • ✅ Notifications • ✅ Export data</p><p class="muted">This ZIP is still a browser-based MVP. For a live public website, connect Firebase/Supabase, Stripe/PayPal, and cloud photo storage.</p></div><h3>Search Users / Verification</h3><div class="card"><label>Search by name, email, phone, or role</label><input id="userSearch" value="${q}" oninput="admin()" placeholder="Search users"><p class="muted">Verify users after reviewing ID, ticket/booking, phone, and account details. Shipment space updates after sender payment and admin approval. Non-admin users only see their own payment information.</p></div><div class="tableWrap"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Active Role</th><th>Status</th><th>Actions</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${roleTitle(u.role||u.active_role||'customer')}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`} <button class="btn ghost" onclick="editUser('${u.email}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u.email}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No matching users.</td></tr>'}</table>
@@ -921,7 +921,14 @@ setupAdminOneClickProtection();
 function adminSuccess(message){
   if(message) console.log(message);
   persistOnly();
-  setTimeout(()=>show('admin'),150);
+  const y=window.scrollY||document.documentElement.scrollTop||document.body.scrollTop||0;
+  const adminVisible=$('admin')&&!$('admin').classList.contains('hide');
+  if(adminVisible){
+    setTimeout(async()=>{
+      try{ await admin(); }catch(e){ console.error('Admin refresh error',e); }
+      requestAnimationFrame(()=>window.scrollTo(0,y));
+    },120);
+  }
 }
 
 
