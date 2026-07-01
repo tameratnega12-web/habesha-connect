@@ -1,14 +1,16 @@
-# Habesha Connect V6.7.8 Safari Compatibility & All Buttons Refresh Fix
+# Habesha Connect V6.8.0 Rental Dashboard & Analytics
 
-This update focuses on cross-device consistency.
+This update improves the Rentals workflow after V6.7.8.
 
-## Fixes
-- Rentals now reloads approved listings directly from Supabase every time the Rentals button/page opens.
-- Admin refresh now reloads profiles, trips, shipments, and rentals.
-- Page buttons now safely await async module loading where needed.
-- Added visible loading state for rentals.
-- Updated version footer to V6.7.8.
-- Added cache-control meta tags to reduce stale Safari cache issues.
+## Added
+- Friendly rental IDs displayed as `HC-R0001`, `HC-R0002`, etc.
+- Admin Rental Statistics: total properties, available, rented, viewing requests, owner fees, seeker fees, total rental revenue.
+- Owner Rental Performance dashboard.
+- Rent Seeker Activity dashboard.
+- Improved Rental Requests Management table with seeker phone, payment amount, and status badges.
+- Rental viewing requests are saved to Supabase `rental_requests` when possible.
+- Owner/seeker/admin dashboards refresh rental requests from Supabase.
 
-## No SQL needed
-Use the existing database migrations already applied.
+## Notes
+- No SQL is required if your `rental_requests` table already exists from the base schema.
+- If rental request saving fails because a column is missing, use the existing Supabase schema or send the error message for a focused migration.

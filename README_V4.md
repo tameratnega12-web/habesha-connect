@@ -1,3 +1,3 @@
-# Habesha Connect V6.7.7
+# Habesha Connect V6.8.0 Rental Dashboard & Analytics
 
-Rentals workflow fix: pay at listing time, save property to Supabase, admin approval, seeker visibility.
+Rental dashboard, analytics, friendly property IDs, owner/seeker activity summaries, and improved rental request management.
