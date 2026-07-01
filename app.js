@@ -63,10 +63,13 @@ function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
 function nav(){let visible=visiblePages();let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
 let currentPage='home';
 let renderingPage=false;
+let adminLoading=false;
+let adminDataLoaded=false;
 async function show(p){
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
  // Prevent repeated Admin renders from making the page jump or vibrate.
  if(renderingPage && p===currentPage)return;
+ if(p==='admin' && adminLoading)return;
  if(p==='admin' && currentPage==='admin' && !$('admin')?.innerHTML.includes('Loading latest data')){
    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
    let nb=$('nav_admin');if(nb)nb.classList.add('active');
@@ -101,7 +104,7 @@ async function refreshPageData(p){
  if(p==='profile'||p==='rentals'||p==='admin'){
    await loadSupabaseRentals();
  }
- if(p==='admin'){
+ if(p==='admin' && !adminDataLoaded){
    await loadAdminProfiles();
  }
 }
@@ -166,7 +169,7 @@ function roleServices(){
  const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['💼','Jobs','Local jobs, employers, seekers, and applications.'],truck:['🚚','Truck Manager','Fuel, mileage, repairs, payments, and reports.'],business:['📊','Business Manager','Sales, expenses, invoices, profit, and tax summaries.']};
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.8.4 fixes Admin button reload/scroll vibration and keeps dashboard navigation stable.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, jobs, marketplace, services, and business tools.</b></p><p>V6.8.5 fixes the Admin request loop and scrollbar vibration and keeps dashboard navigation stable.</p>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
@@ -636,7 +639,7 @@ async function loadAdminProfiles(){
  let {data:profiles,error}=await hcSupabase.from('profiles').select('*').order('created_at',{ascending:false});
  if(error){console.warn('Admin profile load error',error);return data.users;}
  (profiles||[]).forEach(p=>upsertLocalUser(p));
- save();
+ persistOnly();
  return data.users;
 }
 function allUserRoles(u){return Array.isArray(u.roles)&&u.roles.length?u.roles:[u.role||'customer']}
@@ -644,8 +647,11 @@ function userRoleText(u){return allUserRoles(u).map(r=>roleTitle(r)).join(', ')}
 async function admin(){
  document.documentElement.style.overflowY='auto'; document.documentElement.style.overflow='auto'; document.body.style.overflowY='auto'; document.body.style.overflow='auto'; document.body.style.position='static'; document.body.style.touchAction='pan-y';
  if(!currentUser||currentUser.role!=='admin'){$('admin').innerHTML='<div class="card"><h2>Admin Access Required</h2><p>Please login as admin or switch to the Admin role.</p></div>';return}
- $('admin').innerHTML='<div class="card"><h2>⚙️ Admin Dashboard</h2><p>Loading Supabase users and verification records...</p></div>';
- await loadAdminProfiles();
+ if(adminLoading)return;
+ adminLoading=true;
+ if(!adminDataLoaded)$('admin').innerHTML='<div class="card"><h2>⚙️ Admin Dashboard</h2><p>Loading Supabase users and verification records...</p></div>';
+ try{
+   if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
  let managedRoles=['sender','traveler','owner','rent_seeker','customer','driver','business_owner','admin'];
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
@@ -662,6 +668,7 @@ async function admin(){
 
  ${rentalStatsCards('📊 Rental Statistics',rentalStatsFor(data.rentals,data.rentalRequests))}<h3>Rental Listings Management</h3><table><tr><th>ID</th><th>Type</th><th>Property</th><th>City</th><th>Owner</th><th>Rating</th><th>Owner Fee</th><th>Status</th><th>Actions</th></tr>${data.rentals.map((r,i)=>`<tr><td>${friendlyRentalId(r,i)}</td><td>${r.propertyType||'Property'}</td><td>${r.title}</td><td>${r.city}</td><td>${r.owner}</td><td>⭐ ${avgOwnerRating(r.ownerEmail)||'New'}</td><td>${r.ownerPaid?'Paid '+money(r.ownerFee||settings().ownerListingFee):'Pending'}</td><td>${rentalStatusBadge(r.status)}</td><td><button class="btn primary" onclick="approveRental('${r.id}')">Approve</button> <button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="9">No rental listings yet.</td></tr>'}</table>
  <h3>Rental Requests Management</h3><table><tr><th>ID</th><th>Property</th><th>Owner</th><th>Rent Seeker</th><th>Phone</th><th>Payment</th><th>Status</th><th>Actions</th></tr>${data.rentalRequests.map(q=>`<tr><td>${q.id}</td><td>${q.propertyTitle}</td><td>${q.ownerName}</td><td>${q.seekerName}</td><td>${q.seekerPhone||''}</td><td>${q.paymentStatus||'Paid'} ${q.amountPaid?money(q.amountPaid):''}</td><td>${rentalStatusBadge(q.status)}</td><td><button class="btn primary" onclick="approveRentalReq('${q.id}')">Approve</button> <button class="btn ghost" onclick="editRentalRequest('${q.id}')">Edit</button> <button class="btn bad" onclick="deleteRentalRequest('${q.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="8">No rental requests yet.</td></tr>'}</table><div class='actions'><button class='btn ghost' onclick='exportData()'>Export Data</button></div>`
+ } finally { adminLoading=false; }
 }
 function reportRows(field){let rows={};(data.payments||[]).forEach(p=>{let k=p[field]||'Unknown';rows[k]=(rows[k]||0)+(+p.amount||0)});let keys=Object.keys(rows).sort().reverse();return keys.length?`<table><tr><th>Period</th><th>Total</th></tr>${keys.map(k=>`<tr><td>${k}</td><td>${money(rows[k])}</td></tr>`).join('')}</table>`:'<p class="muted">No payments yet.</p>'}
 async function saveAppSettingsToSupabase(){if(!authReady())return {error:null};let payload={id:1,owner_listing_fee:settings().ownerListingFee,seeker_viewing_fee:settings().seekerViewingFee,shipping_rate_per_lb:settings().shippingRatePerLb,traveler_commission_per_lb:settings().travelerCommissionPerLb,traveler_trip_listing_fee:settings().travelerTripListingFee,app_commission_per_lb:settings().appCommissionPerLb,registration_open:settings().registrationOpen,maintenance_mode:settings().maintenanceMode,updated_at:new Date().toISOString()};return await hcSupabase.from('app_settings').upsert(payload,{onConflict:'id'});}
