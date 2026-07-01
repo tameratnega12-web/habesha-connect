@@ -265,7 +265,14 @@ async function shipping(){
  let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Publishing a trip costs ${money(settings().travelerTripListingFee)}. If you complete at least one approved shipment, this fee is added back to your traveler payout.</p><button class="btn primary" onclick="addTrip()">Pay ${money(settings().travelerTripListingFee)} & Publish Trip</button></div>` : '';
  let revenueBox = role==='admin' ? `<div class="card"><h3>Revenue Rule</h3><p>Sender pays the admin-set rate per lb. App earns the admin-set commission per lb. Traveler commission and airline charge are tracked for admin reports.</p></div>` : `<div class="card"><h3>Shipping</h3><p>Senders can request traveler space. Remaining space updates only after payment is approved by admin.</p></div>`;
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();let visibleTrips=data.trips.filter(t=>(role==='admin'||t.status==='Open')&&(!shipFilter||t.route.toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)));let tripSection = (role==='sender'||role==='customer'||role==='admin'||!currentUser) ? `<h3>Available Traveler Trips</h3><div class="card"><label>Search route or date</label><input id="shipSearch" value="${shipFilter}" oninput="shipping()" placeholder="Atlanta, Addis Ababa, 2026-07"></div><div class="list">${visibleTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">No traveler trips posted yet.</div>'}</div>` : `<h3>My Traveler Trips</h3><div class="list">${data.trips.filter(t=>currentUser&&t.travelerEmail===currentUser.email).map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div>`;
- let terminalStatuses=['Completed','Delivered'];let shipments=data.shipments.filter(s=>role==='admin'||(!terminalStatuses.includes(s.status||'')&&((role==='traveler'&&((!s.travelerEmail&&s.status!=='Declined')||s.travelerEmail===currentUser.email))||(currentUser&&(s.senderEmail===currentUser.email))||(!currentUser))));
+ let terminalStatuses=['Completed','Delivered'];let shipments=data.shipments.filter(s=>{
+   if(role==='admin')return true;
+   if(terminalStatuses.includes(s.status||''))return false;
+   if(!currentUser)return true;
+   if(role==='traveler')return (String(s.travelerId||'')===String(currentUser.id||'') || (s.travelerEmail&&s.travelerEmail===currentUser.email));
+   if(role==='sender'||role==='customer')return (String(s.senderId||'')===String(currentUser.id||'') || (s.senderEmail&&s.senderEmail===currentUser.email));
+   return (s.senderEmail===currentUser.email || s.travelerEmail===currentUser.email);
+ });
  $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>${intro}<div class="grid">${createBox}${tripBox}${revenueBox}</div>${tripSection}<h3>Shipment Requests</h3><div class="list">${shipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div>`
 }
 function tripCard(t,role){
@@ -285,7 +292,7 @@ function shipCard(s,role){
  let payoutLine=`<p><b>Traveler payout:</b> ${money(totalPayout)} • ${s.travelerPaid?'<span class="pill good">Traveler Paid</span>':'<span class="pill warn">Not Paid Yet</span>'} ${s.travelerPayoutMethod?(' • '+s.travelerPayoutMethod):''}</p>`;
  let adminInfo = `<p><b>Tracking:</b> ${s.tracking||''}</p><div class="photoStrip">${photos}</div><p>${s.weight} lb • Sender pays ${money(s.weight*settings().shippingRatePerLb)} • App fee ${money(s.appFee)} • Traveler commission ${money(payoutAmt)} ${listingRefund?(' • Listing fee refund '+money(listingRefund)) : ''}</p>${payoutLine}${contactLine('Sender',s.sender,s.senderPhone,s.senderEmail)} ${verifiedBadge(s.senderVerified)}${contactLine('Receiver',s.receiver,s.receiverPhone,'')}${contactLine('Traveler',s.traveler,s.travelerPhone,s.travelerEmail)} ${s.travelerEmail?verifiedBadge(s.travelerVerified):''}`;
  let approvedContact=['Approved','Ready for Delivery','In Transit'].includes(s.status||'');let travelerInfo = `<p><b>Tracking:</b> ${s.tracking||''}</p><div class="photoStrip">${photos}</div><p>${s.weight} lb • Traveler commission estimate ${money(s.weight*settings().travelerCommissionPerLb)}</p>${verifiedBadge(s.senderVerified)} ${approvedContact?contactLine('Sender',s.sender,s.senderPhone,'')+contactLine('Receiver',s.receiver,s.receiverPhone,''):'<p class="muted">Sender and receiver contact will show after payment is approved by admin.</p>'}`;
- let relatedTrip=s.tripId?data.trips.find(t=>t.id===s.tripId):null;let tripSpace=relatedTrip?`<p><b>Traveler space:</b> Original ${relatedTrip.totalSpace} lb • Remaining ${relatedTrip.availableSpace} lb</p>`:'';let senderCanSeeTraveler=['Approved','Ready for Delivery','In Transit'].includes(s.status||'');let senderInfo = `<p><b>Tracking:</b> ${s.tracking||''}</p><div class="photoStrip">${photos}</div><p>${s.weight} lb • Total due ${money(s.weight*settings().shippingRatePerLb)} ${s.paid?'<span class="pill good">✅ Paid</span>':''}</p>${verifiedBadge(s.senderVerified)} ${s.travelerEmail&&senderCanSeeTraveler?contactLine('Traveler',s.traveler,s.travelerPhone,'')+verifiedBadge(s.travelerVerified)+tripSpace:(s.travelerEmail?'<p class="muted">Traveler contact will show after admin approves payment.</p>':'')}`;
+ let relatedTrip=s.tripId?data.trips.find(t=>String(t.id)===String(s.tripId)||String(t.dbId)===String(s.tripId)):null;let tripSpace=relatedTrip?`<p><b>Traveler space:</b> Original ${relatedTrip.totalSpace} lb • Remaining ${relatedTrip.availableSpace} lb</p>`:'';let senderCanSeeTraveler=['Approved','Ready for Delivery','In Transit'].includes(s.status||'');let senderInfo = `<p><b>Tracking:</b> ${s.tracking||''}</p><div class="photoStrip">${photos}</div><p>${s.weight} lb • Total due ${money(s.weight*settings().shippingRatePerLb)} ${s.paid?'<span class="pill good">✅ Paid</span>':''}</p>${verifiedBadge(s.senderVerified)} ${s.travelerEmail&&senderCanSeeTraveler?contactLine('Traveler',s.traveler,s.travelerPhone,'')+verifiedBadge(s.travelerVerified)+tripSpace:(s.travelerEmail?'<p class="muted">Traveler contact will show after admin approves payment.</p>':'')}`;
  let info = role==='admin' ? adminInfo : (role==='traveler' ? travelerInfo : senderInfo);
  let actions='';
  if(role==='traveler') actions=(s.status==='Requested'?`<button class="btn primary" onclick="acceptShip('${s.id}')">Accept</button><button class="btn bad" onclick="declineShip('${s.id}')">Decline</button>`:'')+`<button class="btn ghost" onclick="reviewUser('${s.senderEmail}','sender')">Review Sender</button>`;
@@ -297,29 +304,67 @@ async function addTrip(){if(!requireLogin())return;if(currentUser.role!=='travel
 async function requestTrip(id){
  if(!requireLogin())return;
  if(currentUser.role!=='sender'&&currentUser.role!=='customer'&&currentUser.role!=='admin')return alert('Only senders can request traveler space.');
- let t=data.trips.find(x=>x.id===id);if(!t)return;
- let w=+($('req_'+id).value)||0;if(w<=0)return alert('Enter requested pounds.');if(w>t.availableSpace)return alert('Only '+t.availableSpace+' lb is available.');
+ let t=data.trips.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!t)return alert('Trip not found. Please refresh and try again.');
+ let w=+($('req_'+id).value)||0;if(w<=0)return alert('Enter requested pounds.');if(w>Number(t.availableSpace||0))return alert('Only '+t.availableSpace+' lb is available.');
  let desc=prompt('Package description (example: clothes, documents, electronics):','Package');if(desc===null)return;
  let senderName=prompt('Sender full name:',currentUser.name||'');if(senderName===null)return;
  let senderPhone=prompt('Sender phone number:',currentUser.phone||'');if(senderPhone===null)return;
  let receiver=prompt('Receiver name in Ethiopia:','Receiver');if(receiver===null)return;
  let receiverPhone=prompt('Receiver phone number:','');if(receiverPhone===null)return;
+ const tracking='HC-'+Date.now().toString().slice(-6);
+ const cleanSenderName=(senderName||currentUser.name||'Sender').trim();
+ const cleanSenderPhone=(senderPhone||currentUser.phone||'').trim();
+ const cleanReceiver=(receiver||'Receiver not entered').trim();
+ const cleanReceiverPhone=(receiverPhone||'').trim();
+ const cleanDesc=(desc||'Package').trim();
  if(authReady()&&currentUser.id&&t.dbId){
-   let payload={tracking_number:'HC-'+Date.now().toString().slice(-6),sender_name:senderName||currentUser.name,sender_phone:senderPhone||currentUser.phone,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||'Atlanta, GA',to_city:t.toCity||'Addis Ababa',weight_lb:w,receiver_name:receiver||'Receiver not entered',receiver_phone:receiverPhone||'',package_description:desc||'',paid:false,status:'Requested'};
-   let {data:row,error}=await hcSupabase.from('shipments').insert(payload).select('*, sender:sender_id(name,email,phone,verified), traveler:traveler_id(name,email,phone,verified)').single();
-   if(error)return alert('Could not save request to Supabase: '+error.message);
+   const payload={
+     tracking_number:tracking,
+     sender_id:currentUser.id,
+     traveler_id:t.travelerId||null,
+     trip_id:t.dbId,
+     from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),
+     to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),
+     weight_lb:w,
+     sender_name:cleanSenderName,
+     sender_phone:cleanSenderPhone,
+     receiver_name:cleanReceiver,
+     receiver_phone:cleanReceiverPhone,
+     package_description:cleanDesc,
+     paid:false,
+     status:'Requested'
+   };
+   if(!payload.traveler_id)return alert('This trip is missing traveler_id. Please refresh the page and try again.');
+   let inserted=await hcSupabase.from('shipments').insert(payload).select('*').single();
+   if(inserted.error){
+     const msg=String(inserted.error.message||'');
+     if(msg.toLowerCase().includes('sender_name')||msg.toLowerCase().includes('sender_phone')||msg.toLowerCase().includes('package_description')){
+       return alert('Please run the V6.7.2 sender shipment SQL first, then try again. Missing shipment sender/package columns.');
+     }
+     return alert('Could not save request to Supabase: '+inserted.error.message);
+   }
+   let row=inserted.data;
+   row.sender={name:cleanSenderName,email:currentUser.email,phone:cleanSenderPhone,verified:!!currentUser.verified};
+   row.traveler={name:t.traveler,email:t.travelerEmail,phone:t.travelerPhone,verified:!!t.travelerVerified};
    data.shipments.unshift(mapDbShipment(row));
-   addNote(t.travelerEmail,'New '+w+' lb space request from '+currentUser.name+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');
-   save();show('shipping');return;
+   addNote(t.travelerEmail||'all','New '+w+' lb space request from '+cleanSenderName+'.');
+   addNote(currentUser.email,'Space request sent to '+t.traveler+'.');
+   save();
+   await loadSupabaseShipments();
+   show('shipping');
+   return;
  }
- let sid='S'+Date.now().toString().slice(-5);data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:'Requested',tracking:'HC-'+sid,packagePhotos:[],sender:senderName||currentUser.name,senderPhone:senderPhone||currentUser.phone||'',senderEmail:currentUser.email,senderVerified:!!currentUser.verified,receiver:receiver||'Receiver not entered',receiverPhone:receiverPhone||'',traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});addNote(t.travelerEmail,'New '+w+' lb space request from '+currentUser.name+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');save();shipping()}
+ let sid='S'+Date.now().toString().slice(-5);
+ data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:'Requested',tracking:'HC-'+sid,packagePhotos:[],sender:cleanSenderName,senderPhone:cleanSenderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:cleanReceiver,receiverPhone:cleanReceiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
+ addNote(t.travelerEmail,'New '+w+' lb space request from '+cleanSenderName+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');save();shipping()}
+
 async function closeTrip(id){let t=data.trips.find(x=>x.id===id);if(!t)return;if(t.source==='supabase'){let ok=await updateSupabaseTripStatus(t,'Closed');if(!ok)return;}t.status='Closed';save();shipping()}
 function addShipment(){if(!requireLogin())return;let w=+$('shipWeight').value||0;let from=$('shipFrom')?$('shipFrom').value:'Atlanta, GA';let to=$('shipTo')?$('shipTo').value:'Addis Ababa';if(from===to)return alert('From and To cannot be the same.');let route=from+' → '+to;let id='S'+Date.now().toString().slice(-5);let photos=photoNamesFromInput('packagePhotos');let tracking=$('trackingNo').value||('HC-'+id);data.shipments.unshift({id,route,weight:w,fee:w*settings().shippingRatePerLb,status:'Open',tracking,packagePhotos:photos,sender:senderName||currentUser.name,senderPhone:senderPhone||currentUser.phone||'',senderEmail:currentUser.email,senderVerified:!!currentUser.verified,receiver:$('receiverName').value||'Receiver not entered',receiverPhone:$('receiverPhone').value||'',traveler:'Waiting',travelerPhone:'',travelerEmail:'',travelerVerified:false,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});addNote('all','New shipping request posted with tracking number '+tracking+'.');save()}
 
-async function payShipment(id){if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;if(currentUser.role!=='admin'&&s.senderEmail!==currentUser.email)return alert('Only the sender can pay for this shipment.');if(s.status!=='Accepted'&&currentUser.role!=='admin')return alert('Please wait for the traveler to accept before paying.');if(s.paid){alert('Payment already sent. Waiting for admin approval.');shipping();return;}pay('Shipping',s.weight*settings().shippingRatePerLb,'Shipment '+s.id);if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({paid:true,status:'Payment Pending Admin Review'}).eq('id',s.dbId);if(error)alert('Payment recorded locally, but Supabase update failed: '+error.message);}s.paid=true;s.paymentStatus='Paid';s.status='Payment Pending Admin Review';addNote('admin@habeshaconnect.com','Sender paid for shipment '+s.id+' tracking '+(s.tracking||'')+'. Admin approval is needed.');addNote(s.senderEmail||currentUser.email,'Payment sent. Waiting for admin approval.');save();shipping()}
+async function payShipment(id){if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;if(currentUser.role!=='admin'&&s.senderEmail!==currentUser.email&&String(s.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can pay for this shipment.');if(s.status!=='Accepted'&&currentUser.role!=='admin')return alert('Please wait for the traveler to accept before paying.');if(s.paid){alert('Payment already sent. Waiting for admin approval.');shipping();return;}pay('Shipping',s.weight*settings().shippingRatePerLb,'Shipment '+s.id);if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({paid:true,status:'Payment Pending Admin Review'}).eq('id',s.dbId);if(error)alert('Payment recorded locally, but Supabase update failed: '+error.message);}s.paid=true;s.paymentStatus='Paid';s.status='Payment Pending Admin Review';addNote('admin@habeshaconnect.com','Sender paid for shipment '+s.id+' tracking '+(s.tracking||'')+'. Admin approval is needed.');addNote(s.senderEmail||currentUser.email,'Payment sent. Waiting for admin approval.');save();shipping()}
 async function acceptShip(id){
  if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;
- if(s.travelerEmail&&currentUser.role!=='admin'&&s.travelerEmail!==currentUser.email)return alert('This request belongs to another traveler.');
+ if(currentUser.role!=='admin'&&s.travelerEmail&&s.travelerEmail!==currentUser.email&&String(s.travelerId||'')!==String(currentUser.id||''))return alert('This request belongs to another traveler.');
  if(s.tripId){let t=data.trips.find(x=>x.id===s.tripId);if(t&&s.weight>t.availableSpace)return alert('Not enough space left. Remaining: '+t.availableSpace+' lb');}
  if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Accepted'}).eq('id',s.dbId);if(error)return alert('Could not accept request: '+error.message);}
  s.status='Accepted';s.traveler=currentUser.name;s.travelerPhone=currentUser.phone||'';s.travelerEmail=currentUser.email;s.travelerVerified=!!currentUser.verified;
