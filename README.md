@@ -1,5 +1,10 @@
-# Habesha Connect V6.7.3 Shipment Creation Fix
+# Habesha Connect V6.7.4 Traveler Commission Display Fix
 
-Fixes sender Request Space so it creates a real Supabase shipment row and makes traveler requests visible.
+Fixes traveler dashboard payout display so it shows:
+- Traveler commission
+- Trip listing fee refund
+- Total traveler payout
 
-Commit message: V6.7.3 Shipment Creation Fix
+Commit message: V6.7.4 Traveler Commission Display Fix
+
+No SQL needed.
