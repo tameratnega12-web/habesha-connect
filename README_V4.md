@@ -1,6 +1,6 @@
-# V6.9.2 Admin Rental Requests Display Fix
+# V7.0.0 Release Notes
 
-- Loads rental_requests on Admin dashboard.
-- Shows saved seeker viewing requests in Admin Rental Requests Management.
-- Keeps mobile rental request save fix from V6.9.1.
-- No SQL required.
+- Added English / አማርኛ language switcher in the header.
+- Saves selected language in browser storage.
+- Translates main navigation, dashboards, buttons, labels, and common workflow messages.
+- No database migration required.

@@ -1,5 +1,5 @@
-# Habesha Connect V6.9.2 Admin Rental Requests Display Fix
+# Habesha Connect V7.0.0 English / Amharic Edition
 
-This release fixes Admin Rental Requests Management so Supabase rental_requests rows display in the Admin dashboard for approval.
+Adds a language switcher for English and Amharic while preserving the working Shipping, Rentals, Admin, and multi-role workflows.
 
-No SQL required.
+No SQL needed.
