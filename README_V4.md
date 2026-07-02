@@ -1,1 +1,1 @@
-V7.0.6 Remove Payment Privacy Notes
+V7.0.7 traveler completed trip cleanup fix.

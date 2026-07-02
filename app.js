@@ -385,7 +385,7 @@ async function shipping(){
    if(role==='sender'||role==='customer')return (String(s.senderId||'')===String(currentUser.id||'') || (s.senderEmail&&s.senderEmail===currentUser.email));
    return (s.senderEmail===currentUser.email || s.travelerEmail===currentUser.email);
  });
- let myTrips=data.trips.filter(t=>currentUser&&(String(t.travelerId||'')===String(currentUser.id||'')||t.travelerEmail===currentUser.email));
+ let myTrips=data.trips.filter(t=>{let mine=currentUser&&(String(t.travelerId||'')===String(currentUser.id||'')||t.travelerEmail===currentUser.email);let remaining=Number(t.availableSpace ?? t.remaining_space_lb ?? 0);let status=String(t.status||'Open');let active=remaining>0 && !['Full','Closed','Cancelled','Canceled','Completed','Delivered'].includes(status);return mine&&active;});
  let statsHtml='';
  if(role==='admin'){
    statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>`;

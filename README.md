@@ -1,3 +1,3 @@
-# Habesha Connect V7.0.6
+# Habesha Connect V7.0.7 Traveler Completed Trip Cleanup Fix
 
-Remove payment privacy notes from rental dashboards. Privacy logic remains active in the code.
+Closed, full, completed, and delivered trips are hidden from the traveler dashboard. Open trips with remaining space stay visible.
