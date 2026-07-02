@@ -822,7 +822,7 @@ async function admin(){
    }
    if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
- let managedRoles=['sender','traveler','owner','rent_seeker','customer','driver','business_owner','admin'];
+ let managedRoles=['sender','traveler','owner','rent_seeker','truck_owner','customer','driver','business_owner','admin'];
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');

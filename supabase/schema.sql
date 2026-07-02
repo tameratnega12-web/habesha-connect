@@ -9,7 +9,7 @@ create table if not exists public.profiles (
   name text not null,
   email text unique not null,
   phone text,
-  role text not null check (role in ('admin','owner','rent_seeker','sender','traveler','customer','driver','business_owner')),
+  role text not null check (role in ('admin','owner','rent_seeker','sender','traveler','customer','truck_owner','driver','business_owner')),
   verified boolean default false,
   created_at timestamptz default now()
 );
