@@ -1,6 +1,6 @@
-# V7.0.0 Release Notes
+Habesha Connect V7.0.1
 
-- Added English / አማርኛ language switcher in the header.
-- Saves selected language in browser storage.
-- Translates main navigation, dashboards, buttons, labels, and common workflow messages.
-- No database migration required.
+Role dashboard layout polish and privacy-focused user views.
+
+Commit message:
+V7.0.1 Role Dashboard Layout Polish
