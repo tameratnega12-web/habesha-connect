@@ -1,1 +1,1 @@
-V7.0.5 Remove Rental Connect Header. No SQL needed.
+V7.0.6 Remove Payment Privacy Notes
