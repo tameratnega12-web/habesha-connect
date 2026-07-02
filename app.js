@@ -444,11 +444,21 @@ async function requestTrip(id){
  let receiver=prompt('Receiver name in Ethiopia:','Receiver');if(receiver===null)return;
  let receiverPhone=prompt('Receiver phone number:','');if(receiverPhone===null)return;
  const tracking='HC-'+Date.now().toString().slice(-6);
- const cleanSenderName=(senderName||currentUser.name||'Sender').trim();
- const cleanSenderPhone=(senderPhone||currentUser.phone||'').trim();
- const cleanReceiver=(receiver||'Receiver not entered').trim();
- const cleanReceiverPhone=(receiverPhone||'').trim();
- const cleanDesc=(desc||'Package').trim();
+ const cleanSenderName=(senderName||'').trim();
+ const cleanSenderPhoneRaw=(senderPhone||'').trim();
+ const cleanReceiver=(receiver||'').trim();
+ const cleanReceiverPhoneRaw=(receiverPhone||'').trim();
+ const cleanDesc=(desc||'').trim();
+ const phoneOk=v=>/^\d{7,15}$/.test(String(v||'').trim());
+ if(!cleanDesc)return alert('Please enter the package description.');
+ if(!cleanSenderName)return alert('Please enter the sender full name.');
+ if(!cleanSenderPhoneRaw)return alert('Please enter the sender phone number.');
+ if(!phoneOk(cleanSenderPhoneRaw))return alert('Sender phone number must be numbers only, 7 to 15 digits. Example: 4045551234');
+ if(!cleanReceiver)return alert('Please enter the receiver name.');
+ if(!cleanReceiverPhoneRaw)return alert('Please enter the receiver phone number.');
+ if(!phoneOk(cleanReceiverPhoneRaw))return alert('Receiver phone number must be numbers only, 7 to 15 digits. Example: 251911123456');
+ const cleanSenderPhone=cleanSenderPhoneRaw;
+ const cleanReceiverPhone=cleanReceiverPhoneRaw;
  if(authReady()&&currentUser.id&&t.dbId){
    const payload={
      tracking_number:tracking,
