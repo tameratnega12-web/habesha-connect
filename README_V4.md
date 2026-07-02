@@ -1,1 +1,1 @@
-V7.0.3 Admin Priority Sections Layout Fix
+V7.0.4 Rent Seeker Dashboard Layout Improvement
