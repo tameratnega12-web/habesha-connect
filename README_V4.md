@@ -1,1 +1,1 @@
-V7.0.2 Shipping Remaining Space Visibility Fix. No SQL needed.
+V7.0.3 Admin Priority Sections Layout Fix

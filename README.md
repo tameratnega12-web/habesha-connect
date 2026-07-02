@@ -1,3 +1,5 @@
-# Habesha Connect V7.0.2 - Shipping Remaining Space Visibility Fix
+# Habesha Connect V7.0.3 Admin Priority Sections Layout Fix
 
-This release keeps traveler trips visible to senders while remaining space is greater than 0 lb. Trips are hidden only when full/closed/cancelled. No SQL migration required.
+Moves Shipping Management, Rental Listing Management, and Rental Requests Management to the top of the Admin Dashboard for daily admin work.
+
+No SQL needed.
