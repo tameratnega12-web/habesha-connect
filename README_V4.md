@@ -1,1 +1,1 @@
-V7.0.4 Rent Seeker Dashboard Layout Improvement
+V7.0.5 Remove Rental Connect Header. No SQL needed.

@@ -1,3 +1,3 @@
-# Habesha Connect V7.0.4 Rent Seeker Dashboard Layout Improvement
+Habesha Connect V7.0.5 Remove Rental Connect Header
 
-Moves Available Owners / Rentals to the top of the Rent Seeker dashboard. No SQL needed.
+Removed the Rental Connect heading from Owner and Rent Seeker dashboards after Open Rentals / Find Rentals. Admin rental layout remains unchanged. No SQL needed.

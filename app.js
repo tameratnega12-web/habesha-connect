@@ -658,9 +658,9 @@ async function rentals(){
  let seekerRequestsHtml=rentalRequestsTable(seekerReqs,'rent_seeker');
  let adminRequests=[...ownerReqs,...data.rentalRequests.filter(q=>!ownerReqs.includes(q))];
  if(role==='owner'){
-   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${paymentPrivacyNotice()}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
+   $('rentals').innerHTML=`${paymentPrivacyNotice()}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
  } else if(role==='rent_seeker'||role==='customer'||!currentUser){
-   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${paymentPrivacyNotice()}<h3>Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
+   $('rentals').innerHTML=`${paymentPrivacyNotice()}<h3>Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='admin'){
    $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${paymentPrivacyNotice()}${adminSummary}${canPost?`<div class="grid">${addPropertyCard}${searchFilters}</div>`:searchFilters}<h3>All Rental Listings</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${rentalRequestsTable(adminRequests,'admin')}`;
  } else {
