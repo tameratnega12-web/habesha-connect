@@ -411,10 +411,10 @@ async function shipping(){
  let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Publishing a trip costs ${money(settings().travelerTripListingFee)}. If you complete at least one approved shipment, this fee is added back to your traveler payout.</p><button class="btn primary" onclick="addTrip()">Pay ${money(settings().travelerTripListingFee)} & Publish Trip</button></div>` : '';
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();
  let visibleTrips=data.trips.filter(t=>{let remaining=Number(t.availableSpace ?? t.remaining_space_lb ?? 0);let status=String(t.status||'Open');let openForBooking=role==='admin'||(remaining>0 && !['Full','Closed','Cancelled','Canceled'].includes(status));let matches=!shipFilter||String(t.route||'').toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)||String(t.fromCity||'').toLowerCase().includes(shipFilter)||String(t.toCity||'').toLowerCase().includes(shipFilter);return openForBooking&&matches;});
- let terminalStatuses=['Completed','Delivered'];
+ let terminalStatuses=['Completed'];
  let shipments=data.shipments.filter(s=>{
    if(role==='admin')return true;
-   if(terminalStatuses.includes(s.status||''))return false;
+   if(terminalStatuses.includes(s.status||'') || ((s.status==='Delivered'||s.status==='Completed') && s.travelerPaid))return false;
    if(!currentUser)return true;
    if(role==='traveler')return (String(s.travelerId||'')===String(currentUser.id||'') || (s.travelerEmail&&s.travelerEmail===currentUser.email));
    if(role==='sender'||role==='customer')return (String(s.senderId||'')===String(currentUser.id||'') || (s.senderEmail&&s.senderEmail===currentUser.email));
@@ -472,68 +472,46 @@ async function requestTrip(id){
  if(!requireLogin())return;
  if(currentUser.role!=='sender'&&currentUser.role!=='customer'&&currentUser.role!=='admin')return alert('Only senders can request traveler space.');
  let t=data.trips.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!t)return alert('Trip not found. Please refresh and try again.');
- let w=+($('req_'+id).value)||0;if(w<=0)return alert('Enter requested pounds.');if(w>Number(t.availableSpace||0))return alert('Only '+t.availableSpace+' lb is available.');
- let desc=prompt('Package description (example: clothes, documents, electronics):','Package');if(desc===null)return;
- let senderName=prompt('Sender full name:',currentUser.name||'');if(senderName===null)return;
- let senderPhone=prompt('Sender phone number:',currentUser.phone||'');if(senderPhone===null)return;
- let receiver=prompt('Receiver name in Ethiopia:','Receiver');if(receiver===null)return;
- let receiverPhone=prompt('Receiver phone number:','');if(receiverPhone===null)return;
- const tracking='HC-'+Date.now().toString().slice(-6);
- const cleanSenderName=(senderName||'').trim();
- const cleanSenderPhoneRaw=(senderPhone||'').trim();
- const cleanReceiver=(receiver||'').trim();
- const cleanReceiverPhoneRaw=(receiverPhone||'').trim();
- const cleanDesc=(desc||'').trim();
+ let wRaw=String(($('req_'+id)?.value||'')).trim();
+ if(!wRaw)return alert('Please enter the number of pounds you want to request.');
+ if(!/^\d+$/.test(wRaw))return alert('Requested pounds must be numbers only.');
+ let w=Number(wRaw);
+ if(w<=0)return alert('Requested pounds must be greater than 0.');
+ if(w>Number(t.availableSpace||0))return alert('Only '+t.availableSpace+' lb is available.');
  const phoneOk=v=>/^\d{7,15}$/.test(String(v||'').trim());
- if(!cleanDesc)return alert('Please enter the package description.');
- if(!cleanSenderName)return alert('Please enter the sender full name.');
- if(!cleanSenderPhoneRaw)return alert('Please enter the sender phone number.');
- if(!phoneOk(cleanSenderPhoneRaw))return alert('Sender phone number must be numbers only, 7 to 15 digits. Example: 4045551234');
- if(!cleanReceiver)return alert('Please enter the receiver name.');
- if(!cleanReceiverPhoneRaw)return alert('Please enter the receiver phone number.');
- if(!phoneOk(cleanReceiverPhoneRaw))return alert('Receiver phone number must be numbers only, 7 to 15 digits. Example: 251911123456');
- const cleanSenderPhone=cleanSenderPhoneRaw;
- const cleanReceiverPhone=cleanReceiverPhoneRaw;
+ const askRequired=(label,def='',validator=null,err='')=>{
+   let value=prompt(label,def);
+   if(value===null)return null;
+   value=String(value||'').trim();
+   if(!value){alert('Please complete this required field: '+label.replace(':',''));return null;}
+   if(validator&&!validator(value)){alert(err||('Please enter a valid value for '+label));return null;}
+   return value;
+ };
+ let desc=askRequired('Package description:', ''); if(desc===null)return;
+ let senderName=askRequired('Sender full name:', currentUser.name||''); if(senderName===null)return;
+ let senderPhone=askRequired('Sender phone number:', String(currentUser.phone||'').replace(/\D/g,''), phoneOk, 'Sender phone number must be numbers only, 7 to 15 digits. Example: 4045551234'); if(senderPhone===null)return;
+ let receiver=askRequired('Receiver name in Ethiopia:', ''); if(receiver===null)return;
+ let receiverPhone=askRequired('Receiver phone number:', '', phoneOk, 'Receiver phone number must be numbers only, 7 to 15 digits. Example: 251911123456'); if(receiverPhone===null)return;
+ const confirmMsg='Please confirm your request:\n\nPackage: '+desc+'\nSender: '+senderName+'\nSender Phone: '+senderPhone+'\nReceiver: '+receiver+'\nReceiver Phone: '+receiverPhone+'\nWeight: '+w+' lb\n\nClick OK to submit this request.';
+ if(!confirm(confirmMsg))return;
+ const tracking='HC-'+Date.now().toString().slice(-6);
  if(authReady()&&currentUser.id&&t.dbId){
-   const payload={
-     tracking_number:tracking,
-     sender_id:currentUser.id,
-     traveler_id:t.travelerId||null,
-     trip_id:t.dbId,
-     from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),
-     to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),
-     weight_lb:w,
-     sender_name:cleanSenderName,
-     sender_phone:cleanSenderPhone,
-     receiver_name:cleanReceiver,
-     receiver_phone:cleanReceiverPhone,
-     package_description:cleanDesc,
-     paid:false,
-     status:'Requested'
-   };
+   const payload={tracking_number:tracking,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),weight_lb:w,sender_name:senderName,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc,paid:false,status:'Requested'};
    if(!payload.traveler_id)return alert('This trip is missing traveler_id. Please refresh the page and try again.');
    let inserted=await hcSupabase.from('shipments').insert(payload).select('*').single();
-   if(inserted.error){
-     const msg=String(inserted.error.message||'');
-     if(msg.toLowerCase().includes('sender_name')||msg.toLowerCase().includes('sender_phone')||msg.toLowerCase().includes('package_description')){
-       return alert('Please run the V6.7.2 sender shipment SQL first, then try again. Missing shipment sender/package columns.');
-     }
-     return alert('Could not save request to Supabase: '+inserted.error.message);
-   }
+   if(inserted.error){const msg=String(inserted.error.message||'');if(msg.toLowerCase().includes('sender_name')||msg.toLowerCase().includes('sender_phone')||msg.toLowerCase().includes('package_description'))return alert('Please run the V6.7.2 sender shipment SQL first, then try again. Missing shipment sender/package columns.');return alert('Could not save request to Supabase: '+inserted.error.message);}
    let row=inserted.data;
-   row.sender={name:cleanSenderName,email:currentUser.email,phone:cleanSenderPhone,verified:!!currentUser.verified};
+   row.sender={name:senderName,email:currentUser.email,phone:senderPhone,verified:!!currentUser.verified};
    row.traveler={name:t.traveler,email:t.travelerEmail,phone:t.travelerPhone,verified:!!t.travelerVerified};
    data.shipments.unshift(mapDbShipment(row));
-   addNote(t.travelerEmail||'all','New '+w+' lb space request from '+cleanSenderName+'.');
+   addNote(t.travelerEmail||'all','New '+w+' lb space request from '+senderName+'.');
    addNote(currentUser.email,'Space request sent to '+t.traveler+'.');
-   save();
-   await loadSupabaseShipments();
-   show('shipping');
-   return;
+   save();await loadSupabaseShipments();alert('Your request was entered correctly and submitted.');show('shipping');return;
  }
  let sid='S'+Date.now().toString().slice(-5);
- data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:'Requested',tracking:'HC-'+sid,packagePhotos:[],sender:cleanSenderName,senderPhone:cleanSenderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:cleanReceiver,receiverPhone:cleanReceiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
- addNote(t.travelerEmail,'New '+w+' lb space request from '+cleanSenderName+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');save();shipping()}
+ data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:'Requested',tracking:'HC-'+sid,packagePhotos:[],sender:senderName,senderPhone:senderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:receiver,receiverPhone:receiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
+ addNote(t.travelerEmail,'New '+w+' lb space request from '+senderName+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');save();alert('Your request was entered correctly and submitted.');shipping()}
+
 
 async function closeTrip(id){let t=data.trips.find(x=>x.id===id);if(!t)return;if(t.source==='supabase'){let ok=await updateSupabaseTripStatus(t,'Closed');if(!ok)return;}t.status='Closed';save();shipping()}
 function addShipment(){if(!requireLogin())return;let w=+$('shipWeight').value||0;let from=$('shipFrom')?$('shipFrom').value:'Atlanta, GA';let to=$('shipTo')?$('shipTo').value:'Addis Ababa';if(from===to)return alert('From and To cannot be the same.');let route=from+' → '+to;let id='S'+Date.now().toString().slice(-5);let photos=photoNamesFromInput('packagePhotos');let tracking=$('trackingNo').value||('HC-'+id);data.shipments.unshift({id,route,weight:w,fee:w*settings().shippingRatePerLb,status:'Open',tracking,packagePhotos:photos,sender:senderName||currentUser.name,senderPhone:senderPhone||currentUser.phone||'',senderEmail:currentUser.email,senderVerified:!!currentUser.verified,receiver:$('receiverName').value||'Receiver not entered',receiverPhone:$('receiverPhone').value||'',traveler:'Waiting',travelerPhone:'',travelerEmail:'',travelerVerified:false,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});addNote('all','New shipping request posted with tracking number '+tracking+'.');save()}
@@ -946,10 +924,11 @@ async function payTraveler(id){
   s.travelerPaidAt=new Date().toLocaleString();
   s.travelerPayoutMethod=method||'Manual';
   s.travelerPayoutNote=note||'';
+  s.status='Completed';
   data.payments.unshift({user:s.travelerEmail||'traveler',service:'Traveler Payout',amount:amount,desc:'Traveler commission payout for shipment '+(s.tracking||s.id)+(listingRefund?' including '+money(listingRefund)+' trip listing fee refund':'')+' via '+s.travelerPayoutMethod,time:s.travelerPaidAt,month:new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'),quarter:new Date().getFullYear()+' Q'+(Math.floor(new Date().getMonth()/3)+1),year:String(new Date().getFullYear())});
   let res={error:null};
   if(authReady()&&s.dbId){
-    res=await hcSupabase.from('shipments').update({traveler_paid:true,traveler_paid_at:new Date().toISOString(),traveler_payout_method:s.travelerPayoutMethod,traveler_payout_note:s.travelerPayoutNote,listing_fee_refund:listingRefund}).eq('id',s.dbId);
+    res=await hcSupabase.from('shipments').update({traveler_paid:true,traveler_paid_at:new Date().toISOString(),traveler_payout_method:s.travelerPayoutMethod,traveler_payout_note:s.travelerPayoutNote,listing_fee_refund:listingRefund,status:'Completed'}).eq('id',s.dbId);
     if(res.error&&String(res.error.message||'').toLowerCase().includes('column')){
       alert('Traveler payout was recorded locally. To save it in Supabase, run supabase/v6_6_traveler_payout_migration.sql once.');
       res={error:null};
