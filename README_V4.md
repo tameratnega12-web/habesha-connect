@@ -1,6 +1,1 @@
-Habesha Connect V7.0.1
-
-Role dashboard layout polish and privacy-focused user views.
-
-Commit message:
-V7.0.1 Role Dashboard Layout Polish
+V7.0.2 Shipping Remaining Space Visibility Fix. No SQL needed.
