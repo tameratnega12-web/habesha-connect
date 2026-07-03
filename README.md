@@ -1,6 +1,7 @@
-Habesha Connect V7.3.0 Trucking Apply/Page Fix
+# Habesha Connect V7.3.1 Trucking Admin Approval Update
 
-- Fixed page loading problem caused by dashboard service cards.
-- Driver Apply This Job button changes to Applied after application.
-- Truck owner dashboard shows driver applicant information at the top.
-- No SQL needed.
+Updates:
+- Truck owner job posts require admin approval before drivers can see/apply.
+- Driver job applications require admin approval before truck owners can review them.
+- Charges remain hidden during beta.
+- Admin can approve job publishing and approve driver applications to owner review.
