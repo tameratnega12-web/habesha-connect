@@ -64,7 +64,16 @@ async function ensureCurrentProfileId(){
   if(!authReady()||!currentUser||!currentUser.email)return currentUser&&currentUser.id;
   if(currentUser.id)return currentUser.id;
   let {data:profile,error}=await hcSupabase.from('profiles').select('*').eq('email',currentUser.email).maybeSingle();
-  if(error){console.warn('Profile id lookup failed',error);return '';}
+  if(error){console.warn('Profile id lookup failed',error);}
+  if(!profile){
+    let authUser=null;
+    try{let session=await hcSupabase.auth.getSession();authUser=session?.data?.session?.user||null;}catch(e){console.warn('Session lookup failed',e)}
+    const roles=currentUser.roles||[currentUser.role||'customer'];
+    const payload={auth_user_id:authUser?.id||currentUser.auth_user_id||null,name:currentUser.name||currentUser.email,phone:currentUser.phone||'',email:currentUser.email,role:currentUser.role||roles[0]||'customer',roles,active_role:currentUser.role||roles[0]||'customer',verified:!!currentUser.verified};
+    let saved=await hcSupabase.from('profiles').upsert(payload,{onConflict:'email'}).select('*').single();
+    if(saved.error){console.warn('Profile create failed',saved.error);return '';}
+    profile=saved.data;
+  }
   if(profile){let u=upsertLocalUser(profile);currentUser=u||currentUser;data.currentUser=currentUser;persistOnly();return currentUser.id;}
   return '';
 }
@@ -707,7 +716,10 @@ async function requestTrip(id){
  const confirmMsg='Please confirm your request:\n\nPackage: '+desc+'\nSender: '+senderName+'\nSender Phone: '+senderPhone+'\nReceiver: '+receiver+'\nReceiver Phone: '+receiverPhone+'\nWeight: '+w+' lb\n\nClick OK to submit this request.';
  if(!confirm(confirmMsg))return;
  const tracking='HC-'+Date.now().toString().slice(-6);
- if(authReady()&&currentUser.id&&t.dbId){
+ if(authReady()){
+   await ensureCurrentProfileId();
+   if(!currentUser.id)return alert('Your profile is still syncing. Please sign out and sign in again, then try again.');
+   if(!t.dbId)return alert('This traveler trip is not synced to Supabase yet. Please refresh the page and try again.');
    const payload={tracking_number:tracking,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),weight_lb:w,sender_name:senderName,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc,paid:false,status:'Requested'};
    if(!payload.traveler_id)return alert('This trip is missing traveler_id. Please refresh the page and try again.');
    let inserted=await hcSupabase.from('shipments').insert(payload).select('*').single();
@@ -1162,9 +1174,13 @@ async function admin(){
  if(!adminDataLoaded)$('admin').innerHTML='<div class="card"><h2>⚙️ Admin Dashboard</h2><p>Loading Supabase users and verification records...</p></div>';
  try{
    if(authReady()){
+     await loadSupabaseTrips();
+     await loadSupabaseShipments();
+     recalcTripSpacesFromShipments();
      await loadSupabaseRentals();
      await loadSupabaseRentalRequests();
      await loadSupabasePayments();
+     await loadSupabaseTrucking();
    }
    if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
