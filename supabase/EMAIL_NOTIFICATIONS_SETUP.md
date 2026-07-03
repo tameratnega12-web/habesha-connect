@@ -1,49 +1,29 @@
-# Habesha Connect Email Notifications Setup
+# Email Notifications Setup
 
-This update adds email notifications using a Supabase Edge Function and Resend.
+This version uses Vercel Serverless Function:
 
-## 1. Create a Resend account
+`api/send-email.js`
 
-Create a Resend account and get an API key.
+You already verified the domain in Resend and added `RESEND_API_KEY` in Vercel.
 
-For first testing, you can use Resend's default sender:
+## Required
 
-`Habesha Connect <onboarding@resend.dev>`
+Vercel → Project → Settings → Environment Variables:
 
-Later, after you buy/connect a domain, replace it with your own verified sender email.
+- `RESEND_API_KEY`
 
-## 2. Set Supabase secrets
+## Optional
 
-In your terminal, inside the project folder, run:
+- `RESEND_FROM_EMAIL` = `Habesha Agenagn <notifications@habeshaagenagnapp.com>`
+- `ADMIN_NOTIFICATION_EMAIL` = admin inbox to receive admin alerts
+- `REPLY_TO_EMAIL` = reply-to address
 
-```bash
-supabase secrets set RESEND_API_KEY=your_resend_api_key
-supabase secrets set FROM_EMAIL="Habesha Connect <onboarding@resend.dev>"
-supabase secrets set REPLY_TO_EMAIL="your-email@example.com"
-```
+## Test
 
-## 3. Deploy the function
+After Vercel deployment finishes:
 
-```bash
-supabase functions deploy send-email-notification
-```
+1. Login as admin.
+2. Open Admin Dashboard.
+3. Click **Send Test Email**.
 
-## 4. Test from the app
-
-After deployment, upload this app version to GitHub/Vercel.
-
-Emails will be sent when the app creates a notification for a specific user email, such as:
-
-- Admin approval needed
-- Shipping request updates
-- Rental request updates
-- Truck job/application updates
-- Payment/payout updates
-
-Notifications sent to `all` remain in the app only and are not emailed.
-
-## Notes
-
-- No SQL migration is required for this update.
-- The Resend API key must stay in Supabase secrets only. Do not put it in `index.html` or GitHub.
-- For best reliability, verify your own sending domain in Resend before public launch.
+The older Supabase Edge Function file is kept only as an alternative reference, but it is not required for this Vercel setup.

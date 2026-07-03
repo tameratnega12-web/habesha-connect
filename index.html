@@ -193,20 +193,34 @@ async function getProfileByEmail(email){
 
 function emailSubjectFromText(text){
  const t=String(text||'').toLowerCase();
- if(t.includes('rental'))return 'Habesha Connect rental update';
- if(t.includes('shipment')||t.includes('shipping')||t.includes('traveler trip')||t.includes('tracking'))return 'Habesha Connect shipping update';
- if(t.includes('truck')||t.includes('driver')||t.includes('job'))return 'Habesha Connect trucking update';
- if(t.includes('payment')||t.includes('payout')||t.includes('fee'))return 'Habesha Connect transaction update';
- if(t.includes('report'))return 'Habesha Connect report update';
- return 'Habesha Connect notification';
+ if(t.includes('rental'))return 'Habesha Agenagn rental update';
+ if(t.includes('shipment')||t.includes('shipping')||t.includes('traveler trip')||t.includes('tracking'))return 'Habesha Agenagn shipping update';
+ if(t.includes('truck')||t.includes('driver')||t.includes('job'))return 'Habesha Agenagn trucking update';
+ if(t.includes('payment')||t.includes('payout')||t.includes('fee'))return 'Habesha Agenagn transaction update';
+ if(t.includes('report'))return 'Habesha Agenagn report update';
+ return 'Habesha Agenagn notification';
 }
 async function sendEmailNotification(toEmail,subject,message){
  toEmail=cleanEmail(toEmail);
- if(!authReady()||!toEmail||toEmail==='all')return;
+ if(!toEmail||toEmail==='all')return {ok:false,skipped:true};
  try{
-   const {error}=await hcSupabase.functions.invoke('send-email-notification',{body:{to:toEmail,subject:subject||emailSubjectFromText(message),message:String(message||''),fromName:'Habesha Connect'}});
-   if(error)console.warn('Email notification error',error.message||error);
- }catch(e){console.warn('Email notification failed',e)}
+   const res=await fetch('/api/send-email',{
+     method:'POST',
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({to:toEmail,subject:subject||emailSubjectFromText(message),message:String(message||''),fromName:'Habesha Agenagn'})
+   });
+   const out=await res.json().catch(()=>({}));
+   if(!res.ok){console.warn('Email notification error',out);return {ok:false,error:out};}
+   return out;
+ }catch(e){console.warn('Email notification failed',e);return {ok:false,error:String(e&&e.message||e)}}
+}
+async function testEmailNotification(){
+ if(!currentUser)return alert('Please login first.');
+ let email=prompt('Send test email to:', currentUser.email||'');
+ if(!email)return;
+ let res=await sendEmailNotification(email,'Habesha Agenagn test email','This is a test email from Habesha Agenagn. Email notifications are connected.');
+ if(res&&res.ok)alert('Test email sent. Please check your inbox and spam folder.');
+ else alert('Email test failed. Check Vercel deployment logs or RESEND_API_KEY.');
 }
 function addNote(to,text){
  let note={to,text,time:new Date().toLocaleString(),read:false,source:authReady()?'supabase-pending':'local'};
@@ -1096,7 +1110,7 @@ async function admin(){
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
  $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.5 Admin One-Click Refresh Fix:</b> admin buttons now show Working, prevent duplicate clicks, and refresh the admin tables after each action.</div>
- <h3>Daily Admin Management</h3><div class="notice"><b>Priority:</b> Shipping Management, Rental Listing Management, and Rental Requests Management are now at the top for faster daily work.</div>
+ <h3>Daily Admin Management</h3><div class="notice"><b>Priority:</b> Shipping Management, Rental Listing Management, and Rental Requests Management are now at the top for faster daily work.</div><div class="card"><h3>📧 Email Notifications</h3><p class="muted">Resend is connected through Vercel. Use this button to send yourself a test email.</p><button class="btn primary" onclick="testEmailNotification()">Send Test Email</button></div>
  <h3>Shipping Management</h3><div class="card"><h3>Official Shipping Money Flow</h3><ol><li>Sender requests space from a traveler trip.</li><li>Traveler accepts or declines.</li><li>Sender pays Habesha Connect.</li><li>Admin approves payment, contact details unlock, and remaining space is reduced.</li><li>Package is delivered.</li><li>Admin manually pays traveler commission and marks Traveler Paid.</li></ol><p class="muted">For Version 1, traveler payouts are manual: Zelle, PayPal, Cash App, or bank transfer. The app records the payout status for admin reports.</p></div><table><tr><th>ID</th><th>Tracking</th><th>Route</th><th>Sender</th><th>Traveler</th><th>Status</th><th>Beta Status</th><th>Traveler Payout</th><th>Actions</th></tr>${data.shipments.map(s=>`<tr><td>${s.id}</td><td>${s.tracking||''}</td><td>${s.route}</td><td>${s.sender} ${verifiedBadge(s.senderVerified)}</td><td>${s.traveler} ${s.travelerEmail?verifiedBadge(s.travelerVerified):''}</td><td>${s.status}</td><td>${s.paid?'Paid':'Unpaid'}</td><td>${s.travelerPaid?'Paid':'Not paid'} ${s.travelerPayoutMethod?('('+s.travelerPayoutMethod+')'):''}</td><td><button class="btn primary" onclick="approveShipment('${s.id}')">Approve Payment</button> <button class="btn ghost" onclick="markDelivered('${s.id}')">Mark Delivered</button> <button class="btn ghost" onclick="payTraveler('${s.id}')">Pay Traveler</button> <button class="btn ghost" onclick="editShipment('${s.id}')">Edit</button> <button class="btn bad" onclick="deleteShipment('${s.id}')">Delete</button></td></tr>`).join('')}</table>
  
  ${rentalStatsCards('📊 Rental Statistics',rentalStatsFor(data.rentals,data.rentalRequests))}<h3>Rental Listings Management</h3><table><tr><th>ID</th><th>Type</th><th>Property</th><th>City</th><th>Owner</th><th>Rating</th><th>Owner Fee</th><th>Status</th><th>Actions</th></tr>${data.rentals.map((r,i)=>`<tr><td>${friendlyRentalId(r,i)}</td><td>${r.propertyType||'Property'}</td><td>${r.title}</td><td>${r.city}</td><td>${r.owner}</td><td>⭐ ${avgOwnerRating(r.ownerEmail)||'New'}</td><td>${r.ownerPaid?'Paid '+money(r.ownerFee||settings().ownerListingFee):'Pending'}</td><td>${rentalStatusBadge(r.status)}</td><td><button class="btn primary" onclick="approveRental('${r.id}')">Approve</button> <button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="9">No rental listings yet.</td></tr>'}</table>
