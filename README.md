@@ -21,3 +21,8 @@ This update improves email notifications and admin alerts.
 ## Setup
 No SQL needed.
 Make sure Vercel has RESEND_API_KEY saved and redeploy after upload.
+
+## V7.3.9 Cross-device Sync Fix
+- Trips, shipments, and rental listings now use Supabase as the source of truth when Supabase is connected.
+- Truck records, truck jobs, driver profiles, and driver applications are now saved to Supabase so phone/laptop/admin all see the same data.
+- Run `supabase/v7_3_9_cross_device_sync.sql` once before testing trucking sync.
