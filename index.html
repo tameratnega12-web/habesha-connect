@@ -127,7 +127,7 @@ let adminLoading=false;
 let adminDataLoaded=false;
 async function show(p){
  p=String(p||'home').trim();
- const pageAliases={trucking:'truck','truck-admin':'truck','admin-trucking':'truck','admin_trucking':'truck','adminTruck':'truck','drivers:'+'':'truck'};
+ const pageAliases={trucking:'truck','truck-admin':'truck','admin-trucking':'truck','admin_trucking':'truck','adminTruck':'truck','drivers':'truck'};
  if(pageAliases[p])p=pageAliases[p];
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
  // Prevent repeated Admin renders from making the page jump or vibrate.
