@@ -779,7 +779,43 @@ async function requestViewing(id){
 }
 function toggleFavorite(id){if(!requireLogin())return;let i=data.favorites.findIndex(f=>f.user===currentUser.email&&f.rentalId===id);if(i>=0){data.favorites.splice(i,1);addNote(currentUser.email,'Property removed from favorites.')}else{data.favorites.push({user:currentUser.email,rentalId:id,time:new Date().toLocaleString()});addNote(currentUser.email,'Property saved to favorites.')}save();}
 function messageOwner(email){if(!requireLogin())return;show('messages');setTimeout(()=>{if($('msgTo'))$('msgTo').value=email||''},50)}
-async function approveRentalReq(id){let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!q)return;q.status='Approved';let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));if(r)r.status='Rented';if(authReady()&&q.dbId){let {error}=await hcSupabase.from('rental_requests').update({status:'Approved'}).eq('id',q.dbId);if(error)return alert('Could not approve rental request: '+error.message);}if(authReady()&&r&&r.dbId){await hcSupabase.from('properties').update({status:'Rented'}).eq('id',r.dbId);}addNote(q.seekerEmail,'Your rental request was approved. Owner contact is now available.');persistOnly(); if(currentPage==='admin'){await admin();}else{await rentals();}}
+async function approveRentalReq(id){
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  let oldStatus=q.status;
+  let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));
+  let oldRentalStatus=r?r.status:null;
+
+  // Update the screen immediately so admin does not need to refresh.
+  q.status='Approved';
+  if(r)r.status='Rented';
+  addNote(q.seekerEmail,'Your rental request was approved. Owner contact is now available.');
+  persistOnly();
+  if(currentPage==='admin') adminSuccess(); else await rentals();
+
+  // Then save to Supabase. If Supabase fails, roll back and show the error.
+  let res={error:null};
+  if(authReady()&&q.dbId){
+    res=await hcSupabase.from('rental_requests').update({status:'Approved'}).eq('id',q.dbId);
+  }
+  if(!res.error&&authReady()&&r&&r.dbId){
+    res=await hcSupabase.from('properties').update({status:'Rented'}).eq('id',r.dbId);
+  }
+  if(res.error){
+    q.status=oldStatus;
+    if(r)r.status=oldRentalStatus;
+    persistOnly();
+    if(currentPage==='admin') adminSuccess(); else await rentals();
+    return alert('Could not approve rental request in Supabase: '+res.error.message);
+  }
+
+  // Refresh silently in the background, but keep the approved status visible now.
+  if(currentPage==='admin'){
+    refreshAdminData().then(()=>adminSuccess()).catch(()=>{});
+  }else if(currentPage==='rentals'){
+    loadSupabaseRentalRequests().then(()=>rentals()).catch(()=>{});
+  }
+}
 async function declineRentalReq(id){let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!q)return;q.status='Declined';let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));if(r&&r.status==='Viewing Pending')r.status='Approved';if(authReady()&&q.dbId){let {error}=await hcSupabase.from('rental_requests').update({status:'Declined'}).eq('id',q.dbId);if(error)return alert('Could not decline rental request: '+error.message);}addNote(q.seekerEmail,'Your rental request was declined.');persistOnly(); if(currentPage==='admin'){await admin();}else{await rentals();}}
 function marketplace(){$('marketplace').innerHTML=`<h2>🛒 Marketplace</h2><div class="grid"><div class="card"><h3>Post Item</h3><input id="mTitle" placeholder="Item name"><input id="mPrice" type="number" placeholder="Price"><input id="mCity" placeholder="City"><button class="btn primary" onclick="addMarket()">Post Item</button></div>${data.market.map(m=>`<div class="card"><h3>${m.title}</h3><p>${m.city}</p><p><b>${money(m.price)}</b></p><span class="pill good">${m.status}</span><div class="actions"><button class="btn primary" onclick="pay('Marketplace',${Math.max(1,Math.round(m.price*.03))},'Marketplace service fee ${m.id}')">Buy / Reserve</button><button class="btn ghost">Message Seller</button></div></div>`).join('')}</div>`}
 function addMarket(){if(!requireLogin())return;data.market.unshift({id:'M'+Date.now().toString().slice(-5),title:$('mTitle').value||'Item',price:+$('mPrice').value||0,city:$('mCity').value||'Atlanta',seller:currentUser.name,status:'Available'});save()}
