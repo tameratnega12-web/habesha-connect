@@ -30,6 +30,10 @@ function options(arr,selected=''){return arr.map(x=>`<option ${x===selected?'sel
 function routeSelects(prefix='ship'){return `<div class="grid two"><div><label>From (U.S. City)</label><select id="${prefix}From">${options(US_CITIES,'Atlanta, GA')}</select></div><div><label>To (Ethiopia City)</label><select id="${prefix}To">${options(ETHIOPIA_CITIES,'Addis Ababa')}</select></div></div><p class="muted">Use the arrows to choose the main U.S. city and Ethiopia destination city.</p>`}
 
 let data=JSON.parse(localStorage.getItem('hc_v35')||'null')||seed();
+// V7.3.2: old beta builds stored payment history in browser localStorage.
+// Clear those cached payment rows so Admin Payment History uses Supabase only.
+data.payments=[];
+localStorage.setItem('hc_v35', JSON.stringify(data));
 function removeOldDemoData(){
   // Remove old demo traveler trip that may already be saved in this browser's localStorage.
   data.trips=(data.trips||[]).filter(t=>!(t.id==='T1001'||t.traveler==='Demo Traveler'||t.travelerPhone==='404-222-3333'));
@@ -107,6 +111,7 @@ async function show(p){
 async function refreshPageData(p){
  if(!authReady())return;
  if(p==='profile'||p==='shipping'||p==='admin'){
+   await loadSupabasePayments();
    await loadSupabaseTrips();
    await loadSupabaseShipments();
    recalcTripSpacesFromShipments();
@@ -127,10 +132,23 @@ let u=upsertLocalUser(profile);currentUser=u;addNote(email,'Account created. Che
 async function logout(){if(authReady())await hcSupabase.auth.signOut();currentUser=null;save();show('home')}
 function resetDemo(){if(confirm('Clear all saved Habesha Connect app data and reload?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));location.reload();}}
 function addNote(to,text){data.notifications.unshift({to,text,time:new Date().toLocaleString(),read:false})}
-function pay(service,amount,desc){
- if(!requireLogin())return;
+async function recordPayment(service,amount,desc,userEmail){
  let d=new Date();
- data.payments.unshift({user:currentUser.email,role:currentUser.role,service,amount,desc,time:d.toLocaleString(),month:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),quarter:d.getFullYear()+' Q'+(Math.floor(d.getMonth()/3)+1),year:String(d.getFullYear())});
+ let payment={user:userEmail||(currentUser&&currentUser.email)||'unknown',role:(currentUser&&currentUser.role)||'',service,amount:Number(amount)||0,desc:desc||'',time:d.toLocaleString(),month:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),quarter:d.getFullYear()+' Q'+(Math.floor(d.getMonth()/3)+1),year:String(d.getFullYear()),source:'local'};
+ if(authReady()){
+   let profile=(data.users||[]).find(u=>cleanEmail(u.email)===cleanEmail(payment.user));
+   let payload={user_id:(profile&&profile.id)||null,service:payment.service,description:payment.desc,amount:payment.amount,status:'Paid',created_at:d.toISOString()};
+   let {error}=await hcSupabase.from('payments').insert(payload);
+   if(error)console.warn('Payment Supabase insert error',error);
+   await loadSupabasePayments();
+   return payment;
+ }
+ data.payments.unshift(payment);
+ return payment;
+}
+async function pay(service,amount,desc){
+ if(!requireLogin())return;
+ await recordPayment(service,amount,desc,currentUser.email);
  addNote(currentUser.email,`Payment recorded: ${money(amount)} for ${desc}`);
  save();
  alert('Prototype payment recorded successfully.');
@@ -275,6 +293,31 @@ function sendMessage(){if(!requireLogin())return;let to=$('msgTo').value||'suppo
 function messages(){if(!requireLogin())return;let msgs=data.messages.filter(m=>m.to==='all'||m.to===currentUser.email||m.from===currentUser.email||currentUser.role==='admin');let users=data.users.filter(u=>u.email!==currentUser.email).map(u=>`<option value="${u.email}">${u.name} — ${u.role}</option>`).join('');$('messages').innerHTML=`<h2>💬 Real Chat Prototype</h2><div class="grid"><div class="card"><h3>Send Message</h3><label>Choose User</label><select id="msgUserPick" onchange="$('msgTo').value=this.value"><option value="support@habeshaconnect.com">Support / Admin</option>${users}</select><label>To Email</label><input id="msgTo" value="support@habeshaconnect.com" placeholder="user@email.com"><label>Message</label><textarea id="msgText" rows="4" placeholder="Write your message"></textarea><button class="btn primary" onclick="sendMessage()">Send</button></div><div class="card"><h3>Chat Features</h3><p class="muted">Messages stay in each user account. Admin can see all chats. This is ready for future live database connection.</p><div class="stat">${msgs.length}</div><p>Visible messages</p></div></div><div class="list" style="margin-top:14px">${msgs.map(m=>`<div class="item"><b>${m.from}</b> → <span>${m.to}</span><p>${m.text}</p><p class="muted">${m.time}</p></div>`).join('')||'<p>No messages yet.</p>'}</div>`}
 
 
+
+function mapDbPayment(row){
+ const prof=row.profile||row.profiles||{};
+ let d=row.created_at?new Date(row.created_at):new Date();
+ return {
+   id:row.id||'',dbId:row.id||'',user:prof.email||row.user_email||'Unknown',
+   role:prof.role||'',service:row.service||'Payment',desc:row.description||row.desc||'',
+   amount:Number(row.amount||0),time:d.toLocaleString(),
+   month:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),
+   quarter:d.getFullYear()+' Q'+(Math.floor(d.getMonth()/3)+1),year:String(d.getFullYear()),source:'supabase'
+ };
+}
+async function loadSupabasePayments(){
+ if(!authReady()){return;}
+ let rows=[], error=null;
+ let res=await hcSupabase.from('payments').select('*, profile:user_id(email,name,role)').order('created_at',{ascending:false});
+ rows=res.data||[]; error=res.error;
+ if(error){
+   console.warn('Payment relationship load error, retrying basic select', error);
+   let retry=await hcSupabase.from('payments').select('*').order('created_at',{ascending:false});
+   rows=retry.data||[]; error=retry.error;
+ }
+ if(error){console.warn('Payment load error', error);data.payments=[];return;}
+ data.payments=(rows||[]).map(mapDbPayment);
+}
 
 function mapDbTrip(row){
   let prof=row.profiles||{};
@@ -900,6 +943,7 @@ async function admin(){
    if(authReady()){
      await loadSupabaseRentals();
      await loadSupabaseRentalRequests();
+     await loadSupabasePayments();
    }
    if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
@@ -1034,7 +1078,7 @@ async function payTraveler(id){
   s.travelerPayoutMethod=method||'Manual';
   s.travelerPayoutNote=note||'';
   s.status='Completed';
-  data.payments.unshift({user:s.travelerEmail||'traveler',service:'Traveler Payout',amount:amount,desc:'Traveler commission payout for shipment '+(s.tracking||s.id)+(listingRefund?' including '+money(listingRefund)+' trip listing fee refund':'')+' via '+s.travelerPayoutMethod,time:s.travelerPaidAt,month:new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'),quarter:new Date().getFullYear()+' Q'+(Math.floor(new Date().getMonth()/3)+1),year:String(new Date().getFullYear())});
+  await recordPayment('Traveler Payout',amount,'Traveler commission payout for shipment '+(s.tracking||s.id)+(listingRefund?' including '+money(listingRefund)+' trip listing fee refund':'')+' via '+s.travelerPayoutMethod,s.travelerEmail||'traveler');
   let res={error:null};
   if(authReady()&&s.dbId){
     res=await hcSupabase.from('shipments').update({traveler_paid:true,traveler_paid_at:new Date().toISOString(),traveler_payout_method:s.travelerPayoutMethod,traveler_payout_note:s.travelerPayoutNote,listing_fee_refund:listingRefund,status:'Completed'}).eq('id',s.dbId);
