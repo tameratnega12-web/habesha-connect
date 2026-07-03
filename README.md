@@ -1,31 +1,9 @@
-# Habesha Agenagn App V7.3.8 - Professional Email Notifications
+Habesha Agenagn V7.4.4 - Truck Applications and Admin Transaction Refresh Fix
 
-This update improves email notifications and admin alerts.
+Fixes:
+- Truck driver applications now load from Supabase with a fallback query if relationship joins fail.
+- Driver dashboard shows Applied status after submitting a job application.
+- Admin dashboard shows truck driver applications without needing manual refresh.
+- Admin dashboard refreshes latest payment/transaction data after admin actions.
 
-## Added / Fixed
-- Professional Habesha Agenagn email template.
-- Branded email layout with Open Dashboard button.
-- Admin email notifications for:
-  - Traveler trip posts
-  - Sender shipping space requests
-  - Shipping transactions waiting for approval
-  - Property listings waiting for approval
-  - Rental viewing requests
-  - Truck owner job posts
-  - Truck driver job applications
-  - Problem reports
-  - Delivered shipment notices
-- Improved email subject lines and message content.
-- Basic branding update from Habesha Connect to Habesha Agenagn in main title/header/footer/about.
-
-## Setup
-No SQL needed.
-Make sure Vercel has RESEND_API_KEY saved and redeploy after upload.
-
-## V7.3.9 Cross-device Sync Fix
-- Trips, shipments, and rental listings now use Supabase as the source of truth when Supabase is connected.
-- Truck records, truck jobs, driver profiles, and driver applications are now saved to Supabase so phone/laptop/admin all see the same data.
-- Run `supabase/v7_3_9_cross_device_sync.sql` once before testing trucking sync.
-
-
-V7.4.0 route fix: Trucking buttons and admin trucking shortcuts now route to the Trucking dashboard instead of About. Admin Trucking Management has an anchor and direct button. No SQL required beyond V7.3.9 if not already run.
+No new SQL required if v7_3_9_cross_device_sync.sql was already run.
