@@ -1,4 +1,3 @@
-Habesha Connect V7.0.9 Request Validation and Completed Shipment Cleanup
+Habesha Connect V7.2.0 Beta Ready
 
-
-V7.1.2: Added Supabase SQL fix for truck_owner role constraint. Run supabase/v7_1_2_trucking_role_constraint_fix.sql in Supabase SQL Editor before testing trucking roles.
+Added Privacy Policy, Terms of Service, About, Contact, Help/FAQ, Report Problem, beta notice, coming soon services, and hidden user-facing charges for beta testing.
