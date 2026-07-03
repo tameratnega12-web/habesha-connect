@@ -1,1 +1,1 @@
-V7.0.9 fixes sender request validation and hides completed paid shipments from traveler/sender dashboards. No SQL needed.
+Habesha Connect V7.2.4 Workflow Fixes FULL - No SQL required.
