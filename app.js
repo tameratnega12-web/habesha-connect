@@ -30,19 +30,19 @@ function options(arr,selected=''){return arr.map(x=>`<option ${x===selected?'sel
 function routeSelects(prefix='ship'){return `<div class="grid two"><div><label>From (U.S. City)</label><select id="${prefix}From">${options(US_CITIES,'Atlanta, GA')}</select></div><div><label>To (Ethiopia City)</label><select id="${prefix}To">${options(ETHIOPIA_CITIES,'Addis Ababa')}</select></div></div><p class="muted">Use the arrows to choose the main U.S. city and Ethiopia destination city.</p>`}
 
 let data=JSON.parse(localStorage.getItem('hc_v35')||'null')||seed();
-// V7.3.2: old beta builds stored payment history in browser localStorage.
-// Clear those cached payment rows so Admin Payment History uses Supabase only.
-data.payments=[];
-localStorage.setItem('hc_v35', JSON.stringify(data));
-function removeOldDemoData(){
-  // Remove old demo traveler trip that may already be saved in this browser's localStorage.
-  data.trips=(data.trips||[]).filter(t=>!(t.id==='T1001'||t.traveler==='Demo Traveler'||t.travelerPhone==='404-222-3333'));
-  data.shipments=(data.shipments||[]).filter(s=>!(s.tripId==='T1001'||s.traveler==='Demo Traveler'||s.travelerPhone==='404-222-3333'));
-  data.payments=(data.payments||[]).filter(p=>!String(p.desc||'').includes('T1001')&&!String(p.desc||'').includes('Demo Traveler'));
-  data.notifications=(data.notifications||[]).filter(n=>!String(n.text||n.message||'').includes('Demo Traveler')&&!String(n.text||n.message||'').includes('T1001'));
+// V7.3.4 beta cleanup: do not show old demo/test records from browser storage.
+// Keep users, current login, profile roles, and settings, but reset marketplace activity
+// so every dashboard displays only real new activity after this update.
+const BETA_CLEANUP_KEY='hc_v734_demo_cleanup_done';
+if(!localStorage.getItem(BETA_CLEANUP_KEY)){
+  ['payments','messages','notifications','favorites','reviews','shipments','trips','rentals','rentalRequests','market','jobs','trucks','truckJobs','truckApplications','truckDriverProfiles','businesses'].forEach(k=>{data[k]=[];});
+  localStorage.setItem(BETA_CLEANUP_KEY,'1');
 }
-removeOldDemoData();
-let currentUser=data.currentUser||null;
+// Always ignore old browser-only payment/message/notification histories. These now load from Supabase.
+data.payments=[];
+data.messages=[];
+data.notifications=[];
+
 function seed(){return {currentUser:null,users:[{name:'Admin',email:'admin@habeshaconnect.com',phone:'404-000-0000',pass:'admin123',role:'admin',verified:true}],notifications:[],payments:[],messages:[],favorites:[],reviews:[],shipments:[],trips:[],rentals:[],rentalRequests:[],market:[],jobs:[],trucks:[],truckJobs:[],truckApplications:[],truckDriverProfiles:[],businesses:[],settings:Object.assign({},DEFAULT_SETTINGS)}}
 function save(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));render()}
 function money(n){return '$'+Number(n||0).toLocaleString()}
@@ -119,6 +119,12 @@ async function refreshPageData(p){
  if(p==='profile'||p==='rentals'||p==='admin'){
    await loadSupabaseRentals();
  }
+ if(p==='messages'||p==='admin'){
+   await loadSupabaseMessages();
+ }
+ if(p==='notifications'||p==='admin'){
+   await loadSupabaseNotifications();
+ }
  if(p==='admin' && !adminDataLoaded){
    await loadAdminProfiles();
  }
@@ -131,7 +137,33 @@ async function register(){let name=$('regName').value.trim(),phone=$('regPhone')
 let u=upsertLocalUser(profile);currentUser=u;addNote(email,'Account created. Check your email if Supabase asks you to confirm before login.');save();alert('Account created. If email confirmation is enabled, please check your email before signing in.');show('services');return;}if(data.users.some(u=>u.email===email))return alert('Account already exists');let u={name,phone,email,pass,role,roles:selected,active_role:role,verified:false};data.users.push(u);currentUser=u;addNote(email,'Account created. Welcome to Habesha Connect.');save();show('services')}
 async function logout(){if(authReady())await hcSupabase.auth.signOut();currentUser=null;save();show('home')}
 function resetDemo(){if(confirm('Clear all saved Habesha Connect app data and reload?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));location.reload();}}
-function addNote(to,text){data.notifications.unshift({to,text,time:new Date().toLocaleString(),read:false})}
+async function getProfileByEmail(email){
+ email=cleanEmail(email||'');
+ if(!email)return null;
+ let local=(data.users||[]).find(u=>cleanEmail(u.email)===email);
+ if(local&&local.id)return local;
+ if(authReady()){
+   let {data:prof,error}=await hcSupabase.from('profiles').select('*').eq('email',email).maybeSingle();
+   if(!error&&prof)return upsertLocalUser(prof);
+ }
+ return local||null;
+}
+function addNote(to,text){
+ let note={to,text,time:new Date().toLocaleString(),read:false,source:authReady()?'supabase-pending':'local'};
+ if(authReady()){
+   (async()=>{
+     try{
+       let prof=await getProfileByEmail(to);
+       if(prof&&prof.id){
+         await hcSupabase.from('notifications').insert({user_id:prof.id,message:text,is_read:false,created_at:new Date().toISOString()});
+         await loadSupabaseNotifications();
+       }
+     }catch(e){console.warn('Notification save error',e)}
+   })();
+ }else{
+   data.notifications.unshift(note);
+ }
+}
 async function recordPayment(service,amount,desc,userEmail){
  let d=new Date();
  let payment={user:userEmail||(currentUser&&currentUser.email)||'unknown',role:(currentUser&&currentUser.role)||'',service,amount:Number(amount)||0,desc:desc||'',time:d.toLocaleString(),month:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),quarter:d.getFullYear()+' Q'+(Math.floor(d.getMonth()/3)+1),year:String(d.getFullYear()),source:'local'};
@@ -289,10 +321,57 @@ async function profile(){
  $('profile').innerHTML=`<h2>👤 My Dashboard</h2>${roleDashboardCards()}<h3 style="margin-top:22px">My Activity</h3><div class="grid"><div class="card"><p>Shipping</p><div class="stat">${myShips}</div></div><div class="card"><p>Trips</p><div class="stat">${myTrips}</div></div><div class="card"><p>Rentals</p><div class="stat">${myRentals}</div></div><div class="card"><p>Viewing Requests</p><div class="stat">${myReqs}</div></div></div><div class="grid"><div class="card"><h3>Account Information</h3><label>Name</label><input id="profName" value="${currentUser.name}"><label>Phone</label><input id="profPhone" value="${currentUser.phone||''}" placeholder="Phone number"><label>City</label><input id="profCity" value="${currentUser.city||''}" placeholder="City"><p>Active Role: <span class="pill">${roleTitle(currentUser.role)}</span></p><p>Services: ${(currentUser.roles||[currentUser.role]).map(r=>`<span class="pill">${roleTitle(r)}</span>`).join(' ')}</p><button class="btn ghost" onclick="show('services')">Switch / Manage Services</button><p>Verification: <span class="pill ${currentUser.verified?'good':'warn'}">${currentUser.verified?'Verified':'Not verified'}</span></p><button class="btn primary" onclick="saveProfile()">Save Profile</button></div><div class="card"><h3>Account Tools</h3><p class="muted">Your account is connected to Supabase. Test Shipping, Rentals, Payments, Messages, Notifications, and Admin reports by role.</p><button class="btn" onclick="show('messages')">Open Messages</button><button class="btn" onclick="show('notifications')">Open Notifications</button></div></div>${travelerEarningsTable}<h3>My Payment History</h3><table><tr><th>Service</th><th>Description</th><th>Amount</th><th>Time</th></tr>${payments.map(p=>`<tr><td>${p.service}</td><td>${p.desc}</td><td>${money(p.amount)}</td><td>${p.time}</td></tr>`).join('')||'<tr><td colspan="4">No payments yet.</td></tr>'}</table>`
 }
 function saveProfile(){currentUser.name=$('profName').value;currentUser.phone=$('profPhone').value;currentUser.city=$('profCity').value;let u=data.users.find(x=>x.email===currentUser.email);Object.assign(u,currentUser);addNote(currentUser.email,'Profile updated.');save();show('profile')}
-function sendMessage(){if(!requireLogin())return;let to=$('msgTo').value||'support@habeshaconnect.com',txt=$('msgText').value;if(!txt)return alert('Write a message first');data.messages.unshift({from:currentUser.email,to,text:txt,time:new Date().toLocaleString()});addNote(to,'New message from '+currentUser.name);save();show('messages')}
-function messages(){if(!requireLogin())return;let msgs=data.messages.filter(m=>m.to==='all'||m.to===currentUser.email||m.from===currentUser.email||currentUser.role==='admin');let users=data.users.filter(u=>u.email!==currentUser.email).map(u=>`<option value="${u.email}">${u.name} — ${u.role}</option>`).join('');$('messages').innerHTML=`<h2>💬 Real Chat Prototype</h2><div class="grid"><div class="card"><h3>Send Message</h3><label>Choose User</label><select id="msgUserPick" onchange="$('msgTo').value=this.value"><option value="support@habeshaconnect.com">Support / Admin</option>${users}</select><label>To Email</label><input id="msgTo" value="support@habeshaconnect.com" placeholder="user@email.com"><label>Message</label><textarea id="msgText" rows="4" placeholder="Write your message"></textarea><button class="btn primary" onclick="sendMessage()">Send</button></div><div class="card"><h3>Chat Features</h3><p class="muted">Messages stay in each user account. Admin can see all chats. This is ready for future live database connection.</p><div class="stat">${msgs.length}</div><p>Visible messages</p></div></div><div class="list" style="margin-top:14px">${msgs.map(m=>`<div class="item"><b>${m.from}</b> → <span>${m.to}</span><p>${m.text}</p><p class="muted">${m.time}</p></div>`).join('')||'<p>No messages yet.</p>'}</div>`}
+async function sendMessage(){
+ if(!requireLogin())return;
+ let to=$('msgTo').value||'admin@habeshaconnect.com',txt=$('msgText').value.trim();
+ if(!txt)return alert('Write a message first');
+ if(authReady()){
+   let sender=await getProfileByEmail(currentUser.email);
+   let receiver=await getProfileByEmail(to);
+   if(!receiver||!receiver.id)return alert('Receiver account was not found. Choose a registered user.');
+   let {error}=await hcSupabase.from('messages').insert({sender_id:sender&&sender.id,receiver_id:receiver.id,message:txt,created_at:new Date().toISOString()});
+   if(error)return alert('Could not send message: '+error.message);
+   addNote(to,'New message from '+currentUser.name);
+   await loadSupabaseMessages();
+   show('messages');
+   return;
+ }
+ data.messages.unshift({from:currentUser.email,to,text:txt,time:new Date().toLocaleString(),source:'local'});
+ addNote(to,'New message from '+currentUser.name);
+ save();show('messages')
+}
+function messages(){if(!requireLogin())return;let msgs=data.messages.filter(m=>m.to==='all'||m.to===currentUser.email||m.from===currentUser.email||currentUser.role==='admin');let users=data.users.filter(u=>u.email!==currentUser.email).map(u=>`<option value="${u.email}">${u.name} — ${u.role}</option>`).join('');$('messages').innerHTML=`<h2>💬 Messages</h2><div class="grid"><div class="card"><h3>Send Message</h3><label>Choose User</label><select id="msgUserPick" onchange="$('msgTo').value=this.value"><option value="admin@habeshaconnect.com">Support / Admin</option>${users}</select><label>To Email</label><input id="msgTo" value="admin@habeshaconnect.com" placeholder="user@email.com"><label>Message</label><textarea id="msgText" rows="4" placeholder="Write your message"></textarea><button class="btn primary" onclick="sendMessage()">Send</button></div><div class="card"><h3>Message History</h3><p class="muted">Messages now load from Supabase only. Old browser test messages are ignored.</p><div class="stat">${msgs.length}</div><p>Visible messages</p></div></div><div class="list" style="margin-top:14px">${msgs.map(m=>`<div class="item"><b>${m.from}</b> → <span>${m.to}</span><p>${m.text}</p><p class="muted">${m.time}</p></div>`).join('')||'<p>No messages yet.</p>'}</div>`}
 
 
+
+
+function mapDbMessage(row){
+ const sender=row.sender||row.profiles||{};
+ const receiver=row.receiver||{};
+ let d=row.created_at?new Date(row.created_at):new Date();
+ return {id:row.id||'',dbId:row.id||'',from:sender.email||row.sender_email||'Unknown',to:receiver.email||row.receiver_email||'Unknown',text:row.message||row.text||'',time:d.toLocaleString(),source:'supabase'};
+}
+async function loadSupabaseMessages(){
+ if(!authReady()){return;}
+ let res=await hcSupabase.from('messages').select('*, sender:sender_id(email,name), receiver:receiver_id(email,name)').order('created_at',{ascending:false});
+ let rows=res.data||[], error=res.error;
+ if(error){console.warn('Message relationship load error, retrying basic select',error);let retry=await hcSupabase.from('messages').select('*').order('created_at',{ascending:false});rows=retry.data||[];error=retry.error;}
+ if(error){console.warn('Message load error',error);data.messages=[];return;}
+ data.messages=(rows||[]).map(mapDbMessage);
+}
+function mapDbNotification(row){
+ const prof=row.profile||row.profiles||{};
+ let d=row.created_at?new Date(row.created_at):new Date();
+ return {id:row.id||'',dbId:row.id||'',to:prof.email||row.user_email||'',text:row.message||row.text||'',time:d.toLocaleString(),read:!!row.is_read,source:'supabase'};
+}
+async function loadSupabaseNotifications(){
+ if(!authReady()){return;}
+ let res=await hcSupabase.from('notifications').select('*, profile:user_id(email,name)').order('created_at',{ascending:false});
+ let rows=res.data||[], error=res.error;
+ if(error){console.warn('Notification relationship load error, retrying basic select',error);let retry=await hcSupabase.from('notifications').select('*').order('created_at',{ascending:false});rows=retry.data||[];error=retry.error;}
+ if(error){console.warn('Notification load error',error);data.notifications=[];return;}
+ data.notifications=(rows||[]).map(mapDbNotification);
+}
 
 function mapDbPayment(row){
  const prof=row.profile||row.profiles||{};
@@ -904,7 +983,7 @@ function about(){
  $('about').innerHTML=`<h2>About Habesha Connect</h2><div class="card"><p><b>Habesha Connect</b> is a beta community platform built to help Ethiopian and Habesha communities connect around shipping, rentals, trucking, jobs, marketplace listings, and business tools.</p><p class="muted">This beta is for testing. Users are responsible for confirming identity, details, safety, pricing, pickup, delivery, property information, and job/trucking terms before completing any agreement.</p><div class="actions"><button class="btn primary" onclick="show('account')">Create Account</button><button class="btn ghost" onclick="show('contact')">Contact Us</button></div></div>`;
 }
 function contact(){
- $('contact').innerHTML=`<h2>Contact Us</h2><div class="grid"><div class="card"><h3>Support</h3><p>For beta testing questions, app problems, account help, or suggestions, contact Habesha Connect support.</p><p><b>Email:</b> support@habeshaconnect.com</p><p class="muted">Replace this email with your real support email before public launch if needed.</p></div><div class="card"><h3>Quick Help</h3><p>Use Report Problem to send a bug report with the page name, role used, and what happened.</p><button class="btn primary" onclick="show('report')">Report a Problem</button></div></div>`;
+ $('contact').innerHTML=`<h2>Contact Us</h2><div class="grid"><div class="card"><h3>Support</h3><p>For beta testing questions, app problems, account help, or suggestions, contact Habesha Connect support.</p><p><b>Email:</b> admin@habeshaconnect.com</p><p class="muted">Replace this email with your real support email before public launch if needed.</p></div><div class="card"><h3>Quick Help</h3><p>Use Report Problem to send a bug report with the page name, role used, and what happened.</p><button class="btn primary" onclick="show('report')">Report a Problem</button></div></div>`;
 }
 function help(){
  $('help').innerHTML=`<h2>Help / FAQ</h2><div class="grid"><div class="card"><h3>Is this app live?</h3><p>This is a beta version for trusted testers. Some payments and charges are hidden until the community grows.</p></div><div class="card"><h3>Can one account use many roles?</h3><p>Yes. One account can use sender, traveler, property owner, seeker, truck owner, driver, business owner, and customer services.</p></div><div class="card"><h3>How do shipping payments work now?</h3><p>During beta, sender and traveler agree on luggage/airline and delivery details before payment. Admin can still keep internal records.</p></div><div class="card"><h3>How do rentals work?</h3><p>Owners post properties. Seekers request viewing/contact. Admin and owner can review requests.</p></div><div class="card"><h3>How does trucking work?</h3><p>Truck owners can post driver jobs and record truck information. Drivers can post job profiles and apply.</p></div><div class="card"><h3>Need help?</h3><button class="btn primary" onclick="show('contact')">Contact Us</button></div></div>`;
@@ -912,7 +991,7 @@ function help(){
 function report(){
  $('report').innerHTML=`<h2>Report a Problem</h2><div class="card"><p class="muted">Beta testers can report bugs, broken buttons, confusing screens, missing records, or dashboard issues.</p><label>Your Email</label><input id="rpEmail" value="${currentUser?.email||''}" placeholder="you@example.com"><label>Page / Service</label><select id="rpPage"><option>Shipping</option><option>Rentals</option><option>Trucking</option><option>Account</option><option>Payments</option><option>Notifications</option><option>Other</option></select><label>What happened?</label><textarea id="rpText" placeholder="Example: I signed in as driver, clicked Apply, and nothing happened."></textarea><button class="btn primary" onclick="submitReport()">Send Report</button></div>`;
 }
-function submitReport(){let email=($('rpEmail')?.value||'').trim(),page=$('rpPage')?.value||'Other',text=($('rpText')?.value||'').trim();if(!email||!text)return alert('Please enter your email and what happened.');data.notifications.unshift({to:'admin@habeshaconnect.com',text:'Problem report from '+email+' on '+page+': '+text,time:new Date().toLocaleString(),read:false});if(currentUser)addNote(currentUser.email,'Thank you. Your problem report was sent.');persistOnly();alert('Thank you. Your report was saved for admin review.');show('home');}
+function submitReport(){let email=($('rpEmail')?.value||'').trim(),page=$('rpPage')?.value||'Other',text=($('rpText')?.value||'').trim();if(!email||!text)return alert('Please enter your email and what happened.');addNote('admin@habeshaconnect.com','Problem report from '+email+' on '+page+': '+text);if(currentUser)addNote(currentUser.email,'Thank you. Your problem report was sent.');persistOnly();alert('Thank you. Your report was saved for admin review.');show('home');}
 function privacy(){
  $('privacy').innerHTML=`<h2>Privacy Policy</h2><div class="card"><p><b>Effective:</b> Beta Version</p><p>Habesha Connect collects information users provide, such as name, email, phone number, selected services/roles, shipping requests, trip posts, property listings, rental requests, trucking records, driver profiles, job posts, messages, notifications, and support reports.</p><p>We use this information to create accounts, connect users, show listings, manage requests, improve the app, prevent misuse, and support users.</p><p>During beta, service charges may be hidden from regular users. Admin may still see internal records for testing and management.</p><p>Habesha Connect does not intentionally store full payment card numbers. If online payments are added later, payment processing should be handled by a secure third-party provider.</p><p>Users should not post sensitive private information, illegal items, or information they are not authorized to share.</p><p>To request account help or data correction, contact support.</p><div class="actions"><button class="btn ghost" onclick="show('terms')">View Terms</button><button class="btn primary" onclick="show('account')">Back to Account</button></div></div>`;
 }
@@ -921,7 +1000,7 @@ function terms(){
 }
 
 function notifications(){let notes=data.notifications.filter(n=>n.to==='all'||(currentUser&&n.to===currentUser.email));$('notifications').innerHTML=`<h2>🔔 Notifications</h2><div class="card"><p class="muted">Better notifications for registrations, requests, payments, approvals, messages, and account updates.</p><button class="btn ghost" onclick="markNotifsRead()">Mark All Read</button></div><div class="list" style="margin-top:14px">${notes.map(n=>`<div class="item"><b>${n.read?'':'🟢 '}${n.text}</b><p class="muted">${n.time}</p></div>`).join('')||'<p>No notifications yet.</p>'}</div>`}
-function markNotifsRead(){data.notifications.forEach(n=>{if(n.to==='all'||(currentUser&&n.to===currentUser.email))n.read=true});save();show('notifications')}
+async function markNotifsRead(){let visible=data.notifications.filter(n=>n.to==='all'||(currentUser&&n.to===currentUser.email));visible.forEach(n=>n.read=true);if(authReady()){let ids=visible.map(n=>n.dbId||n.id).filter(Boolean);if(ids.length){await hcSupabase.from('notifications').update({is_read:true}).in('id',ids);await loadSupabaseNotifications();}}else save();show('notifications')}
 
 async function loadAdminProfiles(){
  if(!authReady())return data.users;

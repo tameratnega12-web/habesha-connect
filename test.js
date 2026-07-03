@@ -30,15 +30,19 @@ function options(arr,selected=''){return arr.map(x=>`<option ${x===selected?'sel
 function routeSelects(prefix='ship'){return `<div class="grid two"><div><label>From (U.S. City)</label><select id="${prefix}From">${options(US_CITIES,'Atlanta, GA')}</select></div><div><label>To (Ethiopia City)</label><select id="${prefix}To">${options(ETHIOPIA_CITIES,'Addis Ababa')}</select></div></div><p class="muted">Use the arrows to choose the main U.S. city and Ethiopia destination city.</p>`}
 
 let data=JSON.parse(localStorage.getItem('hc_v35')||'null')||seed();
-function removeOldDemoData(){
-  // Remove old demo traveler trip that may already be saved in this browser's localStorage.
-  data.trips=(data.trips||[]).filter(t=>!(t.id==='T1001'||t.traveler==='Demo Traveler'||t.travelerPhone==='404-222-3333'));
-  data.shipments=(data.shipments||[]).filter(s=>!(s.tripId==='T1001'||s.traveler==='Demo Traveler'||s.travelerPhone==='404-222-3333'));
-  data.payments=(data.payments||[]).filter(p=>!String(p.desc||'').includes('T1001')&&!String(p.desc||'').includes('Demo Traveler'));
-  data.notifications=(data.notifications||[]).filter(n=>!String(n.text||n.message||'').includes('Demo Traveler')&&!String(n.text||n.message||'').includes('T1001'));
+// V7.3.4 beta cleanup: do not show old demo/test records from browser storage.
+// Keep users, current login, profile roles, and settings, but reset marketplace activity
+// so every dashboard displays only real new activity after this update.
+const BETA_CLEANUP_KEY='hc_v734_demo_cleanup_done';
+if(!localStorage.getItem(BETA_CLEANUP_KEY)){
+  ['payments','messages','notifications','favorites','reviews','shipments','trips','rentals','rentalRequests','market','jobs','trucks','truckJobs','truckApplications','truckDriverProfiles','businesses'].forEach(k=>{data[k]=[];});
+  localStorage.setItem(BETA_CLEANUP_KEY,'1');
 }
-removeOldDemoData();
-let currentUser=data.currentUser||null;
+// Always ignore old browser-only payment/message/notification histories. These now load from Supabase.
+data.payments=[];
+data.messages=[];
+data.notifications=[];
+
 function seed(){return {currentUser:null,users:[{name:'Admin',email:'admin@habeshaconnect.com',phone:'404-000-0000',pass:'admin123',role:'admin',verified:true}],notifications:[],payments:[],messages:[],favorites:[],reviews:[],shipments:[],trips:[],rentals:[],rentalRequests:[],market:[],jobs:[],trucks:[],truckJobs:[],truckApplications:[],truckDriverProfiles:[],businesses:[],settings:Object.assign({},DEFAULT_SETTINGS)}}
 function save(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));render()}
 function money(n){return '$'+Number(n||0).toLocaleString()}
