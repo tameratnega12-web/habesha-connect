@@ -41,6 +41,8 @@
 <script>
 
 const $=id=>document.getElementById(id);
+function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
 const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','business','messages','notifications','admin','about','contact','help','report','privacy','terms'];
 const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Jobs',truck:'Trucking',business:'Business Manager',messages:'Messages',notifications:'Notifications',admin:'Admin',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
 const hcSupabase=(window.supabase&&window.SUPABASE_URL&&window.SUPABASE_ANON_KEY)?window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY):null;
@@ -121,21 +123,31 @@ async function show(p){
  }
  renderingPage=true;
  const oldScroll=window.scrollY||document.documentElement.scrollTop||0;
- pages.forEach(x=>$(x).classList.add('hide'));
- $(p).classList.remove('hide');
- document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
- let nb=$('nav_'+p);if(nb)nb.classList.add('active');
- if($('mobileNav'))$('mobileNav').value=p;
- if(['shipping','rentals','profile','marketplace','jobs','truck','business'].includes(p)){
-   $(p).innerHTML='<div class="card"><b>Loading latest data...</b><p class="muted">Refreshing from Supabase.</p></div>';
+ try{
+   pages.forEach(x=>{let el=$(x); if(el) el.classList.add('hide');});
+   let pageEl=$(p); if(pageEl) pageEl.classList.remove('hide');
+   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+   let nb=$('nav_'+p);if(nb)nb.classList.add('active');
+   if($('mobileNav'))$('mobileNav').value=p;
+   if(['shipping','rentals','profile','marketplace','jobs','truck','business'].includes(p)){
+     $(p).innerHTML='<div class="card"><b>Loading latest data...</b><p class="muted">Refreshing from Supabase.</p></div>';
+   }
+   if(p==='admin' && currentPage!=='admin'){
+     $('admin').innerHTML='<div class="card"><b>Loading Admin Dashboard...</b><p class="muted">Please wait.</p></div>';
+   }
+   currentPage=p;
+   await renderPage(p);
+ }catch(err){
+   console.error('Page render error:',err);
+   const msg=(err&&err.message)?err.message:String(err||'Unknown error');
+   let target=$(p);
+   if(target){
+     target.innerHTML='<div class="card"><h3>Could not open this page</h3><p class="muted">The app stopped while loading this dashboard. Please refresh once. Error: '+escapeHtml(msg)+'</p><button class="btn" onclick="location.reload()">Refresh App</button> <button class="btn ghost" onclick="show(\'home\')">Go Home</button></div>';
+   }
+ }finally{
+   renderingPage=false;
+   if(p==='admin')setTimeout(()=>window.scrollTo(0,oldScroll),0);
  }
- if(p==='admin' && currentPage!=='admin'){
-   $('admin').innerHTML='<div class="card"><b>Loading Admin Dashboard...</b><p class="muted">Please wait.</p></div>';
- }
- currentPage=p;
- await renderPage(p);
- renderingPage=false;
- if(p==='admin')setTimeout(()=>window.scrollTo(0,oldScroll),0);
 }
 async function refreshPageData(p){
  if(!authReady())return;
