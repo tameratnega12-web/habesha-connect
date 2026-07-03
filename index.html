@@ -190,15 +190,38 @@ async function getProfileByEmail(email){
  }
  return local||null;
 }
+
+function emailSubjectFromText(text){
+ const t=String(text||'').toLowerCase();
+ if(t.includes('rental'))return 'Habesha Connect rental update';
+ if(t.includes('shipment')||t.includes('shipping')||t.includes('traveler trip')||t.includes('tracking'))return 'Habesha Connect shipping update';
+ if(t.includes('truck')||t.includes('driver')||t.includes('job'))return 'Habesha Connect trucking update';
+ if(t.includes('payment')||t.includes('payout')||t.includes('fee'))return 'Habesha Connect transaction update';
+ if(t.includes('report'))return 'Habesha Connect report update';
+ return 'Habesha Connect notification';
+}
+async function sendEmailNotification(toEmail,subject,message){
+ toEmail=cleanEmail(toEmail);
+ if(!authReady()||!toEmail||toEmail==='all')return;
+ try{
+   const {error}=await hcSupabase.functions.invoke('send-email-notification',{body:{to:toEmail,subject:subject||emailSubjectFromText(message),message:String(message||''),fromName:'Habesha Connect'}});
+   if(error)console.warn('Email notification error',error.message||error);
+ }catch(e){console.warn('Email notification failed',e)}
+}
 function addNote(to,text){
  let note={to,text,time:new Date().toLocaleString(),read:false,source:authReady()?'supabase-pending':'local'};
  if(authReady()){
    (async()=>{
      try{
-       let prof=await getProfileByEmail(to);
+       let emailTarget=cleanEmail(to);
+       if(!emailTarget||emailTarget==='all')return;
+       let prof=await getProfileByEmail(emailTarget);
        if(prof&&prof.id){
          await hcSupabase.from('notifications').insert({user_id:prof.id,message:text,is_read:false,created_at:new Date().toISOString()});
+         await sendEmailNotification(emailTarget,emailSubjectFromText(text),text);
          await loadSupabaseNotifications();
+       }else{
+         await sendEmailNotification(emailTarget,emailSubjectFromText(text),text);
        }
      }catch(e){console.warn('Notification save error',e)}
    })();

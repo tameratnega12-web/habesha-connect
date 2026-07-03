@@ -9,3 +9,12 @@ Changes:
 - New recorded payments are inserted into Supabase when connected.
 
 No SQL migration required.
+
+
+## V7.3.6 Email Notifications
+
+Added Supabase Edge Function email notifications using Resend.
+
+Setup file: `supabase/EMAIL_NOTIFICATIONS_SETUP.md`
+
+No SQL is required. You must deploy the Edge Function and set Supabase secrets before emails will send.
