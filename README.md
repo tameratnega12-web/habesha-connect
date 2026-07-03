@@ -26,3 +26,6 @@ Make sure Vercel has RESEND_API_KEY saved and redeploy after upload.
 - Trips, shipments, and rental listings now use Supabase as the source of truth when Supabase is connected.
 - Truck records, truck jobs, driver profiles, and driver applications are now saved to Supabase so phone/laptop/admin all see the same data.
 - Run `supabase/v7_3_9_cross_device_sync.sql` once before testing trucking sync.
+
+
+V7.4.0 route fix: Trucking buttons and admin trucking shortcuts now route to the Trucking dashboard instead of About. Admin Trucking Management has an anchor and direct button. No SQL required beyond V7.3.9 if not already run.

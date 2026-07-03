@@ -126,6 +126,9 @@ let renderingPage=false;
 let adminLoading=false;
 let adminDataLoaded=false;
 async function show(p){
+ p=String(p||'home').trim();
+ const pageAliases={trucking:'truck','truck-admin':'truck','admin-trucking':'truck','admin_trucking':'truck','adminTruck':'truck','drivers:'+'':'truck'};
+ if(pageAliases[p])p=pageAliases[p];
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
  // Prevent repeated Admin renders from making the page jump or vibrate.
  if(renderingPage && p===currentPage)return;
@@ -310,7 +313,7 @@ async function renderPage(p){
  if(p==='rentals')await rentals();
  if(p==='marketplace')marketplace();
  if(p==='jobs')jobs();
- if(p==='truck')truck();
+ if(p==='truck')await truck();
  if(p==='business')business();
  if(p==='messages')messages();
  if(p==='notifications')notifications();
@@ -1035,7 +1038,7 @@ function showTruckExpiryWarnings(){
 }
 function truckAdminManagementHtml(){
  let trucks=data.trucks||[], jobs=data.truckJobs||[], apps=data.truckApplications||[], profiles=data.truckDriverProfiles||[];
- return `<h3>🚛 Truck Owner / Truck Driver Management</h3>
+ return `<div id="adminTruckingManagement"></div><h3>🚛 Truck Owner / Truck Driver Management</h3>
  <div class="grid"><div class="card"><p>Truck Owners / Trucks</p><div class="stat">${trucks.length}</div></div><div class="card"><p>Driver Job Posts</p><div class="stat">${jobs.length}</div></div><div class="card"><p>Driver Applications</p><div class="stat">${apps.length}</div></div><div class="card"><p>Driver Profiles</p><div class="stat">${profiles.length}</div></div></div>
  <h3>Truck Records</h3><table><tr><th>Owner</th><th>Truck</th><th>Driver</th><th>Insurance</th><th>Registration</th><th>Status</th><th>Action</th></tr>${trucks.map(t=>`<tr><td>${t.ownerName||''}<br><span class="small">${t.ownerEmail||''}</span></td><td>${t.truck||''}<br><span class="small">Plate: ${t.plate||''} VIN: ${t.vin||''}</span></td><td>${t.driver||''}<br><span class="small">${t.driverEmail||''}</span></td><td>${t.insurance||''}<br>${expiryBadge(t.insurance,'Insurance')}</td><td>${t.registration||''}<br>${expiryBadge(t.registration,'Registration')}</td><td>${t.status||''}</td><td><button class="btn bad" onclick="deleteTruckRecord('${t.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No truck records yet.</td></tr>'}</table>
  <h3>Truck Driver Job Posts</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Pay</th><th>Status</th><th>Action</th></tr>${jobs.map(j=>`<tr><td>${j.ownerName||''}<br><span class="small">${j.ownerEmail||''}</span></td><td>${j.title||''}</td><td>${j.route||''}</td><td>${j.pay||''}</td><td><span class="pill ${j.status==='Open'?'good':j.status==='Closed'?'bad':'warn'}">${j.status||'Pending Admin Approval'}</span></td><td>${j.status==='Pending Admin Approval'?`<button class="btn primary" onclick="adminApproveTruckJob('${j.id}')">Approve Publish</button> `:''}<button class="btn ghost" onclick="closeTruckJob('${j.id}')">Close</button> <button class="btn bad" onclick="deleteTruckJob('${j.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No truck jobs yet.</td></tr>'}</table>
@@ -1134,7 +1137,7 @@ async function admin(){
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
  $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.5 Admin One-Click Refresh Fix:</b> admin buttons now show Working, prevent duplicate clicks, and refresh the admin tables after each action.</div>
- <h3>Daily Admin Management</h3><div class="notice"><b>Priority:</b> Shipping Management, Rental Listing Management, and Rental Requests Management are now at the top for faster daily work.</div><div class="card"><h3>📧 Email Notifications</h3><p class="muted">Resend is connected through Vercel. Use this button to send yourself a test email.</p><button class="btn primary" onclick="testEmailNotification()">Send Test Email</button></div>
+ <h3>Daily Admin Management</h3><div class="notice"><b>Priority:</b> Shipping Management, Rental Listing Management, Rental Requests Management, and Trucking Management are available for daily work.<div class='actions'><button class='btn primary' onclick="show('truck')">Open Trucking Admin Dashboard</button><button class='btn ghost' onclick="document.getElementById('adminTruckingManagement')?.scrollIntoView({behavior:'smooth'})">Jump to Trucking Management</button></div></div><div class="card"><h3>📧 Email Notifications</h3><p class="muted">Resend is connected through Vercel. Use this button to send yourself a test email.</p><button class="btn primary" onclick="testEmailNotification()">Send Test Email</button></div>
  <h3>Shipping Management</h3><div class="card"><h3>Official Shipping Money Flow</h3><ol><li>Sender requests space from a traveler trip.</li><li>Traveler accepts or declines.</li><li>Sender pays Habesha Connect.</li><li>Admin approves payment, contact details unlock, and remaining space is reduced.</li><li>Package is delivered.</li><li>Admin manually pays traveler commission and marks Traveler Paid.</li></ol><p class="muted">For Version 1, traveler payouts are manual: Zelle, PayPal, Cash App, or bank transfer. The app records the payout status for admin reports.</p></div><table><tr><th>ID</th><th>Tracking</th><th>Route</th><th>Sender</th><th>Traveler</th><th>Status</th><th>Beta Status</th><th>Traveler Payout</th><th>Actions</th></tr>${data.shipments.map(s=>`<tr><td>${s.id}</td><td>${s.tracking||''}</td><td>${s.route}</td><td>${s.sender} ${verifiedBadge(s.senderVerified)}</td><td>${s.traveler} ${s.travelerEmail?verifiedBadge(s.travelerVerified):''}</td><td>${s.status}</td><td>${s.paid?'Paid':'Unpaid'}</td><td>${s.travelerPaid?'Paid':'Not paid'} ${s.travelerPayoutMethod?('('+s.travelerPayoutMethod+')'):''}</td><td><button class="btn primary" onclick="approveShipment('${s.id}')">Approve Payment</button> <button class="btn ghost" onclick="markDelivered('${s.id}')">Mark Delivered</button> <button class="btn ghost" onclick="payTraveler('${s.id}')">Pay Traveler</button> <button class="btn ghost" onclick="editShipment('${s.id}')">Edit</button> <button class="btn bad" onclick="deleteShipment('${s.id}')">Delete</button></td></tr>`).join('')}</table>
  
  ${rentalStatsCards('📊 Rental Statistics',rentalStatsFor(data.rentals,data.rentalRequests))}<h3>Rental Listings Management</h3><table><tr><th>ID</th><th>Type</th><th>Property</th><th>City</th><th>Owner</th><th>Rating</th><th>Owner Fee</th><th>Status</th><th>Actions</th></tr>${data.rentals.map((r,i)=>`<tr><td>${friendlyRentalId(r,i)}</td><td>${r.propertyType||'Property'}</td><td>${r.title}</td><td>${r.city}</td><td>${r.owner}</td><td>⭐ ${avgOwnerRating(r.ownerEmail)||'New'}</td><td>${r.ownerPaid?'Paid '+money(r.ownerFee||settings().ownerListingFee):'Pending'}</td><td>${rentalStatusBadge(r.status)}</td><td><button class="btn primary" onclick="approveRental('${r.id}')">Approve</button> <button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="9">No rental listings yet.</td></tr>'}</table>
@@ -1424,6 +1427,10 @@ function currentLang(){return localStorage.getItem(LANG_KEY)||'en';}
 function tText(s){if(currentLang()==='en')return s;let d=HC_I18N.am||{};let exact=d[s];if(exact)return exact;let out=s;Object.keys(d).sort((a,b)=>b.length-a.length).forEach(k=>{if(out.includes(k))out=out.split(k).join(d[k]);});return out;}
 function translateNodeTree(root){if(!root||currentLang()==='en')return;let skip=['SCRIPT','STYLE','INPUT','TEXTAREA','OPTION','SELECT'];let walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){let p=node.parentElement;if(!p||skip.includes(p.tagName))return NodeFilter.FILTER_REJECT;let v=node.nodeValue;if(!v||!v.trim())return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}});let nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(n=>{n.nodeValue=tText(n.nodeValue);});document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{el.placeholder=tText(el.placeholder);});document.querySelectorAll('button,th,td,label,p,h1,h2,h3,span,option').forEach(el=>{if(el.childNodes.length===1&&el.childNodes[0].nodeType===3)el.textContent=tText(el.textContent);});}
 function languageSwitcherHtml(){return `<select id="langSwitch" onchange="setLanguage(this.value)" style="width:auto;min-width:130px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700"><option value="en" ${currentLang()==='en'?'selected':''}>🇺🇸 English</option><option value="am" ${currentLang()==='am'?'selected':''}>🇪🇹 አማርኛ</option></select>`;}
+
+function openTruckingDashboard(){ return show('truck'); }
+function openAdminTruckingDashboard(){ return show('truck'); }
+
 function setLanguage(lang){localStorage.setItem(LANG_KEY,lang==='am'?'am':'en');render();setTimeout(()=>translateNodeTree(document.body),0);}
 function applyLanguageUi(){
   let userBox=$('userBox');
