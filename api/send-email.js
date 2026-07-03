@@ -42,11 +42,36 @@ module.exports = async function handler(req, res) {
     const from = process.env.RESEND_FROM_EMAIL || DEFAULT_FROM;
     const replyTo = process.env.REPLY_TO_EMAIL || adminEmail;
 
+    const lines = message.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    const firstLine = lines[0] || subject;
+    const details = lines.slice(1).map(line => {
+      const idx = line.indexOf(':');
+      if (idx > 0 && idx < 40) {
+        const key = line.slice(0, idx);
+        const val = line.slice(idx + 1).trim();
+        return `<tr><td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;font-weight:700;width:38%">${escapeHtml(key)}</td><td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#111827">${escapeHtml(val)}</td></tr>`;
+      }
+      return `<tr><td colspan="2" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#111827">${escapeHtml(line)}</td></tr>`;
+    }).join('');
+
     const html = `
-      <div style="font-family:Arial,sans-serif;line-height:1.55;color:#111;max-width:640px;margin:0 auto;padding:16px">
-        <h2 style="margin:0 0 12px;color:#0f766e">${escapeHtml(fromName)}</h2>
-        <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:16px">${escapeHtml(message)}</div>
-        <p style="color:#6b7280;font-size:13px;margin-top:20px">Please log in to Habesha Agenagn to review this update.</p>
+      <div style="font-family:Arial,sans-serif;line-height:1.55;color:#111;max-width:680px;margin:0 auto;background:#ffffff;padding:0;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden">
+        <div style="background:#0f766e;color:#ffffff;padding:20px 22px">
+          <div style="font-size:22px;font-weight:800;letter-spacing:.2px">Habesha Agenagn</div>
+          <div style="font-size:13px;opacity:.9;margin-top:4px">Connecting Habesha Around the World</div>
+        </div>
+        <div style="padding:22px">
+          <h2 style="margin:0 0 12px;color:#0f172a;font-size:20px">${escapeHtml(subject)}</h2>
+          <p style="margin:0 0 16px;color:#334155;font-size:15px">${escapeHtml(firstLine)}</p>
+          ${details ? `<table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:16px 0"><tbody>${details}</tbody></table>` : ''}
+          <p style="color:#475569;font-size:14px;margin-top:18px">Please log in to Habesha Agenagn to review this update.</p>
+          <div style="margin-top:18px">
+            <a href="https://habeshaagenagnapp.com" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:11px 16px;border-radius:10px;font-weight:700">Open Dashboard</a>
+          </div>
+        </div>
+        <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 22px;color:#64748b;font-size:12px">
+          This email was sent by Habesha Agenagn App. Website: habeshaagenagnapp.com
+        </div>
       </div>`;
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
