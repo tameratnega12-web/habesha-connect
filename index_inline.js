@@ -42,6 +42,8 @@ if(!localStorage.getItem(BETA_CLEANUP_KEY)){
 data.payments=[];
 data.messages=[];
 data.notifications=[];
+localStorage.setItem('hc_v35', JSON.stringify(data));
+let currentUser=data.currentUser||null;
 
 function seed(){return {currentUser:null,users:[{name:'Admin',email:'admin@habeshaconnect.com',phone:'404-000-0000',pass:'admin123',role:'admin',verified:true}],notifications:[],payments:[],messages:[],favorites:[],reviews:[],shipments:[],trips:[],rentals:[],rentalRequests:[],market:[],jobs:[],trucks:[],truckJobs:[],truckApplications:[],truckDriverProfiles:[],businesses:[],settings:Object.assign({},DEFAULT_SETTINGS)}}
 function save(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));render()}
