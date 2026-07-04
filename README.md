@@ -30,3 +30,10 @@ V7.4.9 Email Admin Truck Job Posted
 - No SQL changes.
 - No database structure changes.
 - No UI/routing/workflow changes.
+
+
+V7.5.0 Email Admin Truck Driver Application
+- Added admin email when a truck driver applies for a trucking job.
+- Subject: New Truck Driver Application
+- No SQL changes.
+- No workflow, UI, routing, or database changes.
