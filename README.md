@@ -22,3 +22,11 @@ V7.4.7 Email Sender Package Delivered
 V7.4.8 Email Traveler Payout Released
 - Added one email notification only: when Admin marks traveler payout paid, the traveler receives 'Your Payout Has Been Released'.
 - No SQL, database, UI, routing, or workflow changes.
+
+V7.4.9 Email Admin Truck Job Posted
+- Added one email notification trigger only.
+- When a Truck Owner posts a driver hiring job and it is saved successfully, Admin receives an email.
+- Subject: Truck owner posted a job
+- No SQL changes.
+- No database structure changes.
+- No UI/routing/workflow changes.
