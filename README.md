@@ -1,12 +1,15 @@
-Habesha Agenagn V7.4.1 Email White Screen Fix
+# Habesha Agenagn V7.4.2 - Email Notification Step 1
 
-Fix scope:
-- Email notification module only.
-- Restored the missing currentUser initialization that caused the page to stop rendering after V7.4.0.
-- No database or workflow changes.
-- No SQL needed.
+Limited fix: Admin email notification when a Traveler posts a trip.
 
-Deploy:
-1. Upload this full package to GitHub/Vercel.
-2. Make sure RESEND_API_KEY remains set in Vercel Environment Variables.
-3. Test desktop and phone.
+Rules followed:
+- No SQL changes.
+- No database structure changes.
+- No UI/routing changes.
+- No Shipping/Rentals/Trucking/Marketplace/Business/Auth workflow changes.
+- Email sends only after the traveler trip is saved successfully.
+
+Email trigger added/tested:
+Traveler publishes trip -> Supabase save success -> Admin email: "New Traveler Trip Posted".
+
+Admin recipient uses support@habeshaagenagnapp.com plus admin account emails found in the app.
