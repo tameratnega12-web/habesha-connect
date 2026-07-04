@@ -1,9 +1,11 @@
-Habesha Agenagn V7.4.4 - Truck Applications and Admin Transaction Refresh Fix
+# Habesha Connect V7.3.2 Payment History Fix
 
-Fixes:
-- Truck driver applications now load from Supabase with a fallback query if relationship joins fail.
-- Driver dashboard shows Applied status after submitting a job application.
-- Admin dashboard shows truck driver applications without needing manual refresh.
-- Admin dashboard refreshes latest payment/transaction data after admin actions.
+Fixes Admin Payment History so old browser/local beta payment records no longer appear.
 
-No new SQL required if v7_3_9_cross_device_sync.sql was already run.
+Changes:
+- Clears cached local payment history on app load.
+- Admin Payment History now uses Supabase `payments` table as the source of truth.
+- If Supabase `payments` is empty, Admin page shows no payments.
+- New recorded payments are inserted into Supabase when connected.
+
+No SQL migration required.
