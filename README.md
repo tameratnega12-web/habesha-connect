@@ -51,3 +51,6 @@ V7.5.0 Email Admin Truck Driver Application
 
 
 V7.5.8: Added Rentals email notification for Property Owner when a Seeker requests a viewing. No SQL changes.
+
+
+V7.6.0 Update: Added/confirmed seeker email notification when a rental viewing request is declined. No SQL/database changes.

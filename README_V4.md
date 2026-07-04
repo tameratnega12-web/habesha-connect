@@ -21,3 +21,6 @@ V7.5.0 Email Admin Truck Driver Application
 ## V7.5.1 Email Owner Driver Application
 - Added email to Truck Owner when a Truck Driver applies for their job.
 - No SQL changes. No workflow/UI/database changes.
+
+
+V7.6.0 Update: Added/confirmed seeker email notification when a rental viewing request is declined. No SQL/database changes.
