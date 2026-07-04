@@ -16,3 +16,8 @@ V7.5.0 Email Admin Truck Driver Application
 - Subject: New Truck Driver Application
 - No SQL changes.
 - No workflow, UI, routing, or database changes.
+
+
+## V7.5.1 Email Owner Driver Application
+- Added email to Truck Owner when a Truck Driver applies for their job.
+- No SQL changes. No workflow/UI/database changes.
