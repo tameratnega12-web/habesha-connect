@@ -1249,6 +1249,22 @@ async function payTraveler(id){
   s.travelerListingFeeRefund=listingRefund;s.travelerPayoutAmount=amount;
   if(trip&&listingRefund){trip.listingFeeRefunded=true;if(authReady()&&trip.dbId){await hcSupabase.from('trips').update({listing_fee_refunded:true}).eq('id',trip.dbId);}}
   addNote(s.travelerEmail||'all','Your traveler commission for shipment '+(s.tracking||s.id)+' was marked paid by admin.');
+  sendEmailNotice({
+    to:s.travelerEmail,
+    name:s.traveler,
+    subject:'Your Payout Has Been Released',
+    summary:'Good news! Your payout for the completed shipment has been released.',
+    buttonText:'Open Traveler Dashboard',
+    page:'shipping',
+    details:{
+      Tracking:s.tracking||s.id,
+      Sender:s.sender||'Sender',
+      Route:s.route||'',
+      Amount:money(amount),
+      Method:s.travelerPayoutMethod||'Manual',
+      Note:s.travelerPayoutNote||''
+    }
+  });
   persistOnly(); await refreshAdminData(); adminSuccess();
 }
 
