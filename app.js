@@ -899,7 +899,7 @@ async function addRental(){
     localRental.dbId=res.data.id; localRental.id=res.data.id; localRental.source='supabase';
   }
   data.rentals.unshift(localRental);
-  addNote('admin@habeshaconnect.com','Rental listing from '+currentUser.name+' needs approval.');sendAdminEmailNotice('Property owner published a property','A property owner submitted a property listing for admin approval.',{Owner:currentUser.name,Email:currentUser.email,Property:title,City:city,Price:money(price)},'admin');
+  addNote('admin@habeshaconnect.com','Rental listing from '+currentUser.name+' needs approval.');sendAdminEmailNotice('New Property Published','A property owner published a rental property for admin approval.',{Owner:currentUser.name,Email:currentUser.email,Property:title,Type:propertyType,City:city,Monthly_Rent:money(price)},'admin');
   addNote(currentUser.email,'Your property was submitted and is waiting for admin approval.');
   save();
   alert('Property submitted successfully. Admin approval is required before seekers can see it.');

@@ -42,3 +42,9 @@ V7.5.0 Email Admin Truck Driver Application
 ## V7.5.1 Email Owner Driver Application
 - Added email to Truck Owner when a Truck Driver applies for their job.
 - No SQL changes. No workflow/UI/database changes.
+
+
+## V7.5.6 Email Admin Property Published
+- Added Admin email notification when a Property Owner publishes/submits a rental property.
+- Subject: New Property Published.
+- No SQL changes. No rental workflow, UI, authentication, or database structure changes.
