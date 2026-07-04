@@ -991,6 +991,7 @@ async function requestViewing(id){
  data.rentalRequests.unshift(localReq);
  addNote(r.ownerEmail||'all','New rental viewing request from '+currentUser.name+'.');
  addNote('admin@habeshaconnect.com','New rental viewing request for '+r.title+' from '+currentUser.name+'.');sendAdminEmailNotice('Seeker requested a viewing','A rent seeker requested a property viewing.',{Seeker:currentUser.name,Email:currentUser.email,Property:r.title,Owner:r.owner,OwnerEmail:r.ownerEmail},'admin');
+ if(r.ownerEmail){sendEmailNotice({to:r.ownerEmail,name:r.owner||'Property Owner',subject:'Someone requested to view your property',summary:'A rent seeker requested to view your property.',buttonText:'Open Owner Dashboard',page:'rentals',details:{Seeker:currentUser.name,SeekerEmail:currentUser.email,Property:r.title,Status:'Pending'}});}
  addNote(currentUser.email,'Your viewing request was sent to the owner and admin.');
  persistOnly();
  alert('Viewing request submitted. Admin/owner can now review it.');
