@@ -12,3 +12,8 @@ V7.4.5 Step 4 Email Update:
 - Updated sender decline email subject/content for traveler declined request.
 - No SQL/database changes.
 - No workflow/UI/routing changes.
+
+
+V7.4.7 Email Sender Package Delivered
+- Added one email notification only: when a shipment is marked Delivered, the sender receives 'Your Package Has Been Delivered'.
+- No SQL changes. No workflow, UI, routing, or database structure changes.

@@ -1266,6 +1266,18 @@ async function markDelivered(id){
   if(!res.error&&authReady()&&relatedTrip&&relatedTrip.dbId)res=await hcSupabase.from('trips').update({status:'Delivered',remaining_space_lb:0}).eq('id',relatedTrip.dbId);
   if(res.error){s.status=old;if(relatedTrip&&oldTrip)Object.assign(relatedTrip,oldTrip);return alert('Could not mark delivered in Supabase: '+res.error.message)}
   addNote('admin@habeshaconnect.com','Shipment '+(s.tracking||id)+' was marked delivered. The related traveler trip is removed from sender availability.');
+  if(s.senderEmail){
+    addNote(s.senderEmail,'Your package '+(s.tracking||id)+' has been delivered.');
+    sendEmailNotice({
+      to:s.senderEmail,
+      name:s.sender,
+      subject:'Your Package Has Been Delivered',
+      summary:'Great news! Your package has been successfully delivered. Thank you for using Habesha Agenagn.',
+      buttonText:'Open Shipping Dashboard',
+      page:'shipping',
+      details:{Traveler:s.traveler||'Traveler',Route:s.route||'',Tracking:s.tracking||id,Status:'Delivered'}
+    });
+  }
   persistOnly(); await refreshAdminData(); adminSuccess();
 }
 
