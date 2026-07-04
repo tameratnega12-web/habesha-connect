@@ -125,6 +125,9 @@ async function refreshPageData(p){
  if(p==='notifications'||p==='admin'){
    await loadSupabaseNotifications();
  }
+ if(p==='truck'||p==='admin'){
+   await loadSupabaseTrucking();
+ }
  if(p==='admin' && !adminDataLoaded){
    await loadAdminProfiles();
  }
@@ -350,6 +353,47 @@ function mapDbMessage(row){
  const receiver=row.receiver||{};
  let d=row.created_at?new Date(row.created_at):new Date();
  return {id:row.id||'',dbId:row.id||'',from:sender.email||row.sender_email||'Unknown',to:receiver.email||row.receiver_email||'Unknown',text:row.message||row.text||'',time:d.toLocaleString(),source:'supabase'};
+}
+
+
+/* V7.3.7 Trucking mobile/dashboard sync fix: Supabase-backed trucking records */
+let hcTruckRealtimeReady=false;
+function localRefFromDb(row,prefix){return row.local_ref||String(row.id||prefix+Date.now().toString().slice(-6));}
+function mapTruckJob(row){return {dbId:row.id,id:localRefFromDb(row,'TJ'),ownerName:row.owner_name||'',ownerEmail:row.owner_email||'',ownerPhone:row.owner_phone||'',title:row.title||'',route:row.route||'',pay:row.pay||'',schedule:row.schedule||'',requirements:row.requirements||'',truckDetails:row.truck_details||'',status:row.status||'Pending Admin Approval',createdAt:row.created_at?new Date(row.created_at).toLocaleString():'',approvedAt:row.approved_at?new Date(row.approved_at).toLocaleString():'',hiredDriverName:row.hired_driver_name||'',hiredDriverEmail:row.hired_driver_email||'',hiredAt:row.hired_at?new Date(row.hired_at).toLocaleString():''};}
+function mapTruckApplication(row){return {dbId:row.id,id:localRefFromDb(row,'TA'),jobId:row.job_local_ref||row.job_id||'',jobDbId:row.job_id||'',jobTitle:row.job_title||'',ownerName:row.owner_name||'',ownerEmail:row.owner_email||'',driverName:row.driver_name||'',driverEmail:row.driver_email||'',driverPhone:row.driver_phone||'',city:row.city||'',license:row.license||'',experience:row.experience||'',looking:row.looking||'',notes:row.notes||'',status:row.status||'Pending Admin Approval',createdAt:row.created_at?new Date(row.created_at).toLocaleString():'',adminApprovedAt:row.admin_approved_at?new Date(row.admin_approved_at).toLocaleString():'',approvedAt:row.approved_at?new Date(row.approved_at).toLocaleString():'',hiredAt:row.hired_at?new Date(row.hired_at).toLocaleString():'',closedAt:row.closed_at?new Date(row.closed_at).toLocaleString():''};}
+function mapTruckDriverProfile(row){return {dbId:row.id,driverName:row.name||'',driverEmail:row.driver_email||'',name:row.name||'',phone:row.phone||'',city:row.city||'',license:row.license||'',experience:row.experience||'',looking:row.looking||'',notes:row.notes||'',updatedAt:row.updated_at?new Date(row.updated_at).toLocaleString():''};}
+async function loadSupabaseTrucking(){
+ if(!authReady())return;
+ let jobs=await hcSupabase.from('trucking_jobs').select('*').order('created_at',{ascending:false});
+ if(jobs.error){console.warn('Trucking jobs load error',jobs.error);return;}
+ data.truckJobs=(jobs.data||[]).map(mapTruckJob);
+ let apps=await hcSupabase.from('trucking_applications').select('*').order('created_at',{ascending:false});
+ if(!apps.error)data.truckApplications=(apps.data||[]).map(mapTruckApplication);else console.warn('Trucking applications load error',apps.error);
+ let profiles=await hcSupabase.from('trucking_driver_profiles').select('*').order('updated_at',{ascending:false});
+ if(!profiles.error)data.truckDriverProfiles=(profiles.data||[]).map(mapTruckDriverProfile);else console.warn('Trucking driver profiles load error',profiles.error);
+ persistOnly();
+ initTruckRealtime();
+}
+async function syncTruckJobToSupabase(job){
+ if(!authReady())return {error:null,data:null};
+ let payload={local_ref:job.id,owner_name:job.ownerName,owner_email:job.ownerEmail,owner_phone:job.ownerPhone,title:job.title,route:job.route,pay:job.pay,schedule:job.schedule,requirements:job.requirements,truck_details:job.truckDetails,status:job.status};
+ let res=await hcSupabase.from('trucking_jobs').insert(payload).select().single();
+ if(!res.error&&res.data)job.dbId=res.data.id;
+ return res;
+}
+async function updateTruckJobDb(job,fields){if(!authReady()||!job)return {error:null};let q=hcSupabase.from('trucking_jobs').update(fields);return job.dbId?await q.eq('id',job.dbId):await q.eq('local_ref',job.id);}
+async function updateTruckApplicationDb(app,fields){if(!authReady()||!app)return {error:null};let q=hcSupabase.from('trucking_applications').update(fields);return app.dbId?await q.eq('id',app.dbId):await q.eq('local_ref',app.id);}
+async function deleteTruckJobDb(j){if(!authReady()||!j)return {error:null};let q=hcSupabase.from('trucking_jobs').delete();return j.dbId?await q.eq('id',j.dbId):await q.eq('local_ref',j.id);}
+async function initTruckRealtime(){
+ if(!authReady()||hcTruckRealtimeReady)return;
+ hcTruckRealtimeReady=true;
+ ['trucking_jobs','trucking_applications','trucking_driver_profiles'].forEach(tbl=>{
+   hcSupabase.channel('hc_'+tbl).on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
+     await loadSupabaseTrucking();
+     if(currentPage==='truck')truck();
+     if(currentPage==='admin')adminSuccess();
+   }).subscribe();
+ });
 }
 async function loadSupabaseMessages(){
  if(!authReady()){return;}
@@ -941,11 +985,11 @@ function truckAdminManagementHtml(){
  <h3>Truck Driver Profiles</h3><table><tr><th>Driver</th><th>Phone</th><th>City</th><th>License</th><th>Experience</th><th>Looking For</th><th>Action</th></tr>${profiles.map(p=>`<tr><td>${p.name||p.driverName||''}<br><span class="small">${p.driverEmail||''}</span></td><td>${p.phone||''}</td><td>${p.city||''}</td><td>${p.license||''}</td><td>${p.experience||''}</td><td>${p.looking||''}</td><td><button class="btn bad" onclick="deleteDriverProfile('${p.driverEmail}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No driver profiles yet.</td></tr>'}</table>`;
 }
 function deleteTruckRecord(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this truck record?'))return;data.trucks=(data.trucks||[]).filter(t=>t.id!==id);persistOnly();adminSuccess();}
-function closeTruckJob(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let j=(data.truckJobs||[]).find(x=>x.id===id);if(j)j.status='Closed';persistOnly();adminSuccess();}
-function adminApproveTruckJob(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let j=(data.truckJobs||[]).find(x=>x.id===id);if(!j)return alert('Job not found.');j.status='Open';j.approvedAt=new Date().toLocaleString();addNote(j.ownerEmail,'Your truck driver job post was approved and published: '+j.title+'.');persistOnly();adminSuccess();}
+async function closeTruckJob(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let j=(data.truckJobs||[]).find(x=>x.id===id);if(j){j.status='Closed';let r=await updateTruckJobDb(j,{status:'Closed'});if(r.error)return alert('Could not close job in Supabase: '+r.error.message);}persistOnly();adminSuccess();}
+async function adminApproveTruckJob(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let j=(data.truckJobs||[]).find(x=>x.id===id);if(!j)return alert('Job not found.');j.status='Open';j.approvedAt=new Date().toLocaleString();let r=await updateTruckJobDb(j,{status:'Open',approved_at:new Date().toISOString()});if(r.error)return alert('Could not publish job in Supabase: '+r.error.message);addNote(j.ownerEmail,'Your truck driver job post was approved and published: '+j.title+'.');persistOnly();adminSuccess();}
 function adminApproveTruckApplication(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let a=(data.truckApplications||[]).find(x=>x.id===id);if(!a)return alert('Application not found.');a.status='Pending Owner Review';a.adminApprovedAt=new Date().toLocaleString();addNote(a.ownerEmail,'Driver application approved by admin for your review: '+a.driverName+' applied for '+a.jobTitle+'.');addNote(a.driverEmail,'Your application for '+a.jobTitle+' was approved by admin and sent to the truck owner.');persistOnly();adminSuccess();}
 
-function deleteTruckJob(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this truck job post?'))return;data.truckJobs=(data.truckJobs||[]).filter(j=>j.id!==id);persistOnly();adminSuccess();}
+async function deleteTruckJob(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this truck job post?'))return;let j=(data.truckJobs||[]).find(x=>x.id===id);let r=await deleteTruckJobDb(j);if(r.error)return alert('Could not delete truck job in Supabase: '+r.error.message);data.truckJobs=(data.truckJobs||[]).filter(j=>j.id!==id);persistOnly();adminSuccess();}
 function deleteTruckApplication(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this driver application?'))return;data.truckApplications=(data.truckApplications||[]).filter(a=>a.id!==id);persistOnly();adminSuccess();}
 function deleteDriverProfile(email){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this driver profile?'))return;data.truckDriverProfiles=(data.truckDriverProfiles||[]).filter(p=>p.driverEmail!==email);persistOnly();adminSuccess();}
 function truck(){
@@ -971,7 +1015,7 @@ function truck(){
  setTimeout(showTruckExpiryWarnings,80);
 }
 function addTruck(){if(!requireLogin())return;if(currentUser.role!=='truck_owner'&&currentUser.role!=='admin')return alert('Only truck owners or admin can save truck owner records.');let truck=($('tTruck').value||'').trim();if(!truck)return alert('Truck / Unit is required.');let ins=$('tInsurance').value, reg=$('tRegistration').value;let warnings=[];[['Insurance',ins],['Registration',reg]].forEach(([label,val])=>{let n=daysUntil(val);if(n!==null&&n<0)warnings.push(label+' is expired.');else if(n!==null&&n<=30)warnings.push(label+' will expire in '+n+' days.');});if(warnings.length)alert(warnings.join('\n'));data.trucks.unshift({id:'TRK'+Date.now().toString().slice(-6),ownerName:currentUser.name,ownerEmail:currentUser.email,ownerPhone:currentUser.phone||'',truck,plate:($('tPlate').value||'').trim(),vin:($('tVin').value||'').trim(),driver:($('tDriver').value||'Unassigned').trim(),driverEmail:cleanEmail($('tDriverEmail').value),insurance:ins,registration:reg,maintenance:($('tMaintenance').value||'').trim(),status:$('tStatus').value,income:+$('tIncome').value||0,expenses:+$('tExpenses').value||0,mileage:+$('tMileage').value||0,createdAt:new Date().toLocaleString()});addNote(currentUser.email,'Truck record saved for '+truck+'.');save()}
-function postTruckJob(){if(!requireLogin())return;if(currentUser.role!=='truck_owner'&&currentUser.role!=='admin')return alert('Only truck owners can post driver hiring jobs.');let title=($('jobTitle').value||'').trim(),route=($('jobRoute').value||'').trim(),pay=($('jobPay').value||'').trim();if(!title||!route||!pay)return alert('Job title, route/location, and pay are required.');let status=currentUser.role==='admin'?'Open':'Pending Admin Approval';data.truckJobs.unshift({id:'TJ'+Date.now().toString().slice(-6),ownerName:currentUser.name,ownerEmail:currentUser.email,ownerPhone:currentUser.phone||'',title,route,pay,schedule:($('jobSchedule').value||'').trim(),requirements:($('jobReq').value||'').trim(),truckDetails:($('jobTruck').value||'').trim(),status,createdAt:new Date().toLocaleString()});addNote(currentUser.email,'Driver hiring job submitted: '+title+'. Admin approval is required before it is published.');addNote('admin@habeshaconnect.com','Truck owner job waiting for approval: '+title+' by '+currentUser.name+'.');save();alert('Job submitted. Admin approval is required before drivers can see and apply.')}
+async function postTruckJob(){if(!requireLogin())return;if(currentUser.role!=='truck_owner'&&currentUser.role!=='admin')return alert('Only truck owners can post driver hiring jobs.');let title=($('jobTitle').value||'').trim(),route=($('jobRoute').value||'').trim(),pay=($('jobPay').value||'').trim();if(!title||!route||!pay)return alert('Job title, route/location, and pay are required.');let status=currentUser.role==='admin'?'Open':'Pending Admin Approval';let job={id:'TJ'+Date.now().toString().slice(-6),ownerName:currentUser.name,ownerEmail:currentUser.email,ownerPhone:currentUser.phone||'',title,route,pay,schedule:($('jobSchedule').value||'').trim(),requirements:($('jobReq').value||'').trim(),truckDetails:($('jobTruck').value||'').trim(),status,createdAt:new Date().toLocaleString()};let res=await syncTruckJobToSupabase(job);if(res.error)return alert('Job was not posted to the shared dashboard. Please run the trucking Supabase migration, then try again. '+res.error.message);data.truckJobs.unshift(job);addNote(currentUser.email,'Driver hiring job submitted: '+title+'. Admin approval is required before it is published.');addNote('admin@habeshaconnect.com','Truck owner job waiting for approval: '+title+' by '+currentUser.name+'.');save();alert('Job submitted. Admin approval is required before drivers can see and apply.')}
 function saveDriverProfile(){if(!requireLogin())return;if(currentUser.role!=='driver'&&currentUser.role!=='admin')return alert('Only drivers or admin can save a driver job profile.');let profile={driverName:($('dpName').value||currentUser.name).trim(),driverEmail:currentUser.email,name:($('dpName').value||currentUser.name).trim(),phone:($('dpPhone').value||currentUser.phone||'').trim(),city:($('dpCity').value||currentUser.city||'').trim(),license:($('dpLicense').value||'').trim(),experience:($('dpExperience').value||'').trim(),looking:$('dpLooking').value,notes:($('dpNotes').value||'').trim(),updatedAt:new Date().toLocaleString()};let old=(data.truckDriverProfiles||[]).findIndex(p=>p.driverEmail===currentUser.email);if(old>=0)data.truckDriverProfiles[old]=profile;else data.truckDriverProfiles.unshift(profile);addNote(currentUser.email,'Driver job profile saved.');save()}
 function applyTruckJob(id){if(!requireLogin())return;if(currentUser.role!=='driver')return alert('Only truck drivers can apply for truck driving jobs.');let j=(data.truckJobs||[]).find(x=>x.id===id);if(!j)return alert('Job not found.');if(j.status!=='Open')return alert('This job is waiting for admin approval or is closed.');if((data.truckApplications||[]).some(a=>a.jobId===id&&a.driverEmail===currentUser.email))return alert('You already applied for this job.');let p=(data.truckDriverProfiles||[]).find(x=>x.driverEmail===currentUser.email)||{};if(!p.license||!p.experience){alert('Please complete your Driver Job Profile before applying.');return;}data.truckApplications.unshift({id:'TA'+Date.now().toString().slice(-6),jobId:j.id,jobTitle:j.title,ownerName:j.ownerName,ownerEmail:j.ownerEmail,driverName:p.name||currentUser.name,driverEmail:currentUser.email,driverPhone:p.phone||currentUser.phone||'',city:p.city||'',license:p.license||'',experience:p.experience||'',looking:p.looking||'',notes:p.notes||'',status:'Pending Admin Approval',createdAt:new Date().toLocaleString()});addNote('admin@habeshaconnect.com','Driver application waiting for approval: '+(p.name||currentUser.name)+' applied for '+j.title+'.');addNote(currentUser.email,'Application submitted for '+j.title+'. Admin approval is required before the owner can review it.');save();alert('Applied. Admin approval is required before the truck owner can see and review your application.');truck()}
 function approveTruckApp(id){let a=(data.truckApplications||[]).find(x=>x.id===id);if(!a)return alert('Application not found.');if(currentUser.role!=='admin'&&a.ownerEmail!==currentUser.email)return alert('Only the truck owner can approve this application.');if(currentUser.role!=='admin'&&a.status!=='Pending Owner Review')return alert('This application is waiting for admin approval.');a.status='Hired';a.approvedAt=new Date().toLocaleString();a.hiredAt=new Date().toLocaleString();let j=(data.truckJobs||[]).find(x=>x.id===a.jobId);if(j){j.status='Hired';j.hiredDriverName=a.driverName||'';j.hiredDriverEmail=a.driverEmail||'';j.hiredAt=new Date().toLocaleString();}(data.truckApplications||[]).forEach(other=>{if(other.jobId===a.jobId&&other.id!==a.id&&other.status!=='Declined'){other.status='Closed - Position Filled';other.closedAt=new Date().toLocaleString();}});addNote(a.driverEmail,'You were hired for '+a.jobTitle+'.');addNote(a.ownerEmail,'You hired '+a.driverName+' for '+a.jobTitle+'.');if(currentUser.role==='admin')addNote('admin@habeshaconnect.com','Hiring completed: '+a.driverName+' was hired for '+a.jobTitle+'.');save()}
@@ -1023,6 +1067,7 @@ async function admin(){
      await loadSupabaseRentals();
      await loadSupabaseRentalRequests();
      await loadSupabasePayments();
+     await loadSupabaseTrucking();
    }
    if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
