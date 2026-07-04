@@ -9,3 +9,12 @@ Changes:
 - New recorded payments are inserted into Supabase when connected.
 
 No SQL migration required.
+
+V7.4.0 Email Notification Module
+- Added Vercel serverless email API: api/send-email.js
+- Uses RESEND_API_KEY already configured in Vercel.
+- Optional environment variables:
+  - RESEND_FROM_EMAIL=Habesha Agenagn <notifications@habeshaagenagnapp.com>
+  - SUPPORT_EMAIL=support@habeshaagenagnapp.com
+- No Supabase table changes required.
+- No workflow/database structure changes made.
