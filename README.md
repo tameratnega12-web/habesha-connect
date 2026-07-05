@@ -105,13 +105,7 @@ Make sure Vercel environment variables are set for email sending:
 - optional `SUPPORT_EMAIL`
 
 
-V7.7.3 Update: Home Services admin email fix
-- Added Admin Notification Email setting in Admin Settings.
-- Home Services approval/request emails now send to the configured admin notification email, real admin-role emails, and fallback support email.
-- Email API errors now log clearly in the browser console.
+V7.7.3 Shipping Sender Email Fix
+- Added sender email notification when traveler accepts a shipping request.
+- Added sender email notification when admin marks shipment/item delivered.
 - No SQL changes required.
-
-Important Vercel email setup:
-- RESEND_API_KEY must be set in Vercel Environment Variables.
-- RESEND_FROM_EMAIL must be a verified sender/domain in Resend, for example: Habesha Agenagn <onboarding@resend.dev> for testing or a verified domain email for production.
-- SUPPORT_EMAIL can be set to your support/admin email.

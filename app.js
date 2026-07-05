@@ -21,10 +21,9 @@ async function loadSupabaseProfile(user){if(!authReady()||!user)return null;let 
 async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Using local prototype login.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){currentUser=u;data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));render();}}}
 
 const PROPERTY_TYPES=['Home','Apartment','Basement','Roommate','Town House','Business'];
-const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:10,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false,adminNotificationEmail:'support@habeshaagenagnapp.com'};
+const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:10,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false};
 function settings(){data.settings=Object.assign({},DEFAULT_SETTINGS,data.settings||{});return data.settings}
 function setMoneySetting(key,val){let v=Number(val);if(!isNaN(v)&&v>=0){settings()[key]=v;save()}}
-function setTextSetting(key,val){settings()[key]=String(val||'').trim();save()}
 const US_CITIES=['Atlanta, GA','Washington, DC','New York, NY','Chicago, IL','Dallas, TX','Houston, TX','Los Angeles, CA','Seattle, WA','Boston, MA','Miami, FL','Minneapolis, MN','Denver, CO','Philadelphia, PA','San Francisco, CA'];
 const ETHIOPIA_CITIES=['Addis Ababa','Adama (Nazret)','Bahir Dar','Gondar','Hawassa','Dire Dawa','Mekelle','Jimma','Dessie','Bishoftu (Debre Zeit)','Harar','Arba Minch','Shashemene'];
 function options(arr,selected=''){return arr.map(x=>`<option ${x===selected?'selected':''}>${x}</option>`).join('')}
@@ -197,36 +196,24 @@ async function pay(service,amount,desc){
 }
 
 
-/* V7.7.3 Email notification helpers - sends admin notices to the configured Admin Notification Email. */
-const HC_EMAIL_ADMIN_FALLBACK='support@habeshaagenagnapp.com';
+/* V7.4.0 Email notification helpers - client calls Vercel API only. No workflow/database changes. */
+const HC_EMAIL_ADMIN='support@habeshaagenagnapp.com';
 const HC_EMAIL_SITE='https://habeshaagenagnapp.com';
 function hcDashboardUrl(page){return HC_EMAIL_SITE+(page?('/#'+page):'');}
-function adminNotificationRecipients(){
-  let list=[];
-  let configured=cleanEmail(settings().adminNotificationEmail||'');
-  if(configured)list.push(configured);
-  (data.users||[]).filter(u=>u.role==='admin'||(u.roles||[]).includes('admin')).forEach(u=>{let e=cleanEmail(u.email||''); if(e&&e.includes('@')&&!e.includes('habeshaconnect.com'))list.push(e);});
-  list.push(HC_EMAIL_ADMIN_FALLBACK);
-  return [...new Set(list.filter(e=>e&&e.includes('@')))];
-}
-async function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',page='services',details={}}={}){
-  let recipients=Array.isArray(to)?to.map(cleanEmail):[cleanEmail(to||'')];
-  recipients=[...new Set(recipients.filter(x=>x&&x.includes('@')))] ;
-  if(!recipients.length||!subject||!summary)return {ok:false,error:'Missing recipient, subject, or summary'};
+function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',page='services',details={}}={}){
+  to=cleanEmail(to||'');
+  if(!to||!subject||!summary)return;
   try{
-    const res=await fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:recipients,name:name||'Habesha Agenagn User',subject,summary,buttonText,dashboardUrl:hcDashboardUrl(page),details})});
-    const out=await res.json().catch(()=>({}));
-    if(!res.ok){console.warn('Email notice failed',out);return {ok:false,error:out.error||'Email send failed',details:out};}
-    return {ok:true,result:out};
-  }catch(e){console.warn('Email notice error',e);return {ok:false,error:e.message||'Email notice error'};}
+    fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,name:name||'Habesha Agenagn User',subject,summary,buttonText,dashboardUrl:hcDashboardUrl(page),details})}).catch(e=>console.warn('Email notice failed',e));
+  }catch(e){console.warn('Email notice error',e)}
 }
 function sendAdminEmailNotice(subject,summary,details={},page='admin'){
-  return sendEmailNotice({to:adminNotificationRecipients(),name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
+  sendEmailNotice({to:HC_EMAIL_ADMIN,name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
 }
 function sendHomeServicesAdminApprovalEmail(item){
   if(!item)return;
   sendEmailNotice({
-    to:adminNotificationRecipients(),
+    to:HC_EMAIL_ADMIN,
     name:'Admin',
     subject:'Home Services needs approval',
     summary:'A Home Services provider profile is waiting for admin approval.',
@@ -246,7 +233,7 @@ function sendHomeServicesAdminApprovalEmail(item){
 function sendHomeServicesAdminRequestEmail(req){
   if(!req)return;
   sendEmailNotice({
-    to:adminNotificationRecipients(),
+    to:HC_EMAIL_ADMIN,
     name:'Admin',
     subject:'New Home Services request submitted',
     summary:'A customer sent a Home Services request. Admin can review it in the Home Services management section.',
@@ -781,7 +768,9 @@ async function acceptShip(id){
  if(s.tripId){let t=data.trips.find(x=>x.id===s.tripId);if(t&&s.weight>t.availableSpace)return alert('Not enough space left. Remaining: '+t.availableSpace+' lb');}
  if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Accepted'}).eq('id',s.dbId);if(error)return alert('Could not accept request: '+error.message);}
  s.status='Accepted';s.traveler=currentUser.name;s.travelerPhone=currentUser.phone||'';s.travelerEmail=currentUser.email;s.travelerVerified=!!currentUser.verified;
- addNote(s.senderEmail||'all','Your shipment was accepted by '+currentUser.name+'. Please confirm the agreement so admin can approve and reserve the space.');save();shipping()}
+ addNote(s.senderEmail||'all','Your shipment was accepted by '+currentUser.name+'. Please confirm the agreement so admin can approve and reserve the space.');
+ if(s.senderEmail){sendEmailNotice({to:s.senderEmail,name:s.sender||'Sender',subject:'Traveler accepted your shipping request',summary:'Good news! The traveler accepted your luggage space request. Please open your Shipping Dashboard and continue the agreement/payment step so admin can approve it.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Route:s.route||'',Traveler:s.traveler||currentUser.name,Weight:(s.weight||'')+' lb',Status:'Accepted'}});}
+ save();shipping()}
 async function declineShip(id){let s=data.shipments.find(x=>x.id===id);if(!s)return;if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Declined'}).eq('id',s.dbId);if(error)return alert('Could not decline request: '+error.message);}s.status='Declined';addNote(s.senderEmail||'all','Your shipment request was declined.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping request rejected',summary:'Your shipment request was declined.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Declined'}});save();shipping()}
 function reviewUser(email,type){if(!requireLogin())return;if(!email)return alert('No user assigned yet to review.');let rating=prompt('Rating 1-5:','5');if(rating===null)return;let text=prompt('Write a short review:','Good service');data.reviews.unshift({type,target:email,from:currentUser.email,rating:+rating||5,text:text||'',time:new Date().toLocaleString()});addNote(email,'You received a new rating/review.');save();}
 
@@ -1282,7 +1271,7 @@ async function admin(){
  
  <h3>Verify Users</h3><div class="card"><p class="muted">Click Verify after reviewing the user. This changes the real Supabase <b>profiles.verified</b> value.</p><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Status</th><th>Action</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button type="button" class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button type="button" class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`}</td></tr>`).join('')||'<tr><td colspan="6">No users found.</td></tr>'}</table></div>
  <div class="grid"><div class="card"><p>Users</p><div class="stat">${managedUsers.length}</div></div><div class="card"><p>Total Revenue</p><div class="stat">${money(revenue)}</div></div><div class="card"><p>Favorites Saved</p><div class="stat">${data.favorites.length}</div></div><div class="card"><p>Reviews</p><div class="stat">${data.reviews.length}</div></div></div>
- <h3>Admin Settings</h3><div class="grid"><div class="card"><h3>Prices</h3><label>Owner listing fee</label><input type="number" value="${settings().ownerListingFee}" onchange="setMoneySetting('ownerListingFee',this.value)"><label>Seeker viewing fee</label><input type="number" value="${settings().seekerViewingFee}" onchange="setMoneySetting('seekerViewingFee',this.value)"><label>Shipping rate per lb</label><input type="number" value="${settings().shippingRatePerLb}" onchange="setMoneySetting('shippingRatePerLb',this.value)"><label>App commission per lb</label><input type="number" value="${settings().appCommissionPerLb}" onchange="setMoneySetting('appCommissionPerLb',this.value)"><label>Traveler commission per lb</label><input type="number" value="${settings().travelerCommissionPerLb}" onchange="setMoneySetting('travelerCommissionPerLb',this.value)"><label>Traveler trip listing fee</label><input type="number" value="${settings().travelerTripListingFee}" onchange="setMoneySetting('travelerTripListingFee',this.value)"></div><div class="card"><h3>Launch Controls</h3><p><b>Registration:</b> ${settings().registrationOpen?'Open':'Closed'}</p><p><b>Maintenance Mode:</b> ${settings().maintenanceMode?'On':'Off'}</p><label>Admin notification email</label><input value="${settings().adminNotificationEmail||'support@habeshaagenagnapp.com'}" onchange="setTextSetting('adminNotificationEmail',this.value)" placeholder="your-email@example.com"><p class="muted">Home Services approvals and requests will email this address.</p><div class="actions"><button class="btn ghost" onclick="toggleRegistration()">Toggle Registration</button><button class="btn warn" onclick="toggleMaintenance()">Toggle Maintenance</button></div><p class="muted">Use these controls before going live. Real database, Stripe/PayPal, and cloud image storage are the next deployment connections.</p></div></div><h3>Launch Checklist</h3><div class="card"><p>✅ UI complete • ✅ Admin reports • ✅ User verification • ✅ Payment records • ✅ Chat prototype • ✅ Notifications • ✅ Export data</p><p class="muted">This ZIP is still a browser-based MVP. For a live public website, connect Firebase/Supabase, Stripe/PayPal, and cloud photo storage.</p></div><h3>Search Users / Verification</h3><div class="card"><label>Search by name, email, phone, or role</label><input id="userSearch" value="${q}" oninput="admin()" placeholder="Search users"><p class="muted">Verify users after reviewing ID, ticket/booking, phone, and account details. Shipment space updates after sender payment and admin approval. Non-admin users only see their own payment information.</p></div><div class="tableWrap"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Active Role</th><th>Status</th><th>Actions</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${roleTitle(u.role||u.active_role||'customer')}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`} <button class="btn ghost" onclick="editUser('${u.email}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u.email}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No matching users.</td></tr>'}</table>
+ <h3>Admin Settings</h3><div class="grid"><div class="card"><h3>Prices</h3><label>Owner listing fee</label><input type="number" value="${settings().ownerListingFee}" onchange="setMoneySetting('ownerListingFee',this.value)"><label>Seeker viewing fee</label><input type="number" value="${settings().seekerViewingFee}" onchange="setMoneySetting('seekerViewingFee',this.value)"><label>Shipping rate per lb</label><input type="number" value="${settings().shippingRatePerLb}" onchange="setMoneySetting('shippingRatePerLb',this.value)"><label>App commission per lb</label><input type="number" value="${settings().appCommissionPerLb}" onchange="setMoneySetting('appCommissionPerLb',this.value)"><label>Traveler commission per lb</label><input type="number" value="${settings().travelerCommissionPerLb}" onchange="setMoneySetting('travelerCommissionPerLb',this.value)"><label>Traveler trip listing fee</label><input type="number" value="${settings().travelerTripListingFee}" onchange="setMoneySetting('travelerTripListingFee',this.value)"></div><div class="card"><h3>Launch Controls</h3><p><b>Registration:</b> ${settings().registrationOpen?'Open':'Closed'}</p><p><b>Maintenance Mode:</b> ${settings().maintenanceMode?'On':'Off'}</p><div class="actions"><button class="btn ghost" onclick="toggleRegistration()">Toggle Registration</button><button class="btn warn" onclick="toggleMaintenance()">Toggle Maintenance</button></div><p class="muted">Use these controls before going live. Real database, Stripe/PayPal, and cloud image storage are the next deployment connections.</p></div></div><h3>Launch Checklist</h3><div class="card"><p>✅ UI complete • ✅ Admin reports • ✅ User verification • ✅ Payment records • ✅ Chat prototype • ✅ Notifications • ✅ Export data</p><p class="muted">This ZIP is still a browser-based MVP. For a live public website, connect Firebase/Supabase, Stripe/PayPal, and cloud photo storage.</p></div><h3>Search Users / Verification</h3><div class="card"><label>Search by name, email, phone, or role</label><input id="userSearch" value="${q}" oninput="admin()" placeholder="Search users"><p class="muted">Verify users after reviewing ID, ticket/booking, phone, and account details. Shipment space updates after sender payment and admin approval. Non-admin users only see their own payment information.</p></div><div class="tableWrap"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Services</th><th>Active Role</th><th>Status</th><th>Actions</th></tr>${managedUsers.map(u=>`<tr><td>${u.name}</td><td>${u.phone||''}</td><td>${u.email}</td><td>${userRoleText(u)}</td><td>${roleTitle(u.role||u.active_role||'customer')}</td><td>${u.verified?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}</td><td>${u.verified?`<button class="btn warn" onclick="unverifyUser('${u.email}')">Unverify</button>`:`<button class="btn primary" onclick="approveUser('${u.email}')">Verify</button>`} <button class="btn ghost" onclick="editUser('${u.email}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u.email}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No matching users.</td></tr>'}</table>
  <h3>Payment History</h3><table><tr><th>User</th><th>Service</th><th>Description</th><th>Amount</th><th>Time</th></tr>${data.payments.map(p=>`<tr><td>${p.user}</td><td>${p.service}</td><td>${p.desc}</td><td>${money(p.amount)}</td><td>${p.time}</td></tr>`).join('')||'<tr><td colspan="5">No payments yet.</td></tr>'}</table>
  <h3>Reports</h3><div class="grid"><div class="card"><h3>Monthly</h3>${monthly}</div><div class="card"><h3>Quarterly</h3>${quarterly}</div><div class="card"><h3>Yearly</h3>${yearly}</div></div>
  <h3>Traveler Listing Fees</h3><table><tr><th>Traveler</th><th>Trip</th><th>Fee</th><th>Status</th></tr>${data.trips.map(t=>`<tr><td>${t.traveler}</td><td>${t.route}</td><td>${money(t.listingFeeAmount||settings().travelerTripListingFee)}</td><td>${t.listingFeeRefunded?'<span class="pill good">Refunded</span>':(t.listingFeePaid?'<span class="pill warn">Pending Refund</span>':'<span class="pill bad">Unpaid</span>')}</td></tr>`).join('')||'<tr><td colspan="4">No traveler listing fees yet.</td></tr>'}</table>
@@ -1378,6 +1367,7 @@ async function markDelivered(id){
   if(!res.error&&authReady()&&relatedTrip&&relatedTrip.dbId)res=await hcSupabase.from('trips').update({status:'Delivered',remaining_space_lb:0}).eq('id',relatedTrip.dbId);
   if(res.error){s.status=old;if(relatedTrip&&oldTrip)Object.assign(relatedTrip,oldTrip);return alert('Could not mark delivered in Supabase: '+res.error.message)}
   addNote('admin@habeshaconnect.com','Shipment '+(s.tracking||id)+' was marked delivered. The related traveler trip is removed from sender availability.');
+  if(s.senderEmail){addNote(s.senderEmail,'Your shipment '+(s.tracking||id)+' was marked delivered.');sendEmailNotice({to:s.senderEmail,name:s.sender||'Sender',subject:'Your item was marked delivered',summary:'Your shipment has been marked delivered by admin. If you have any questions, please contact Habesha Agenagn support/admin.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Route:s.route||'',Traveler:s.traveler||'',Weight:(s.weight||'')+' lb',Status:'Delivered'}});}
   persistOnly(); await refreshAdminData(); adminSuccess();
 }
 
