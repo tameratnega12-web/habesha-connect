@@ -114,3 +114,12 @@ V7.7.4 Shipping Email Flow Fix
 - Added traveler email notification when sender confirms/pays the shipping agreement.
 - Existing flow already notifies admin for trip/request/payment, sender on acceptance/delivery, and traveler on payout.
 - No SQL required.
+
+## V7.7.6 Trailer Rental Email Approval Flow Fix
+- Trailer owner posts now require Admin approval before publishing.
+- Truck owner/driver trailer requests now require Admin approval before trailer owner review.
+- Admin receives email notifications for trailer post and trailer request approvals.
+- Trailer owner receives email after Admin approves the request.
+- Truck owner/driver receives email after trailer owner accepts or declines.
+- Mobile and desktop use the same email/admin approval flow.
+- No SQL changes required.
