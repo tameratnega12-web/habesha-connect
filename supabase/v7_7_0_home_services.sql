@@ -36,7 +36,7 @@ create table if not exists public.home_service_requests (
   preferred_date text,
   job_description text not null,
   quote_amount text,
-  status text not null default 'Pending Admin Approval',
+  status text not null default 'Requested',
   completed_at timestamptz,
   created_at timestamptz default now()
 );
