@@ -1,0 +1,7 @@
+V7.6.7 Login To Home
+
+- Changed successful sign-in behavior so every role opens the Home page first instead of My Services/Profile.
+- Changed local admin fallback login to open Home first as well.
+- Changed account creation flow to open Home after account creation.
+- No Supabase SQL changes.
+- No email, payment, shipping, rental, trucking, or admin workflow changes.
