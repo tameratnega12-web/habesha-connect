@@ -240,6 +240,7 @@ async function pay(service,amount,desc){
 
 /* V7.4.0 Email notification helpers - client calls Vercel API only. No workflow/database changes. */
 const HC_EMAIL_ADMIN='support@habeshaagenagnapp.com';
+const HC_EMAIL_ADMIN_BACKUPS=['habeshaconnect@gmail.com'];
 const HC_EMAIL_SITE='https://habeshaagenagnapp.com';
 function hcDashboardUrl(page){return HC_EMAIL_SITE+(page?('/#'+page):'');}
 function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',page='services',details={}}={}){
@@ -249,8 +250,18 @@ function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',pa
     fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,name:name||'Habesha Agenagn User',subject,summary,buttonText,dashboardUrl:hcDashboardUrl(page),details})}).catch(e=>console.warn('Email notice failed',e));
   }catch(e){console.warn('Email notice error',e)}
 }
+function adminEmailRecipients(){
+  let emails=[HC_EMAIL_ADMIN,...HC_EMAIL_ADMIN_BACKUPS];
+  try{
+    (data.users||[]).forEach(u=>{
+      let roles=[u.role,u.active_role,...(Array.isArray(u.roles)?u.roles:[])].filter(Boolean).map(String);
+      if(roles.includes('admin')&&u.email)emails.push(u.email);
+    });
+  }catch(e){}
+  return [...new Set(emails.map(cleanEmail).filter(Boolean))];
+}
 function sendAdminEmailNotice(subject,summary,details={},page='admin'){
-  sendEmailNotice({to:HC_EMAIL_ADMIN,name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
+  adminEmailRecipients().forEach(to=>sendEmailNotice({to,name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details}));
 }
 function sendHomeServicesAdminApprovalEmail(item){
   if(!item)return;
