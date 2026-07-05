@@ -123,3 +123,18 @@ V7.7.4 Shipping Email Flow Fix
 - Truck owner/driver receives email after trailer owner accepts or declines.
 - Mobile and desktop use the same email/admin approval flow.
 - No SQL changes required.
+
+
+## V7.7.7 Shipping Email Flow + Admin Mobile Fix
+
+- Traveler trip posts now start as Pending Admin Approval.
+- Admin can approve/decline traveler trips and approved trips become visible to senders.
+- Sender space requests now start as Pending Admin Approval.
+- Admin approval sends emails to sender and traveler and moves the request to traveler review.
+- Traveler accept/decline emails notify the sender.
+- Sender payment emails notify admin and traveler.
+- Admin payment approval emails notify sender and traveler.
+- Delivered emails notify sender.
+- Traveler payout emails notify traveler.
+- Email triggers are called from the same workflow for desktop and mobile.
+- No SQL migration required.
