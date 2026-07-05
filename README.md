@@ -109,3 +109,8 @@ V7.7.3 Shipping Sender Email Fix
 - Added sender email notification when traveler accepts a shipping request.
 - Added sender email notification when admin marks shipment/item delivered.
 - No SQL changes required.
+
+V7.7.4 Shipping Email Flow Fix
+- Added traveler email notification when sender confirms/pays the shipping agreement.
+- Existing flow already notifies admin for trip/request/payment, sender on acceptance/delivery, and traveler on payout.
+- No SQL required.
