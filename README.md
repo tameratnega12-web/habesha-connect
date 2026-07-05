@@ -54,3 +54,17 @@ V7.5.8: Added Rentals email notification for Property Owner when a Seeker reques
 
 
 V7.6.0 Update: Added/confirmed seeker email notification when a rental viewing request is declined. No SQL/database changes.
+
+
+## V7.6.2 Trucking Trailer Rent Admin Approval
+- Trailer rent listings now show at the top of Truck Owner/Driver dashboard after Admin approval.
+- New trailer rent posts go to Admin first with status: Pending Admin Approval.
+- Trailer rental requests go to Admin first with status: Request Pending Admin Approval.
+- Trailer owner sees the rental request only after Admin approves it.
+- Only Trucking trailer rent flow was changed.
+- Run: supabase/v7_6_2_trucking_trailer_admin_approval.sql
+
+V7.6.3 Trucking Trailer Owner Request Top Panel
+- Added a top Truck Owner dashboard section for Admin-approved trailer rental requests waiting for owner decision.
+- No database or SQL changes required.
+- Only Trucking trailer rent UI ordering/visibility was changed.
