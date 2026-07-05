@@ -210,6 +210,46 @@ function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',pa
 function sendAdminEmailNotice(subject,summary,details={},page='admin'){
   sendEmailNotice({to:HC_EMAIL_ADMIN,name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
 }
+function sendHomeServicesAdminApprovalEmail(item){
+  if(!item)return;
+  sendEmailNotice({
+    to:HC_EMAIL_ADMIN,
+    name:'Admin',
+    subject:'Home Services needs approval',
+    summary:'A Home Services provider profile is waiting for admin approval.',
+    buttonText:'Review Home Services Approvals',
+    page:'admin',
+    details:{
+      Business:item.businessName||'',
+      Provider:item.providerName||'',
+      Email:item.providerEmail||'',
+      Phone:item.providerPhone||'',
+      Category:item.category||'',
+      Area:item.serviceArea||'',
+      Status:item.status||'Pending Admin Approval'
+    }
+  });
+}
+function sendHomeServicesAdminRequestEmail(req){
+  if(!req)return;
+  sendEmailNotice({
+    to:HC_EMAIL_ADMIN,
+    name:'Admin',
+    subject:'New Home Services request submitted',
+    summary:'A customer sent a Home Services request. Admin can review it in the Home Services management section.',
+    buttonText:'Open Home Services Management',
+    page:'admin',
+    details:{
+      Customer:req.customerName||'',
+      CustomerEmail:req.customerEmail||'',
+      Provider:req.providerName||'',
+      ProviderEmail:req.providerEmail||'',
+      Category:req.category||'',
+      Status:req.status||'Requested',
+      Job:req.jobDescription||''
+    }
+  });
+}
 function userDisplayByEmail(email,fallback){let u=(data.users||[]).find(x=>cleanEmail(x.email)===cleanEmail(email||''));return (u&&u.name)||fallback||'Habesha Agenagn User';}
 function paymentVisibleForActiveRole(p){
  if(!currentUser)return false;
@@ -1143,14 +1183,14 @@ async function postHomeServiceProvider(){
  if(!businessName||!category||!serviceArea||!phone)return alert('Business name, category, service area, and phone are required.');
  let item={id:'HSP'+Date.now().toString().slice(-6),providerName:currentUser.name,providerEmail:currentUser.email,providerPhone:phone,businessName,category,serviceArea,experience:($('hsExp').value||'').trim(),priceNote:($('hsPrice').value||'').trim(),licenseInfo:($('hsLicense').value||'').trim(),description:($('hsDesc').value||'').trim(),status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};
  let res=await syncHomeServiceProviderToSupabase(item);if(res.error)return alert('Home Services provider was not saved. Please run the V7.7.0 Home Services SQL first. '+res.error.message);
- data.homeServiceProviders.unshift(item);addNote('admin@habeshaconnect.com','Home service provider waiting for approval: '+businessName+'.');sendAdminEmailNotice('Home Service Provider Pending Approval','A provider submitted a Home Services profile.',{Provider:currentUser.name,Email:currentUser.email,Business:businessName,Category:category},'admin');save();alert('Provider profile submitted. Admin approval is required before customers see it.');show('home_services');
+ data.homeServiceProviders.unshift(item);addNote('admin@habeshaconnect.com','Home service provider waiting for approval: '+businessName+'.');sendHomeServicesAdminApprovalEmail(item);save();alert('Provider profile submitted. Admin approval is required before customers see it. Admin was notified by email.');show('home_services');
 }
 async function submitHomeServiceRequest(id){
  if(!requireLogin())return;let p=(data.homeServiceProviders||[]).find(x=>x.id===id);if(!p)return alert('Provider not found.');
  let phone=($('hsReqPhone').value||'').trim(),job=($('hsReqDesc').value||'').trim();if(!phone||!job)return alert('Phone and job description are required.');
  let req={id:'HSR'+Date.now().toString().slice(-6),providerId:p.id,providerDbId:p.dbId||'',providerName:p.businessName||p.providerName,providerEmail:p.providerEmail,customerName:currentUser.name,customerEmail:currentUser.email,customerPhone:phone,category:p.category,serviceAddress:($('hsReqAddress').value||'').trim(),preferredDate:($('hsReqDate').value||'').trim(),jobDescription:job,quoteAmount:'',status:'Requested',createdAt:new Date().toLocaleString()};
  let res=await syncHomeServiceRequestToSupabase(req,p);if(res.error)return alert('Service request was not saved. Please run the V7.7.0 Home Services SQL first. '+res.error.message);
- data.homeServiceRequests.unshift(req);addNote(p.providerEmail,'New home service request from '+currentUser.name+' for '+p.category+'.');sendEmailNotice({to:p.providerEmail,name:p.providerName,subject:'New Home Service Request',summary:'A customer requested your home service.',buttonText:'Open Home Services',page:'home_services',details:{Customer:currentUser.name,Phone:phone,Category:p.category,Job:job}});save();alert('Service request sent to the provider.');show('home_services');
+ data.homeServiceRequests.unshift(req);addNote(p.providerEmail,'New home service request from '+currentUser.name+' for '+p.category+'.');sendEmailNotice({to:p.providerEmail,name:p.providerName,subject:'New Home Service Request',summary:'A customer requested your home service.',buttonText:'Open Home Services',page:'home_services',details:{Customer:currentUser.name,Phone:phone,Category:p.category,Job:job}});sendHomeServicesAdminRequestEmail(req);save();alert('Service request sent to the provider. Admin was notified by email.');show('home_services');
 }
 async function setHomeServiceRequestStatus(id,status){let r=(data.homeServiceRequests||[]).find(x=>x.id===id);if(!r)return alert('Request not found.');if(currentUser.role!=='admin'&&r.providerEmail!==currentUser.email)return alert('Only the provider can update this request.');let old=r.status;r.status=status;if(status==='Completed')r.completedAt=new Date().toLocaleString();let fields={status};if(status==='Completed')fields.completed_at=new Date().toISOString();let res=await updateHomeServiceRequestDb(r,fields);if(res.error){r.status=old;return alert('Could not update request: '+res.error.message)}addNote(r.customerEmail,'Your home service request status changed to '+status+'.');save();show('home_services');}
 function acceptHomeServiceRequest(id){setHomeServiceRequestStatus(id,'Accepted')}

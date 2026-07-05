@@ -90,3 +90,16 @@ Home Services workflow:
 - Customer can browse approved providers and request service.
 - Provider accepts, declines, marks in progress, and completes jobs.
 - Payments remain direct between customer and provider in Phase 1.
+
+
+## V7.7.2 Home Services Admin Email
+
+Added email notification for Home Services admin review:
+- When a provider submits a Home Services post, Admin receives an email: **Home Services needs approval**.
+- When a customer sends a Home Services request, Admin receives an email notice also.
+- Existing Shipping, Rentals, Marketplace, Trucking, Trailer Rentals, Auth, and Admin workflows were not changed.
+
+Make sure Vercel environment variables are set for email sending:
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- optional `SUPPORT_EMAIL`
