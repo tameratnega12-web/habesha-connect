@@ -22,5 +22,5 @@ This version connects the Login, Create Account, Logout, and Forgot Password but
 7. You should see the matching profile row.
 
 ## Notes
-- The local admin login remains as emergency fallback: `admin@habeshaconnect.com / admin123`.
+- The local admin login fallback was removed: `Use Supabase admin profile only`.
 - Real Supabase admin should be created later and marked as `admin` in the `profiles` table.

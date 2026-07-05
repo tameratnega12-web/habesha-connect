@@ -1,6 +1,6 @@
 const APP_NAME = 'Habesha Agenagn';
 const WEBSITE = 'https://habeshaagenagnapp.com';
-const SUPPORT = process.env.SUPPORT_EMAIL || 'support@habeshaagenagnapp.com';
+const SUPPORT = process.env.SUPPORT_EMAIL || 'admin.habeshaconnect@gmail.com';
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || `Habesha Agenagn <notifications@habeshaagenagnapp.com>`;
 
 function escapeHtml(value = '') {

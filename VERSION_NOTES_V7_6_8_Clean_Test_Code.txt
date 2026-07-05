@@ -1,0 +1,7 @@
+V7.6.8 Clean Test Code
+
+- Removed seeded local admin user and default local password from app storage seed.
+- Removed local admin fallback login path.
+- Replaced old admin email references with admin.habeshaconnect@gmail.com.
+- Cleaned test wording in customer-facing screens.
+- Kept Supabase/Vercel workflows and app structure unchanged.

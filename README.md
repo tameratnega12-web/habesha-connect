@@ -71,6 +71,5 @@ V7.6.3 Trucking Trailer Owner Request Top Panel
 
 
 ## V7.6.4 Admin Email Copy Fix
-- Kept the original admin/support email: support@habeshaagenagnapp.com
-- Added a second admin Gmail copy: admin.habeshaconnect@gmail.com
+- Admin/support recipient: admin.habeshaconnect@gmail.com
 - Updated app.js, index_script.js, and index_inline.js so every `sendAdminEmailNotice(...)` sends to both inboxes.
