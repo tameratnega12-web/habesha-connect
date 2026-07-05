@@ -194,6 +194,7 @@ async function pay(service,amount,desc){
 
 /* V7.4.0 Email notification helpers - client calls Vercel API only. No workflow/database changes. */
 const HC_EMAIL_ADMIN='support@habeshaagenagnapp.com';
+const HC_EMAIL_ADMIN_GMAIL='admin.habeshaconnect@gmail.com';
 const HC_EMAIL_SITE='https://habeshaagenagnapp.com';
 function hcDashboardUrl(page){return HC_EMAIL_SITE+(page?('/#'+page):'');}
 function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',page='services',details={}}={}){
@@ -204,7 +205,11 @@ function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',pa
   }catch(e){console.warn('Email notice error',e)}
 }
 function sendAdminEmailNotice(subject,summary,details={},page='admin'){
+  // Keep the original support email and also send a copy to the Gmail admin inbox.
   sendEmailNotice({to:HC_EMAIL_ADMIN,name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
+  if(cleanEmail(HC_EMAIL_ADMIN_GMAIL)!==cleanEmail(HC_EMAIL_ADMIN)){
+    sendEmailNotice({to:HC_EMAIL_ADMIN_GMAIL,name:'Habesha Agenagn Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
+  }
 }
 function userDisplayByEmail(email,fallback){let u=(data.users||[]).find(x=>cleanEmail(x.email)===cleanEmail(email||''));return (u&&u.name)||fallback||'Habesha Agenagn User';}
 function paymentVisibleForActiveRole(p){

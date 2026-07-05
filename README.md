@@ -69,8 +69,8 @@ V7.6.3 Trucking Trailer Owner Request Top Panel
 - No database or SQL changes required.
 - Only Trucking trailer rent UI ordering/visibility was changed.
 
-V7.6.4 Trucking Trailer Dashboard Priority Layout
-- Moved approved Trailer Rentals Available to the very top of the Trucking Driver/Owner dashboard.
-- Admin-approved trailer rental requests remain at the top of the Trailer Owner dashboard for owner approve/decline.
-- No SQL required; uses V7.6.2 trailer approval fields.
-- Only Trucking Trailer Rent layout was adjusted.
+
+## V7.6.4 Admin Email Copy Fix
+- Kept the original admin/support email: support@habeshaagenagnapp.com
+- Added a second admin Gmail copy: admin.habeshaconnect@gmail.com
+- Updated app.js, index_script.js, and index_inline.js so every `sendAdminEmailNotice(...)` sends to both inboxes.
