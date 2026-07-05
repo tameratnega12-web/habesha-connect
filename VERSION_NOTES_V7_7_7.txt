@@ -1,0 +1,17 @@
+V7.7.7 Home Services Approval + Email + Profile Fix
+
+Changed only Home Services / profile related areas:
+- Service Provider profile page now shows Home Service buttons:
+  - Post Home Service
+  - See My Services
+  - See Requests
+- Provider posts a service -> status becomes Pending Admin Approval.
+- Admin receives an email attempt and in-app notification when a provider posts a service.
+- Customer sees only admin-approved providers.
+- Customer requests a service -> request becomes Pending Admin Approval.
+- Provider does not see the customer request until admin approves it.
+- Admin can approve/reject customer service requests.
+- After admin approves the request, provider receives notification/email and can accept/decline/start/complete.
+- If email fails, the app now tells you to check RESEND_API_KEY and Admin Notification Email setting.
+
+No Shipping, Rentals, Marketplace, Trucking job, Trailer Rental, Auth, or Business workflow changes were made.
