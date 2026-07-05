@@ -74,3 +74,19 @@ V7.6.4 Trucking Trailer Dashboard Priority Layout
 - Admin-approved trailer rental requests remain at the top of the Trailer Owner dashboard for owner approve/decline.
 - No SQL required; uses V7.6.2 trailer approval fields.
 - Only Trucking Trailer Rent layout was adjusted.
+
+## V7.7.0 Home Services added
+
+This version adds a separate Home Services module without changing the previous Shipping, Rentals, Marketplace, Trucking, Trailer Rentals, Business, Auth, or Admin workflows.
+
+New Supabase migration:
+- `supabase/v7_7_0_home_services.sql`
+
+Run this SQL in Supabase before testing Home Services with the live database.
+
+Home Services workflow:
+- Service Provider submits provider profile.
+- Admin approves provider profile.
+- Customer can browse approved providers and request service.
+- Provider accepts, declines, marks in progress, and completes jobs.
+- Payments remain direct between customer and provider in Phase 1.
