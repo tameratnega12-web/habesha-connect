@@ -68,3 +68,9 @@ V7.6.3 Trucking Trailer Owner Request Top Panel
 - Added a top Truck Owner dashboard section for Admin-approved trailer rental requests waiting for owner decision.
 - No database or SQL changes required.
 - Only Trucking trailer rent UI ordering/visibility was changed.
+
+V7.6.4 Trucking Trailer Dashboard Priority Layout
+- Moved approved Trailer Rentals Available to the very top of the Trucking Driver/Owner dashboard.
+- Admin-approved trailer rental requests remain at the top of the Trailer Owner dashboard for owner approve/decline.
+- No SQL required; uses V7.6.2 trailer approval fields.
+- Only Trucking Trailer Rent layout was adjusted.
