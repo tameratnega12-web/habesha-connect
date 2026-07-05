@@ -1,0 +1,12 @@
+V7.6.5 Profile Truck Job Buttons
+
+Changes made:
+- Added Truck Owner profile dashboard card with Post Driver Hiring Job button.
+- Added Truck Driver profile dashboard card with See Available Truck Jobs button.
+- Added helper to open Trucking page and scroll to the correct section.
+- Removed Post Job quick button from the top of the Trucking page for truck owners.
+- Removed See Jobs quick button from the top of the Trucking page for truck drivers.
+
+No SQL changes required.
+No Supabase table changes required.
+No email workflow changes made.

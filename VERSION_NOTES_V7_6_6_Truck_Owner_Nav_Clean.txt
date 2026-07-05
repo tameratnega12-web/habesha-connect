@@ -1,0 +1,5 @@
+V7.6.6 Truck Owner Navigation Clean
+
+- Truck Owner top navigation now shows only Home, Profile, My Services, and Trucking.
+- Removed Messages, Notifications, About, Contact, Help/FAQ, Report Problem, Privacy, and Terms from Truck Owner top menu.
+- No workflow, Supabase, email, or admin approval logic changed.

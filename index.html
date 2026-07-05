@@ -250,7 +250,7 @@ function sendEmailNotice({to,name,subject,summary,buttonText='Open Dashboard',pa
 }
 function adminEmailRecipients(){
   const localAdmins=(data.users||[]).filter(u=>u.role==='admin'||u.active_role==='admin'||(u.roles||[]).includes('admin')).map(u=>u.email);
-  return normalizeEmailRecipients([HC_EMAIL_ADMIN,'admin@habeshaconnect.com','admin.habeshaconnect@gmail.com',...localAdmins]);
+  return normalizeEmailRecipients([HC_EMAIL_ADMIN,'admin@habeshaconnect.com','admin@habeshaagenagnapp.com',...localAdmins]);
 }
 function sendAdminEmailNotice(subject,summary,details={},page='admin'){
   sendEmailNotice({to:adminEmailRecipients(),name:'Admin',subject,summary,buttonText:'Open Admin Dashboard',page,details});
