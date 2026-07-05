@@ -138,3 +138,6 @@ V7.7.4 Shipping Email Flow Fix
 - Traveler payout emails notify traveler.
 - Email triggers are called from the same workflow for desktop and mobile.
 - No SQL migration required.
+
+
+V7.7.8: Mobile admin email trigger fix. Admin emails now use fixed recipients and keepalive fetch, and key mobile workflow handlers await admin email calls before navigating. No SQL needed.
