@@ -1,0 +1,9 @@
+V7.7.3 Home Services City Calendar Review
+
+- Removed old browser prompt request flow from Home Services.
+- Added proper date calendar input and time picker request form.
+- Allows any city/address area, not only Atlanta.
+- Shows customer a full request summary and lets them cancel/revise before submitting.
+- Added full home service list inside the Home Services page.
+- Added Supabase migration to fix missing city/preferred date/details columns on older databases.
+- Kept existing approval/email flow: customer request -> admin email -> admin approval -> provider email -> provider accept/decline -> customer email.

@@ -47,3 +47,15 @@ for all to authenticated using (true) with check (true);
 drop policy if exists "home_service_requests_authenticated_all" on public.home_service_requests;
 create policy "home_service_requests_authenticated_all" on public.home_service_requests
 for all to authenticated using (true) with check (true);
+
+-- Safe updates for existing projects that already ran an older Home Services SQL.
+alter table if exists public.home_service_posts add column if not exists city text;
+alter table if exists public.home_service_posts add column if not exists price text;
+alter table if exists public.home_service_posts add column if not exists description text;
+alter table if exists public.home_service_posts add column if not exists provider_phone text;
+alter table if exists public.home_service_requests add column if not exists customer_phone text;
+alter table if exists public.home_service_requests add column if not exists city text;
+alter table if exists public.home_service_requests add column if not exists preferred_date text;
+alter table if exists public.home_service_requests add column if not exists details text;
+alter table if exists public.home_service_requests add column if not exists admin_approved_at timestamptz;
+alter table if exists public.home_service_requests add column if not exists provider_responded_at timestamptz;
