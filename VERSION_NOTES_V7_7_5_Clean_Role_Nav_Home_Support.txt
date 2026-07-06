@@ -1,0 +1,15 @@
+V7.7.5 Clean Role Navigation + Home Support
+
+Changes:
+- Simplified the top navigation after sign-in by role.
+- Logged-in users now see only Home, Profile, My Services, and their main service page.
+- Truck Owner / Truck Driver see Trucking as the main service page.
+- Traveler / Sender see Shipping.
+- Property Owner / Rent Seeker see Rentals.
+- Home Service Provider sees Home Services.
+- Business Owner sees Business Manager.
+- Admin sees Admin.
+- Moved About, Contact, Help / FAQ, Report Problem, Privacy, and Terms into an Information & Support section on the Home page.
+- Kept public/support pages accessible from Home without crowding the top menu.
+- No SQL changes.
+- No database workflow changes.

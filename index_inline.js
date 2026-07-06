@@ -56,22 +56,36 @@ function contactLine(label,name,phone,email){return `<p><b>${label}:</b> ${name|
 ensureArrays();
 const PUBLIC_PAGES=['about','contact','help','report','privacy','terms'];
 const ROLE_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','business',...PUBLIC_PAGES],
+ guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','business',...PUBLIC_PAGES],
  traveler:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
  sender:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
  owner:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],
  rent_seeker:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],
  admin:['home','services','profile','shipping','rentals','marketplace','jobs','truck','home_services','business','messages','notifications','admin',...PUBLIC_PAGES],
  customer:['home','services','profile','home_services','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
- truck_owner:['home','profile','services','truck'],
+ truck_owner:['home','profile','services','truck','messages','notifications',...PUBLIC_PAGES],
  driver:['home','services','profile','truck','home_services','messages','notifications',...PUBLIC_PAGES],
  service_provider:['home','services','profile','home_services','messages','notifications',...PUBLIC_PAGES],
  business_owner:['home','services','profile','business','home_services','marketplace','jobs','messages','notifications',...PUBLIC_PAGES]
 };
+const ROLE_NAV_PAGES={
+ guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','business'],
+ traveler:['home','profile','services','shipping'],
+ sender:['home','profile','services','shipping'],
+ owner:['home','profile','services','rentals'],
+ rent_seeker:['home','profile','services','rentals'],
+ truck_owner:['home','profile','services','truck'],
+ driver:['home','profile','services','truck'],
+ service_provider:['home','profile','services','home_services'],
+ business_owner:['home','profile','services','business'],
+ customer:['home','profile','services','home_services'],
+ admin:['home','profile','services','admin']
+};
 function rolePages(){return currentUser?(ROLE_PAGES[currentUser.role]||ROLE_PAGES.customer):ROLE_PAGES.guest}
+function roleNavPages(){return currentUser?(ROLE_NAV_PAGES[currentUser.role]||ROLE_NAV_PAGES.customer):ROLE_NAV_PAGES.guest}
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
-function nav(){let visible=visiblePages();let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
+function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p));let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
 let currentPage='home';
 let renderingPage=false;
 let adminLoading=false;
@@ -272,7 +286,20 @@ function roleServices(){
  const allowed=visiblePages().filter(p=>info[p]);
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, trucking, jobs, marketplace, services, and business tools.</b></p><div class="notice"><b>Welcome:</b> Use the menu to open your services. If you find a problem, please use Report Problem.</div>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}<button class="btn ghost" onclick="show('privacy')">Privacy</button><button class="btn ghost" onclick="show('terms')">Terms</button>${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div><h2 style="margin-top:22px">Coming Soon</h2><div class="grid"><div class="card locked"><div class="service-icon">📅</div><h3>Community Events</h3><p class="muted">Church, cultural, business, and community announcements.</p><span class="pill warn">Coming Soon</span></div><div class="card locked"><div class="service-icon">🧾</div><h3>Immigration / Translation</h3><p class="muted">Find translation, forms, and local support providers.</p><span class="pill warn">Coming Soon</span></div></div>`}
+function homeQuickActions(){
+ if(!currentUser)return `<button class="btn primary" onclick="show('account')">Create Account</button>`;
+ const role=currentUser.role;
+ let main='services', label='Open My Services', extra='';
+ if(role==='traveler'||role==='sender'){main='shipping';label='Open Shipping';}
+ if(role==='owner'||role==='rent_seeker'){main='rentals';label='Open Rentals';}
+ if(role==='truck_owner'||role==='driver'){main='truck';label='Open Trucking';}
+ if(role==='service_provider'){main='home_services';label='Open Home Services';}
+ if(role==='business_owner'){main='business';label='Open Business Manager';}
+ if(role==='admin'){main='admin';label='Open Admin Dashboard';}
+ return `<button class="btn primary" onclick="show('profile')">Profile</button><button class="btn" onclick="show('services')">My Services</button><button class="btn dark" onclick="show('${main}')">${label}</button>${extra}`;
+}
+function homeInfoSupport(){return `<h2 style="margin-top:22px">Information & Support</h2><div class="grid"><div class="card"><div class="service-icon">ℹ️</div><h3>About</h3><p class="muted">Learn what Habesha Connect does for the community.</p><button class="btn" onclick="show('about')">Open</button></div><div class="card"><div class="service-icon">📞</div><h3>Contact</h3><p class="muted">Contact support or the Habesha Connect team.</p><button class="btn" onclick="show('contact')">Open</button></div><div class="card"><div class="service-icon">❓</div><h3>Help / FAQ</h3><p class="muted">Get answers about accounts, services, and requests.</p><button class="btn" onclick="show('help')">Open</button></div><div class="card"><div class="service-icon">🐞</div><h3>Report Problem</h3><p class="muted">Tell us if something is confusing or broken.</p><button class="btn" onclick="show('report')">Open</button></div><div class="card"><div class="service-icon">🔒</div><h3>Privacy</h3><p class="muted">Review privacy information for the app.</p><button class="btn" onclick="show('privacy')">Open</button></div><div class="card"><div class="service-icon">📄</div><h3>Terms</h3><p class="muted">Review the terms and user responsibilities.</p><button class="btn" onclick="show('terms')">Open</button></div></div>`}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, trucking, home services, jobs, marketplace, and business tools.</b></p><div class="notice"><b>Welcome:</b> The top menu is simplified so each user sees only the main pages they need. More information and support links are below.</div>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>${homeInfoSupport()}<h2 style="margin-top:22px">Coming Soon</h2><div class="grid"><div class="card locked"><div class="service-icon">📅</div><h3>Community Events</h3><p class="muted">Church, cultural, business, and community announcements.</p><span class="pill warn">Coming Soon</span></div><div class="card locked"><div class="service-icon">🧾</div><h3>Immigration / Translation</h3><p class="muted">Find translation, forms, and local support providers.</p><span class="pill warn">Coming Soon</span></div></div>`}
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
