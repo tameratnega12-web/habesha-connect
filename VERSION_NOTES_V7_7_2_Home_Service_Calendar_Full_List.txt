@@ -1,0 +1,10 @@
+V7.7.2 Home Services Calendar + Full Category List
+
+Changes:
+- Replaced the browser prompt for Home Service requests with an in-page request form.
+- Added calendar date picker for Preferred Date.
+- Added time picker for Preferred Time.
+- Added phone, city/address area, and request details fields.
+- Removed "Other" from Home Service categories.
+- Added full Home Service category list: House Cleaning, Moving Help, General Repair, Plumbing, Electrical, HVAC, Painting, Lawn Care, Handyman, Appliance Repair, Roofing, Flooring, Carpentry, Pest Control, Landscaping, Junk Removal, Home Repair, Snow Removal, Window Cleaning, Furniture Assembly.
+- Kept the existing Home Services approval and email workflow unchanged.
