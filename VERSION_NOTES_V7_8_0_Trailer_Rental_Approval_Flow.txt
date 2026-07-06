@@ -1,0 +1,8 @@
+V7.8.0 Trailer Rental Approval Flow
+
+- Added admin approval step when a truck owner/driver requests an available trailer.
+- Admin approval sends request to trailer owner and notifies requester.
+- Trailer owner accept sends final approval email to admin and notifies requester.
+- Admin final approval marks trailer rented and emails requester to complete the rent.
+- Trailer owner/admin decline emails affected users and returns trailer to Available.
+- No SQL changes required.

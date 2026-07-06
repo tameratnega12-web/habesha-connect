@@ -1,0 +1,6 @@
+V7.7.9 Truck Owner Available Trailers Button
+
+- Added Available Trailers for Rent button to the Truck Owner profile dashboard.
+- Button opens the existing Trucking page trailer rentals list.
+- No SQL changes.
+- No workflow changes.
