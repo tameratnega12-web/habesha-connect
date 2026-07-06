@@ -1,0 +1,5 @@
+V7.6.9 Home Services Workflow
+- Added Home Services page and role.
+- Provider post -> admin approval -> customer request -> admin approval -> provider accept/decline.
+- Admin email notifications use existing sendAdminEmailNotice function.
+- Added Supabase migration v7_6_9_home_services.sql.
