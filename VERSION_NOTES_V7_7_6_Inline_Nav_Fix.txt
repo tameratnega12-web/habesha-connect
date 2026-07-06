@@ -1,0 +1,7 @@
+V7.7.6 Inline Navigation Fix
+
+- Fixed the active inline JavaScript inside index.html.
+- Clean role-based navigation now runs from the live page.
+- Home page includes Information & Support cards.
+- No SQL changes.
+- No workflow, email, Supabase, or payment changes.

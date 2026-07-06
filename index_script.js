@@ -85,12 +85,7 @@ function rolePages(){return currentUser?(ROLE_PAGES[currentUser.role]||ROLE_PAGE
 function roleNavPages(){return currentUser?(ROLE_NAV_PAGES[currentUser.role]||ROLE_NAV_PAGES.customer):ROLE_NAV_PAGES.guest}
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
-function nav(){
-  let visible = roleNavPages();
-  let n = visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');
-  $('nav').innerHTML = n;
-  $('mobileNav').innerHTML = visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('');
-}
+function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p));let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
 let currentPage='home';
 let renderingPage=false;
 let adminLoading=false;
