@@ -1,0 +1,9 @@
+V7.7.4 Home Services Final Fix
+
+- Fixed Home Services request saving with the existing Supabase job_description field.
+- Keeps the customer review summary before request submission.
+- Keeps calendar date and time inputs.
+- Supports any city/address area typed by the customer.
+- Sends request details to admin emails and provider/customer emails.
+- Added a final SQL migration for Home Services request schema alignment.
+- Did not change Shipping, Rentals, Trucking, Marketplace, Business Manager, or login workflow.
