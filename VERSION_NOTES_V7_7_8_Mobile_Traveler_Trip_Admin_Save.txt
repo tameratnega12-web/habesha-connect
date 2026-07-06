@@ -1,0 +1,8 @@
+V7.7.8 - Mobile Traveler Trip Admin Save Fix
+
+- Fixed mobile traveler trip posting where admin email could be sent but the trip did not appear in the Admin Dashboard.
+- Traveler trip posting now always resolves the Supabase profile ID before saving.
+- If Supabase is connected but the profile ID is missing, the app now stops and asks the user to refresh/sign in again instead of saving only locally.
+- Traveler trips are always saved with status: Pending Admin Approval.
+- Admin Dashboard pending trip list also recognizes common pending statuses.
+- No SQL changes required.
