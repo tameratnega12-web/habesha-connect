@@ -99,44 +99,45 @@ function contactLine(label,name,phone,email){return `<p><b>${label}:</b> ${name|
 ensureArrays();
 const PUBLIC_PAGES=['about','contact','help','report','privacy','terms'];
 const ROLE_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business',...PUBLIC_PAGES],
- traveler:['home','services','profile','shipping','taxi','messages','notifications',...PUBLIC_PAGES],
- sender:['home','services','profile','shipping','taxi','messages','notifications',...PUBLIC_PAGES],
- owner:['home','services','profile','rentals','taxi','messages','notifications',...PUBLIC_PAGES],
- rent_seeker:['home','services','profile','rentals','taxi','messages','notifications',...PUBLIC_PAGES],
+ guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','business',...PUBLIC_PAGES],
+ traveler:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
+ sender:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
+ owner:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],
+ rent_seeker:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],
  admin:['home','services','profile','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','messages','notifications','admin',...PUBLIC_PAGES],
- customer:['home','services','profile','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
- truck_owner:['home','profile','services','truck','taxi','messages','notifications',...PUBLIC_PAGES],
- driver:['home','services','profile','truck','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
- service_provider:['home','services','profile','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
+ customer:['home','services','profile','home_services','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
+ truck_owner:['home','profile','services','truck','messages','notifications',...PUBLIC_PAGES],
+ driver:['home','services','profile','truck','home_services','messages','notifications',...PUBLIC_PAGES],
+ service_provider:['home','services','profile','home_services','messages','notifications',...PUBLIC_PAGES],
  taxi_limo_owner:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
  taxi_limo_driver:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
  taxi_driver:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
- business_owner:['home','services','profile','business','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
- marketplace:['home','services','profile','marketplace','taxi','messages','notifications',...PUBLIC_PAGES],
+ business_owner:['home','services','profile','business','home_services','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
+ marketplace:['home','services','profile','marketplace','messages','notifications',...PUBLIC_PAGES],
 };
 const ROLE_NAV_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business'],
- traveler:['home','profile','services','shipping','taxi'],
- sender:['home','profile','services','shipping','taxi'],
- owner:['home','profile','services','rentals','taxi'],
- rent_seeker:['home','profile','services','rentals','taxi'],
- truck_owner:['home','profile','services','truck','taxi'],
- driver:['home','profile','services','truck','taxi'],
- service_provider:['home','profile','services','home_services','taxi'],
+ guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','business'],
+ traveler:['home','profile','services','shipping'],
+ sender:['home','profile','services','shipping'],
+ owner:['home','profile','services','rentals'],
+ rent_seeker:['home','profile','services','rentals'],
+ truck_owner:['home','profile','services','truck'],
+ driver:['home','profile','services','truck'],
+ service_provider:['home','profile','services','home_services'],
  taxi_limo_owner:['home','profile','services','taxi'],
  taxi_limo_driver:['home','profile','services','taxi'],
  taxi_driver:['home','profile','services','taxi'],
- business_owner:['home','profile','services','business','taxi'],
- marketplace:['home','profile','services','marketplace','taxi'],
- customer:['home','profile','services','home_services','taxi'],
+ business_owner:['home','profile','services','business'],
+ marketplace:['home','profile','services','marketplace'],
+ customer:['home','profile','services','home_services'],
  admin:['home','profile','services','admin','taxi']
 };
 function rolePages(){return currentUser?(ROLE_PAGES[currentUser.role]||ROLE_PAGES.customer):ROLE_PAGES.guest}
 function roleNavPages(){return currentUser?(ROLE_NAV_PAGES[currentUser.role]||ROLE_NAV_PAGES.customer):ROLE_NAV_PAGES.guest}
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
-function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p));let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
+function taxiNavAllowed(){return currentUser&&['taxi_limo_owner','taxi_limo_driver','taxi_driver','admin'].includes(currentUser.role)}
+function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p)).filter(p=>p!=='taxi'||taxiNavAllowed());let n=visible.map(p=>`<button onclick="show('${p}')" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
 let currentPage='home';
 let renderingPage=false;
 let adminLoading=false;
