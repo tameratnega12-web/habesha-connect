@@ -1,0 +1,5 @@
+V7.8.1 Truck Owner Trucking Actions
+- Moved Truck Owner action cards from Profile to Trucking page.
+- Added Post Driver Hiring Job, Driver Applications, Post Trailer Rent, and Available Trailers for Rent cards at the top of Trucking.
+- Kept trailer rental request admin approval flow intact.
+- No SQL changes.
