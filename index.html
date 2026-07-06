@@ -53,8 +53,8 @@ function cleanEmail(v){return String(v||'').trim().toLowerCase();}
 function showAuthStatus(){let el=$("authStatus"); if(el) el.textContent=authReady()?"Supabase connected":"Not connected";}
 function togglePassword(id,btn){let input=$(id);if(!input)return;input.type=input.type==='password'?'text':'password';if(btn)btn.textContent=input.type==='password'?'👁️':'🙈';}
 function passwordField(id,placeholder,auto){return `<div style="display:flex;gap:8px;align-items:center"><input id="${id}" type="password" placeholder="${placeholder||''}" autocomplete="${auto||'current-password'}" style="flex:1"><button type="button" class="btn ghost" onclick="togglePassword('${id}',this)" title="Show password">👁️</button></div>`;}
-const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post and manage rental properties.'},rent_seeker:{icon:'🔍',title:'Rent Seeker',desc:'Search rentals and request viewings.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Manage business listings and tools.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, jobs, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
-const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','service_provider','business_owner','customer'];
+const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post and manage rental properties.'},rent_seeker:{icon:'🔍',title:'Rent Seeker',desc:'Search rentals and request viewings.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Manage business listings and tools.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},taxi_driver:{icon:'🚕',title:'Taxi Driver',desc:'Apply to drive, accept approved ride requests, and manage taxi rides.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, taxi, jobs, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
+const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_driver','service_provider','business_owner','customer'];
 function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
 function persistOnly(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));}
 function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile.roles.filter(Boolean):[];let base=profile?.role||profile?.active_role||'customer';if(base&&!roles.includes(base))roles.unshift(base);roles=[...new Set(roles.length?roles:['customer'])];return roles}
@@ -108,7 +108,8 @@ const ROLE_PAGES={
  customer:['home','services','profile','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
  truck_owner:['home','profile','services','truck','messages','notifications',...PUBLIC_PAGES],
  driver:['home','services','profile','truck','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
- service_provider:['home','services','profile','home_services','messages','notifications',...PUBLIC_PAGES],
+ service_provider:['home','services','profile','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
+ taxi_driver:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
  business_owner:['home','services','profile','business','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES]
 };
 const ROLE_NAV_PAGES={
@@ -117,9 +118,10 @@ const ROLE_NAV_PAGES={
  sender:['home','profile','services','shipping','taxi'],
  owner:['home','profile','services','rentals','taxi'],
  rent_seeker:['home','profile','services','rentals','taxi'],
- truck_owner:['home','profile','services','truck'],
+ truck_owner:['home','profile','services','truck','taxi'],
  driver:['home','profile','services','truck','taxi'],
- service_provider:['home','profile','services','home_services'],
+ service_provider:['home','profile','services','home_services','taxi'],
+ taxi_driver:['home','profile','services','taxi'],
  business_owner:['home','profile','services','business','taxi'],
  customer:['home','profile','services','home_services','taxi'],
  admin:['home','profile','services','admin','taxi']
@@ -322,7 +324,8 @@ function roleWelcome(){
  if(role==='sender')return '<p><b>Sender dashboard:</b> create shipments, find verified travelers, track packages, and manage payments.</p>';
  if(role==='owner')return '<p><b>Owner dashboard:</b> add rental listings, manage viewing requests, payments, and messages.</p>';
  if(role==='rent_seeker')return '<p><b>Rent seeker dashboard:</b> search rentals, save favorites, request viewings, and message owners.</p>';
- if(role==='admin')return '<p><b>Admin dashboard:</b> manage users, approvals, reports, payments, settings, rentals, and shipping.</p>';
+ if(role==='taxi_driver')return '<p><b>Taxi Driver dashboard:</b> apply for approval, review approved ride requests, accept rides, and update ride status.</p>';
+ if(role==='admin')return '<p><b>Admin dashboard:</b> manage users, approvals, reports, payments, settings, rentals, taxi, and shipping.</p>';
  return '<p><b>Your dashboard:</b> open the tools available for your Habesha Connect role.</p>';
 }
 function roleServices(){
@@ -337,6 +340,7 @@ function homeQuickActions(){
  if(role==='traveler'||role==='sender'){main='shipping';label='Open Shipping';}
  if(role==='owner'||role==='rent_seeker'){main='rentals';label='Open Rentals';}
  if(role==='truck_owner'||role==='driver'){main='truck';label='Open Trucking';}
+ if(role==='taxi_driver'){main='taxi';label='Open Taxi';}
  if(role==='service_provider'){main='home_services';label='Open Home Services';}
  if(role==='business_owner'){main='business';label='Open Business Manager';}
  if(role==='admin'){main='admin';label='Open Admin Dashboard';}
@@ -1285,7 +1289,8 @@ function adminApproveTaxiDriver(id){let a=(data.taxiDriverApps||[]).find(x=>x.id
 function adminDeclineTaxiDriver(id){let a=(data.taxiDriverApps||[]).find(x=>x.id===id);if(!a)return; a.status='Declined';addNote(a.email,'Your taxi driver application was declined.');sendEmailNotice({to:a.email,name:a.name,subject:'Taxi driver application declined',summary:'Your taxi driver application was declined.',buttonText:'Open Taxi',page:'taxi',details:{Status:'Declined'}});persistOnly();adminSuccess();}
 function adminApproveTaxiRide(id){let r=findTaxiRide(id);if(!r)return;r.status='Approved - Waiting Driver';addNote(r.riderEmail,'Your taxi request was approved by admin. Waiting for a driver to accept.');sendEmailNotice({to:r.riderEmail,name:r.riderName,subject:'Taxi request approved',summary:'Your taxi request was approved. Waiting for a driver.',buttonText:'Open Taxi',page:'taxi',details:{Pickup:r.pickup,Destination:r.destination,Status:r.status}});persistOnly();adminSuccess();}
 function adminDeclineTaxiRide(id){let r=findTaxiRide(id);if(!r)return;r.status='Declined by Admin';addNote(r.riderEmail,'Your taxi request was declined by admin.');persistOnly();adminSuccess();}
-function driverAcceptTaxi(id){let r=findTaxiRide(id),a=findTaxiApp(currentUser.email);if(!r||!a)return alert('Taxi ride or approved driver profile not found.');r.driverName=currentUser.name;r.driverEmail=currentUser.email;r.driverPhone=currentUser.phone||a.phone||'';r.vehicle=a.vehicle;r.status='Driver Accepted - Waiting Admin Approval';addNote('admin.habeshaconnect@gmail.com','Taxi driver accepted ride '+id+'. Admin approval is required.');sendAdminEmailNotice('Taxi driver acceptance waiting for approval','A taxi driver accepted a ride. Admin approval is required before contact details are shared.',{Ride:id,Driver:currentUser.name,Rider:r.riderName,Pickup:r.pickup,Destination:r.destination},'admin');persistOnly();alert('You accepted the ride. Admin approval is required before the rider receives your information.');taxi();}
+function driverAcceptTaxi(id){let r=findTaxiRide(id),a=findTaxiApp(currentUser.email);if(!r)return alert('Taxi ride not found.');
+ if(!a)return alert('Admin must approve your taxi driver application before you accept rides.');r.driverName=currentUser.name;r.driverEmail=currentUser.email;r.driverPhone=currentUser.phone||a.phone||'';r.vehicle=a.vehicle;r.status='Driver Accepted - Waiting Admin Approval';addNote('admin.habeshaconnect@gmail.com','Taxi driver accepted ride '+id+'. Admin approval is required.');sendAdminEmailNotice('Taxi driver acceptance waiting for approval','A taxi driver accepted a ride. Admin approval is required before contact details are shared.',{Ride:id,Driver:currentUser.name,Rider:r.riderName,Pickup:r.pickup,Destination:r.destination},'admin');persistOnly();alert('You accepted the ride. Admin approval is required before the rider receives your information.');taxi();}
 function driverDeclineTaxi(id){let r=findTaxiRide(id);if(!r)return;r.declinedBy=(r.declinedBy||[]).concat(currentUser.email);alert('Ride declined.');taxi();}
 function adminApproveTaxiAcceptance(id){let r=findTaxiRide(id);if(!r)return;r.status='Driver Approved - Contact Shared';addNote(r.riderEmail,'Admin approved your taxi driver. Driver: '+r.driverName+' Phone: '+(r.driverPhone||''));addNote(r.driverEmail,'Admin approved your taxi ride acceptance. Rider: '+r.riderName+' Phone: '+(r.riderPhone||''));sendEmailNotice({to:r.riderEmail,name:r.riderName,subject:'Taxi driver assigned',summary:'Admin approved the taxi driver for your ride.',buttonText:'Open Taxi',page:'taxi',details:{Driver:r.driverName,DriverPhone:r.driverPhone,Vehicle:r.vehicle,Pickup:r.pickup,Destination:r.destination}});sendEmailNotice({to:r.driverEmail,name:r.driverName,subject:'Taxi ride approved',summary:'Admin approved your taxi ride acceptance.',buttonText:'Open Taxi',page:'taxi',details:{Rider:r.riderName,RiderPhone:r.riderPhone,Pickup:r.pickup,Destination:r.destination}});persistOnly();adminSuccess();}
 function adminDeclineTaxiAcceptance(id){let r=findTaxiRide(id);if(!r)return;let driverEmail=r.driverEmail; r.driverName='';r.driverEmail='';r.driverPhone='';r.vehicle='';r.status='Approved - Waiting Driver';if(driverEmail)addNote(driverEmail,'Admin declined your taxi ride acceptance.');persistOnly();adminSuccess();}
