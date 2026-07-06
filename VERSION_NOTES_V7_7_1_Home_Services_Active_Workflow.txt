@@ -1,0 +1,15 @@
+V7.7.1 Home Services Active Workflow
+
+Changes made:
+- Removed Home Services from the Coming Soon list on the Home page.
+- Home Services is active from the top menu.
+- Added Home Service Provider role support.
+- Added provider service posting flow.
+- Added customer request flow.
+- Added admin approval/decline for service posts and requests.
+- Added provider accept/decline actions after admin approval.
+- Added email notifications through the existing Vercel /api/send-email flow.
+- Added admin Home Services management section.
+
+SQL required:
+- Run supabase/v7_6_9_home_services.sql if it has not already been run.
