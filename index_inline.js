@@ -56,7 +56,7 @@ function contactLine(label,name,phone,email){return `<p><b>${label}:</b> ${name|
 ensureArrays();
 const PUBLIC_PAGES=['about','contact','help','report','privacy','terms'];
 const ROLE_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','business',...PUBLIC_PAGES],
+ guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','business',...PUBLIC_PAGES],
  traveler:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
  sender:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
  owner:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],

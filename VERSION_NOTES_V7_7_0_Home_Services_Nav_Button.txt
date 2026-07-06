@@ -1,0 +1,6 @@
+V7.7.0 Home Services Navigation Button
+
+- Added Home Services to guest/public top navigation.
+- Menu order now shows Home Services between Trucking and Business Manager.
+- Kept existing Home Services workflow and Supabase SQL unchanged.
+- Updated app.js, index_inline.js, and index_script.js for consistency.
