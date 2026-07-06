@@ -106,14 +106,14 @@ const ROLE_PAGES={
  rent_seeker:['home','services','profile','rentals','taxi','messages','notifications',...PUBLIC_PAGES],
  admin:['home','services','profile','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','messages','notifications','admin',...PUBLIC_PAGES],
  customer:['home','services','profile','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
- truck_owner:['home','profile','services','truck','messages','notifications',...PUBLIC_PAGES],
+ truck_owner:['home','profile','services','truck','taxi','messages','notifications',...PUBLIC_PAGES],
  driver:['home','services','profile','truck','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
  service_provider:['home','services','profile','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
  taxi_limo_owner:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
  taxi_limo_driver:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
  taxi_driver:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
  business_owner:['home','services','profile','business','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
- marketplace:['home','services','profile','marketplace','messages','notifications',...PUBLIC_PAGES],
+ marketplace:['home','services','profile','marketplace','taxi','messages','notifications',...PUBLIC_PAGES],
 };
 const ROLE_NAV_PAGES={
  guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business'],
@@ -128,7 +128,7 @@ const ROLE_NAV_PAGES={
  taxi_limo_driver:['home','profile','services','taxi'],
  taxi_driver:['home','profile','services','taxi'],
  business_owner:['home','profile','services','business','taxi'],
- marketplace:['home','profile','services','marketplace'],
+ marketplace:['home','profile','services','marketplace','taxi'],
  customer:['home','profile','services','home_services','taxi'],
  admin:['home','profile','services','admin','taxi']
 };
@@ -1329,7 +1329,8 @@ function taxi(){
  let isDriver=currentUser.role==='taxi_limo_driver'||currentUser.role==='taxi_driver'||(myApp&&myApp.status==='Approved');
  let available=rides.filter(r=>r.status==='Approved - Waiting Driver' && isDriver && r.driverEmail!==currentUser.email);
  let myRides=rides.filter(r=>r.riderEmail===currentUser.email||r.driverEmail===currentUser.email||currentUser.role==='admin');
- let riderForm=`<div class="card"><h3>Request Taxi/Limo</h3><p class="muted">Your taxi/limo request goes to admin first. After admin approves, approved taxi/limo drivers can accept it.</p><label>Pickup Location</label><input id="taxiPickup" placeholder="Address or pickup area"><label>Destination</label><input id="taxiDest" placeholder="Where are you going?"><div class="row"><div><label>Pickup Time</label><select id="taxiTime"><option>Now</option><option>Schedule</option></select></div><div><label>Passengers</label><input id="taxiPassengers" type="number" value="1" min="1"></div></div><label>Phone Number</label><input id="taxiPhone" value="${currentUser.phone||''}" placeholder="404-555-1234"><label>Ride Note</label><textarea id="taxiNote" placeholder="Gate code, luggage, airport terminal, etc."></textarea><button class="btn primary" onclick="submitTaxiRide()">Submit Taxi/Limo Request</button></div>`;
+ let showRiderForm=!(currentUser.role==='taxi_limo_owner'||currentUser.role==='taxi_limo_driver'||currentUser.role==='taxi_driver');
+ let riderForm=showRiderForm?`<div class="card"><h3>Request Taxi/Limo</h3><p class="muted">Your taxi/limo request goes to admin first. After admin approves, approved taxi/limo drivers can accept it.</p><label>Pickup Location</label><input id="taxiPickup" placeholder="Address or pickup area"><label>Destination</label><input id="taxiDest" placeholder="Where are you going?"><div class="row"><div><label>Pickup Time</label><select id="taxiTime"><option>Now</option><option>Schedule</option></select></div><div><label>Passengers</label><input id="taxiPassengers" type="number" value="1" min="1"></div></div><label>Phone Number</label><input id="taxiPhone" value="${currentUser.phone||''}" placeholder="404-555-1234"><label>Ride Note</label><textarea id="taxiNote" placeholder="Gate code, luggage, airport terminal, etc."></textarea><button class="btn primary" onclick="submitTaxiRide()">Submit Taxi/Limo Request</button></div>`:'';
  let driverForm='';
  if(currentUser.role==='taxi_limo_driver'||currentUser.role==='taxi_driver'){
    let ownerOptions=owners.filter(o=>o.status==='Approved').map(o=>`<option value="${o.ownerEmail}">${o.companyName||o.ownerName} - ${o.city||''}</option>`).join('');
