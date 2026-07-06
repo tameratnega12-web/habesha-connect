@@ -44,8 +44,8 @@
 
 
 const $=id=>document.getElementById(id);
-const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','business','messages','notifications','admin','about','contact','help','report','privacy','terms'];
-const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Jobs',truck:'Trucking',business:'Business Manager',messages:'Messages',notifications:'Notifications',admin:'Admin',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
+const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','home_services','business','messages','notifications','admin','about','contact','help','report','privacy','terms'];
+const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Jobs',truck:'Trucking',home_services:'Home Services',business:'Business Manager',messages:'Messages',notifications:'Notifications',admin:'Admin',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
 const hcSupabase=(window.supabase&&window.SUPABASE_URL&&window.SUPABASE_ANON_KEY)?window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY):null;
 function authReady(){return !!hcSupabase}
 function cleanEmail(v){return String(v||'').trim().toLowerCase();}
@@ -98,16 +98,16 @@ function contactLine(label,name,phone,email){return `<p><b>${label}:</b> ${name|
 ensureArrays();
 const PUBLIC_PAGES=['about','contact','help','report','privacy','terms'];
 const ROLE_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','business',...PUBLIC_PAGES],
- traveler:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
- sender:['home','services','profile','shipping','messages','notifications',...PUBLIC_PAGES],
- owner:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],
- rent_seeker:['home','services','profile','rentals','messages','notifications',...PUBLIC_PAGES],
- admin:['home','services','profile','shipping','rentals','marketplace','jobs','truck','business','messages','notifications','admin',...PUBLIC_PAGES],
- customer:['home','services','profile','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
+ guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','business',...PUBLIC_PAGES],
+ traveler:['home','services','profile','shipping','home_services','messages','notifications',...PUBLIC_PAGES],
+ sender:['home','services','profile','shipping','home_services','messages','notifications',...PUBLIC_PAGES],
+ owner:['home','services','profile','rentals','home_services','messages','notifications',...PUBLIC_PAGES],
+ rent_seeker:['home','services','profile','rentals','home_services','messages','notifications',...PUBLIC_PAGES],
+ admin:['home','services','profile','shipping','rentals','marketplace','jobs','truck','home_services','business','messages','notifications','admin',...PUBLIC_PAGES],
+ customer:['home','services','profile','marketplace','jobs','home_services','messages','notifications',...PUBLIC_PAGES],
  truck_owner:['home','services','profile','truck','messages','notifications',...PUBLIC_PAGES],
- driver:['home','services','profile','truck','messages','notifications',...PUBLIC_PAGES],
- business_owner:['home','services','profile','business','marketplace','jobs','messages','notifications',...PUBLIC_PAGES]
+ driver:['home','services','profile','truck','home_services','messages','notifications',...PUBLIC_PAGES],
+ business_owner:['home','services','profile','home_services','business','marketplace','jobs','messages','notifications',...PUBLIC_PAGES]
 };
 function rolePages(){return currentUser?(ROLE_PAGES[currentUser.role]||ROLE_PAGES.customer):ROLE_PAGES.guest}
 function isAllowedPage(p){return rolePages().includes(p)}
@@ -135,7 +135,7 @@ async function show(p){
  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
  let nb=$('nav_'+p);if(nb)nb.classList.add('active');
  if($('mobileNav'))$('mobileNav').value=p;
- if(['shipping','rentals','profile','marketplace','jobs','truck','business'].includes(p)){
+ if(['shipping','rentals','profile','marketplace','jobs','truck','home_services','business'].includes(p)){
    $(p).innerHTML='<div class="card"><b>Loading latest data...</b><p class="muted">Refreshing from Supabase.</p></div>';
  }
  if(p==='admin' && currentPage!=='admin'){
@@ -281,6 +281,7 @@ async function renderPage(p){
  if(p==='marketplace')marketplace();
  if(p==='jobs')jobs();
  if(p==='truck')truck();
+ if(p==='home_services')homeServices();
  if(p==='business')business();
  if(p==='messages')messages();
  if(p==='notifications')notifications();
@@ -303,12 +304,13 @@ function roleWelcome(){
  return '<p><b>Your dashboard:</b> open the tools available for your Habesha Connect role.</p>';
 }
 function roleServices(){
- const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['💼','Jobs','Local jobs, employers, seekers, and applications.'],truck:['🚚','Trucking','Truck owners, drivers, hiring posts, records, tracking, maintenance, and job applications.'],business:['📊','Business Manager','Sales, expenses, invoices, profit, and tax summaries.']};
+ const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['💼','Jobs','Local jobs, employers, seekers, and applications.'],truck:['🚚','Trucking','Truck owners, drivers, hiring posts, records, tracking, maintenance, and job applications.'],home_services:['🔧','Home Services','Cleaners, movers, repair, electricians, plumbers, and helpers.'],business:['📊','Business Manager','Sales, expenses, invoices, profit, and tax summaries.']};
  const allowed=visiblePages().filter(p=>info[p]);
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
 function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Ethiopian community through shipping, rentals, trucking, jobs, marketplace, services, and business tools.</b></p><div class="notice"><b>Welcome:</b> Use the menu to open your services. If you find a problem, please use Report Problem.</div>${roleWelcome()}<div class="actions">${currentUser?`<button class="btn primary" onclick="show('profile')">Open My Dashboard</button>`:`<button class="btn primary" onclick="show('account')">Create Account</button>`}${isAllowedPage('shipping')?`<button class="btn dark" onclick="show('shipping')">Start Shipping</button>`:''}${isAllowedPage('rentals')?`<button class="btn" onclick="show('rentals')">Find Rentals</button>`:''}<button class="btn ghost" onclick="show('privacy')">Privacy</button><button class="btn ghost" onclick="show('terms')">Terms</button>${isAllowedPage('admin')?`<button class="btn ghost" onclick="show('admin')">Admin Dashboard</button>`:''}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div><h2 style="margin-top:22px">Coming Soon</h2><div class="grid"><div class="card locked"><div class="service-icon">🔧</div><h3>Home Services</h3><p class="muted">Cleaners, movers, repair, electricians, plumbers, and helpers.</p><span class="pill warn">Coming Soon</span></div><div class="card locked"><div class="service-icon">📅</div><h3>Community Events</h3><p class="muted">Church, cultural, business, and community announcements.</p><span class="pill warn">Coming Soon</span></div><div class="card locked"><div class="service-icon">🧾</div><h3>Immigration / Translation</h3><p class="muted">Find translation, forms, and local support providers.</p><span class="pill warn">Coming Soon</span></div></div>`}
 function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
+function homeServices(){$('home_services').innerHTML=`<h2>🔧 Home Services</h2><div class="card"><h3>Home Services</h3><p class="muted">Cleaners, movers, repair, electricians, plumbers, and helpers.</p><p>This section is ready for the Home Services workflow.</p></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><p class="muted">Use your real email/password account. Use your real email/password account. Admin verification is managed in Supabase profiles.</p><button class="btn ghost" onclick="forgotPass()">Forgot Password</button><p class="small">Auth status: <b id="authStatus">Checking...</b></p></div><div class="card"><h2>Create Account</h2><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label>Choose your services</label><div class="item" style="margin:6px 0 12px">${ROLE_LIST.map((r,i)=>`<label style="display:block;margin:7px 0"><input class="roleCheck" type="checkbox" value="${r}" ${i<2?'checked':''} style="width:auto;margin-right:8px">${ROLE_INFO[r].icon} ${ROLE_INFO[r].title}</label>`).join('')}</div><label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
 async function forgotPass(){let defaultEmail=cleanEmail($('loginEmail')?.value||'');let e=prompt('Enter the email address for password reset',defaultEmail);if(!e)return;e=cleanEmail(e);if(!e.includes('@'))return alert('Please enter a valid full email address.');if(authReady()){let redirect=location.origin+location.pathname;let {error}=await hcSupabase.auth.resetPasswordForEmail(e,{redirectTo:redirect});if(error)return alert('Password reset could not be sent: '+error.message);alert('Password reset email sent. Open the email and click the reset link. It will show New Password and Confirm Password boxes.');return;}addNote(e,'Password reset requested. In the real app, an email reset link will be sent.');save();alert('Password reset notification created.');}

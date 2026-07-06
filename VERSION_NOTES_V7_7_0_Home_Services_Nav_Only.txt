@@ -1,0 +1,5 @@
+V7.7.0 Home Services Navigation Only
+
+- Added Home Services to the top navigation between Trucking and Business Manager.
+- Added a Home Services page section and simple landing page.
+- No workflow, Supabase, email, shipping, rentals, trucking, login, or admin logic was changed.
