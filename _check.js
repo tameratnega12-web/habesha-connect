@@ -1,46 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V7.2.0 Beta Ready</title>
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
-</style>
-</head>
-<body>
-<header>
-  <div class="top"><div><div class="brand">Habesha Connect</div><div class="tag">Community • Shipping • Rentals • Taxi • Marketplace • Jobs • Trucking • Business</div></div><div id="userBox"></div></div>
-  <div class="nav" id="nav"></div>
-  <div class="mobilebar"><select id="mobileNav" onchange="show(this.value)"></select></div>
-</header>
-<main class="container">
-  <section id="home" class="page"></section>
-  <section id="account" class="page hide"></section>
-  <section id="profile" class="page hide"></section>
-  <section id="services" class="page hide"></section>
-  <section id="shipping" class="page hide"></section>
-  <section id="rentals" class="page hide"></section>
-  <section id="marketplace" class="page hide"></section>
-  <section id="jobs" class="page hide"></section>
-  <section id="truck" class="page hide"></section>
-  <section id="home_services" class="page hide"></section>
-  <section id="taxi" class="page hide"></section>
-  <section id="business" class="page hide"></section>
-  <section id="messages" class="page hide"></section>
-  <section id="notifications" class="page hide"></section>
-  <section id="admin" class="page hide"></section>
-  <section id="about" class="page hide"></section>
-  <section id="contact" class="page hide"></section>
-  <section id="help" class="page hide"></section>
-  <section id="report" class="page hide"></section>
-  <section id="privacy" class="page hide"></section>
-  <section id="terms" class="page hide"></section>
-</main>
-<div class="footer">Habesha Connect V7.2.0 Beta Ready — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-config.js"></script>
-<script>
+
 
 
 
@@ -53,8 +11,8 @@ function cleanEmail(v){return String(v||'').trim().toLowerCase();}
 function showAuthStatus(){let el=$("authStatus"); if(el) el.textContent=authReady()?"Supabase connected":"Not connected";}
 function togglePassword(id,btn){let input=$(id);if(!input)return;input.type=input.type==='password'?'text':'password';if(btn)btn.textContent=input.type==='password'?'👁️':'🙈';}
 function passwordField(id,placeholder,auto){return `<div style="display:flex;gap:8px;align-items:center"><input id="${id}" type="password" placeholder="${placeholder||''}" autocomplete="${auto||'current-password'}" style="flex:1"><button type="button" class="btn ghost" onclick="togglePassword('${id}',this)" title="Show password">👁️</button></div>`;}
-const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post and manage rental properties.'},rent_seeker:{icon:'🔍',title:'Rent Seeker',desc:'Search rentals and request viewings.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Manage business listings and tools.'},marketplace:{icon:'🛒',title:'Marketplace',desc:'Buy, sell, post items, browse items, and manage marketplace requests.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},taxi_driver:{icon:'🚕',title:'Taxi',desc:'Request rides, apply to drive, accept approved ride requests, and manage taxi rides.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, taxi, jobs, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
-const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_driver','service_provider','business_owner','marketplace','customer'];
+const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post and manage rental properties.'},rent_seeker:{icon:'🔍',title:'Rent Seeker',desc:'Search rentals and request viewings.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Manage business listings and tools.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},taxi_driver:{icon:'🚕',title:'Taxi',desc:'Request rides, apply to drive, accept approved ride requests, and manage taxi rides.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, taxi, jobs, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
+const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_driver','service_provider','business_owner','customer'];
 function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
 function persistOnly(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));}
 function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile.roles.filter(Boolean):[];let base=profile?.role||profile?.active_role||'customer';if(base&&!roles.includes(base))roles.unshift(base);roles=[...new Set(roles.length?roles:['customer'])];return roles}
@@ -110,8 +68,7 @@ const ROLE_PAGES={
  driver:['home','services','profile','truck','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
  service_provider:['home','services','profile','home_services','taxi','messages','notifications',...PUBLIC_PAGES],
  taxi_driver:['home','services','profile','taxi','messages','notifications',...PUBLIC_PAGES],
- business_owner:['home','services','profile','business','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES],
- marketplace:['home','services','profile','marketplace','messages','notifications',...PUBLIC_PAGES],
+ business_owner:['home','services','profile','business','home_services','taxi','marketplace','jobs','messages','notifications',...PUBLIC_PAGES]
 };
 const ROLE_NAV_PAGES={
  guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business'],
@@ -124,7 +81,6 @@ const ROLE_NAV_PAGES={
  service_provider:['home','profile','services','home_services','taxi'],
  taxi_driver:['home','profile','services','taxi'],
  business_owner:['home','profile','services','business','taxi'],
- marketplace:['home','profile','services','marketplace'],
  customer:['home','profile','services','home_services','taxi'],
  admin:['home','profile','services','admin','taxi']
 };
@@ -327,7 +283,6 @@ function roleWelcome(){
  if(role==='owner')return '<p><b>Owner dashboard:</b> add rental listings, manage viewing requests, payments, and messages.</p>';
  if(role==='rent_seeker')return '<p><b>Rent seeker dashboard:</b> search rentals, save favorites, request viewings, and message owners.</p>';
  if(role==='taxi_driver')return '<p><b>Taxi dashboard:</b> apply for approval, review approved ride requests, accept rides, and update ride status.</p>';
- if(role==='marketplace')return '<p><b>Marketplace dashboard:</b> post items, browse approved listings, request items, and manage marketplace activity.</p>';
  if(role==='admin')return '<p><b>Admin dashboard:</b> manage users, approvals, reports, payments, settings, rentals, taxi, and shipping.</p>';
  return '<p><b>Your dashboard:</b> open the tools available for your Habesha Connect role.</p>';
 }
@@ -346,7 +301,6 @@ function homeQuickActions(){
  if(role==='taxi_driver'){main='taxi';label='Open Taxi';}
  if(role==='service_provider'){main='home_services';label='Open Home Services';}
  if(role==='business_owner'){main='business';label='Open Business Manager';}
- if(role==='marketplace'){main='marketplace';label='Open Marketplace';}
  if(role==='admin'){main='admin';label='Open Admin Dashboard';}
  return `<button class="btn primary" onclick="show('profile')">Profile</button><button class="btn" onclick="show('services')">My Services</button><button class="btn dark" onclick="show('${main}')">${label}</button>${extra}`;
 }
@@ -1758,6 +1712,3 @@ render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await ini
 
 
 
-</script>
-</body>
-</html>
