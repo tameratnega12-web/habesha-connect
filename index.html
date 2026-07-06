@@ -384,7 +384,7 @@ function roleDashboardCards(){
  if(!currentUser)return '';
  if(currentUser.role==='traveler')return '';
  if(currentUser.role==='sender')return `<div class="grid"><div class="card"><h3>📦 Create Shipment</h3><p class="muted">Find verified travelers and request space.</p><button class="btn primary" onclick="show('shipping')">Start Shipping</button></div><div class="card"><h3>🧾 My Payments</h3><p class="muted">PayPal online and Zelle verification will be added later.</p></div><div class="card"><h3>🔔 Tracking</h3><p class="muted">Track package status and traveler responses.</p></div></div>`;
- if(currentUser.role==='owner')return `<div class="grid"><div class="card"><h3>🏠 My Properties</h3><p class="muted">Add and manage rental listings.</p><button class="btn primary" onclick="show('rentals')">Open Rentals</button></div><div class="card"><h3>👀 Viewing Requests</h3><p class="muted">Approve or decline seeker requests.</p></div><div class="card"><h3>⭐ Reviews</h3><p class="muted">Owner ratings and feedback.</p></div></div>`;
+ if(currentUser.role==='owner')return `<div class="grid"><div class="card"><h3>🏠 Property Owner</h3><p class="muted">Rental actions are now inside the Rentals page.</p><button class="btn primary" onclick="show('rentals')">Open Rentals</button></div><div class="card"><h3>⭐ Reviews</h3><p class="muted">Owner ratings and feedback.</p></div></div>`;
  if(currentUser.role==='rent_seeker')return `<div class="grid"><div class="card"><h3>🔍 Search Rentals</h3><p class="muted">Find available homes and rooms.</p><button class="btn primary" onclick="show('rentals')">Find Rentals</button></div><div class="card"><h3>❤️ Favorites</h3><p class="muted">Save properties you like.</p></div><div class="card"><h3>📅 Viewing Requests</h3><p class="muted">Track paid viewing access and requests.</p></div></div>`;
  if(currentUser.role==='truck_owner')return `<div class="grid"><div class="card"><h3>🚛 Truck Owner Profile</h3><p class="muted">Manage your account information and verification here. Trucking actions are now inside the Trucking page.</p><button class="btn primary" onclick="show('truck')">Open Trucking Dashboard</button></div><div class="card"><h3>👤 Account Information</h3><p class="muted">Update your name, phone, city, and profile details below.</p></div></div>`;
  if(currentUser.role==='driver')return `<div class="grid"><div class="card"><h3>🚚 Trucking Dashboard</h3><p class="muted">Open Trucking to see available jobs, applications, and trailers for rent.</p><button class="btn primary" onclick="show('truck')">Open Trucking</button></div></div>`;
@@ -943,8 +943,10 @@ function rentalStatsCardsCustom(title,items){
 }
 function rentalRequestsTable(reqs,role){
   reqs=reqs||[];
-  return `<h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Beta Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone}</td><td>${q.ownerName}</td><td>${q.status==='Approved'||role==='admin'||role==='owner'?q.ownerPhone:'Shown after approval'}</td><td>${q.status}</td><td>${rentalRequestPaymentDisplay(q,role)}</td><td>${(role==='owner'||role==='admin')&&q.status==='Pending'?`<button class="btn" onclick="approveRentalReq('${q.id}')">Approve</button> <button class="btn bad" onclick="declineRentalReq('${q.id}')">Decline</button>`:'-'}</td></tr>`).join('')||'<tr><td colspan="8">No rental requests yet.</td></tr>'}</table>`;
+  let wrapId=role==='owner'?' id="ownerRentalRequests"':'';
+  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Beta Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone}</td><td>${q.ownerName}</td><td>${q.status==='Approved'||role==='admin'||role==='owner'?q.ownerPhone:'Shown after approval'}</td><td>${q.status}</td><td>${rentalRequestPaymentDisplay(q,role)}</td><td>${(role==='owner'||role==='admin')&&q.status==='Pending'?`<button class="btn primary" onclick="approveRentalReq('${q.id}')">Approve</button> <button class="btn bad" onclick="declineRentalReq('${q.id}')">Decline</button>`:'-'}</td></tr>`).join('')||'<tr><td colspan="8">No rental requests yet.</td></tr>'}</table></div>`;
 }
+function scrollToRentalRequests(){let el=document.getElementById('ownerRentalRequests');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 
 async function rentals(){
  if(authReady()){await loadSupabaseRentals();await loadSupabaseRentalRequests();}
@@ -968,11 +970,12 @@ async function rentals(){
    ['Available',availableForSeeker.length],['Seeker Fees',money(seekerStats.seekerFees)]
  ]);
  let adminSummary=rentalStatsCards('📊 Rental Statistics',adminStats);
+ let ownerDashboard=`<h2>🏠 Rental Dashboard</h2><div class="grid"><div class="card"><h3>🏠 My Properties</h3><p class="muted">Add and manage rental listings.</p><button class="btn primary" onclick="document.getElementById('rentTitle')?.focus()">Add Property</button></div><div class="card"><h3>👀 Rental Requests</h3><p class="muted">See rent seeker requests and approve or decline them.</p><button class="btn primary" onclick="scrollToRentalRequests()">See Rental Requests</button></div><div class="card"><h3>⭐ Reviews</h3><p class="muted">Owner ratings and feedback.</p></div></div>`;
  let ownerRequestsHtml=rentalRequestsTable(ownerReqs,'owner');
  let seekerRequestsHtml=rentalRequestsTable(seekerReqs,'rent_seeker');
  let adminRequests=[...ownerReqs,...data.rentalRequests.filter(q=>!ownerReqs.includes(q))];
  if(role==='owner'){
-   $('rentals').innerHTML=`${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
+   $('rentals').innerHTML=`${ownerDashboard}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
  } else if(role==='rent_seeker'||role==='customer'||!currentUser){
    $('rentals').innerHTML=`<h3>Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='admin'){
