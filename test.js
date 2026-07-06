@@ -232,7 +232,7 @@ async function updatePasswordFromReset(){
 }
 function roleDashboardCards(){
  if(!currentUser)return '';
- if(currentUser.role==='traveler')return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="show('shipping')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn" onclick="show('shipping')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn" onclick="show('messages')">Messages</button></div></div>`;
+ if(currentUser.role==='traveler')return '';
  if(currentUser.role==='sender')return `<div class="grid"><div class="card"><h3>📦 Create Shipment</h3><p class="muted">Find verified travelers and request space.</p><button class="btn primary" onclick="show('shipping')">Start Shipping</button></div><div class="card"><h3>🧾 My Payments</h3><p class="muted">PayPal online and Zelle verification will be added later.</p></div><div class="card"><h3>🔔 Tracking</h3><p class="muted">Track package status and traveler responses.</p></div></div>`;
  if(currentUser.role==='owner')return `<div class="grid"><div class="card"><h3>🏠 My Properties</h3><p class="muted">Add and manage rental listings.</p><button class="btn primary" onclick="show('rentals')">Open Rentals</button></div><div class="card"><h3>👀 Viewing Requests</h3><p class="muted">Approve or decline seeker requests.</p></div><div class="card"><h3>⭐ Reviews</h3><p class="muted">Owner ratings and feedback.</p></div></div>`;
  if(currentUser.role==='rent_seeker')return `<div class="grid"><div class="card"><h3>🔍 Search Rentals</h3><p class="muted">Find available homes and rooms.</p><button class="btn primary" onclick="show('rentals')">Find Rentals</button></div><div class="card"><h3>❤️ Favorites</h3><p class="muted">Save properties you like.</p></div><div class="card"><h3>📅 Viewing Requests</h3><p class="muted">Track paid viewing access and requests.</p></div></div>`;
@@ -398,6 +398,10 @@ function daysUntil(dateStr){if(!dateStr)return null;let d=new Date(dateStr+'T00:
 function expiryBadge(dateStr,label){let n=daysUntil(dateStr);if(n===null)return '<span class="pill warn">No '+label+' date</span>';if(n<0)return '<span class="pill bad">'+label+' expired</span>';if(n<=30)return '<span class="pill warn">'+label+' expires in '+n+' days</span>';return '<span class="pill good">'+label+' OK</span>';}
 function activeTripSort(a,b){let ar=Number(a.availableSpace||0),br=Number(b.availableSpace||0);let ad=a.travelDate||'',bd=b.travelDate||'';if((ar>0)!==(br>0))return ar>0?-1:1; if(ad!==bd)return ad.localeCompare(bd);return String(b.id||'').localeCompare(String(a.id||''));}
 function isTripBookable(t){let remaining=Number(t.availableSpace ?? t.remaining_space_lb ?? 0);let status=String(t.status||'Open');let travel=t.travelDate||'';let notFlown=!travel || travel>=addDaysIso(0);return remaining>0 && notFlown && !['Full','Closed','Cancelled','Canceled','Completed','Delivered','Flown'].includes(status);}
+
+function travelerShippingDashboardCards(){
+ return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="show('shipping')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="show('shipping')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
+}
 async function shipping(){
  if(authReady()){ await loadSupabaseTrips(); await loadSupabaseShipments(); recalcTripSpacesFromShipments(); }
  let role=currentUser?currentUser.role:null;
@@ -427,7 +431,7 @@ async function shipping(){
  let availableTripsHtml=`<h3>Available Traveler Trips</h3><div class="list">${visibleTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">No traveler trips posted yet.</div>'}</div>`;
  let shipmentRequestsHtml=`<h3>Shipment Requests</h3><div class="list">${shipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div>`;
  if(role==='traveler'){
-   $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${tripBox}${shipmentRequestsHtml}<h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div>${statsHtml}${intro}`;
+   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${travelerShippingDashboardCards()}${tripBox}${shipmentRequestsHtml}<h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div>${statsHtml}${intro}`;
  } else if(role==='sender'||role==='customer'||!currentUser){
    $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${searchBox}${availableTripsHtml}${shipmentRequestsHtml}${statsHtml}${intro}`;
  } else if(role==='admin'){
