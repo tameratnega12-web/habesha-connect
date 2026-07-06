@@ -1,0 +1,10 @@
+V7.7.7 Traveler Trip Admin Approval Fix
+
+Changes:
+- Traveler-posted trips now save with status: Pending Admin Approval.
+- Pending traveler trips are hidden from sender/customer booking lists until approved.
+- Admin dashboard now includes a Traveler Trips Waiting Admin Approval table.
+- Admin can approve or decline traveler trips from the Admin Dashboard.
+- Approved trips become Open and visible to senders/customers.
+- Declined trips remain hidden and notify the traveler by in-app notification and email.
+- No SQL changes required.
