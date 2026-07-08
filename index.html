@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V7.2.0 Beta Ready</title>
+<title>Habesha Connect V7.8.41 Button No-Wait Fix</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.marketPhoto{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f8fafc}.photoPreview{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoPreview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 </style>
@@ -37,7 +37,7 @@
   <section id="privacy" class="page hide"></section>
   <section id="terms" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V7.2.0 Beta Ready — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
+<div class="footer">Habesha Connect V7.8.41 Button No-Wait Fix — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script>
@@ -57,6 +57,20 @@ const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and a
 const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_limo_owner','taxi_limo_driver','service_provider','business_owner','marketplace','customer'];
 function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
 function persistOnly(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));}
+
+// V7.8.41: button/navigation no-wait helpers. Normal screen changes should not wait for Supabase.
+function fireAndForget(promise,label){
+ try{Promise.resolve(promise).catch(e=>console.warn((label||'background task')+' failed',e));}catch(e){console.warn((label||'background task')+' failed',e);}
+}
+async function safeAsync(promise,ms,label){
+ let timeout;
+ try{
+   return await Promise.race([
+     Promise.resolve(promise),
+     new Promise(resolve=>{timeout=setTimeout(()=>{console.warn((label||'Supabase task')+' timed out; continuing locally.');resolve(null);},ms||5000)})
+   ]);
+ }finally{if(timeout)clearTimeout(timeout);}
+}
 function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile.roles.filter(Boolean):[];let base=profile?.role||profile?.active_role||'customer';if(base&&!roles.includes(base))roles.unshift(base);roles=[...new Set(roles.length?roles:['customer'])];return roles}
 function roleTitle(role){return (ROLE_INFO[role]&&ROLE_INFO[role].title)||role}
 function upsertLocalUser(profile){if(!profile||!profile.email)return null;let u=data.users.find(x=>x.email===profile.email);let roles=normalizeRoles(profile);let savedRole=localStorage.getItem('hc_active_role_'+profile.email);let activeRole=(savedRole&&roles.includes(savedRole))?savedRole:(profile.active_role&&roles.includes(profile.active_role)?profile.active_role:(profile.role&&roles.includes(profile.role)?profile.role:roles[0]));let cleaned={id:profile.id||profile.profile_id||'',auth_user_id:profile.auth_user_id||'',name:profile.name||profile.full_name||profile.email,phone:profile.phone||'',email:profile.email,role:activeRole,active_role:activeRole,roles,verified:!!profile.verified,city:profile.city||''};if(u)Object.assign(u,cleaned);else data.users.push(cleaned);return data.users.find(x=>x.email===profile.email)}
@@ -157,30 +171,20 @@ let renderingPage=false;
 let adminLoading=false;
 let adminDataLoaded=false;
 async function show(p){
+ if(!pages.includes(p))p='home';
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
- // Prevent repeated Admin renders from making the page jump or vibrate.
- if(renderingPage && p===currentPage)return;
- if(p==='admin' && adminLoading)return;
- if(p==='admin' && currentPage==='admin' && !$('admin')?.innerHTML.includes('Loading latest data')){
-   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-   let nb=$('nav_admin');if(nb)nb.classList.add('active');
-   if($('mobileNav'))$('mobileNav').value='admin';
-   return;
- }
- renderingPage=true;
+ // V7.8.41: switch visible page immediately. Do not show a Supabase loading screen for normal button clicks.
  const oldScroll=window.scrollY||document.documentElement.scrollTop||0;
- pages.forEach(x=>$(x).classList.add('hide'));
- $(p).classList.remove('hide');
+ pages.forEach(x=>{let el=$(x); if(el)el.classList.add('hide')});
+ let pageEl=$(p); if(pageEl)pageEl.classList.remove('hide');
  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
  let nb=$('nav_'+p);if(nb)nb.classList.add('active');
  if($('mobileNav'))$('mobileNav').value=p;
- if(['shipping','rentals','profile','marketplace','jobs','truck','home_services','business'].includes(p)){
-   $(p).innerHTML='<div class="card"><b>Loading latest data...</b><p class="muted">Refreshing from Supabase.</p></div>';
- }
  if(p==='admin' && currentPage!=='admin'){
    $('admin').innerHTML='<div class="card"><b>Loading Admin Dashboard...</b><p class="muted">Please wait.</p></div>';
  }
  currentPage=p;
+ renderingPage=true;
  try{
    await renderPage(p);
  }catch(err){
@@ -230,7 +234,7 @@ function requireLogin(){if(!currentUser){show('account');return false}return tru
 async function login(){let e=cleanEmail($('loginEmail')?.value),p=String($('loginPass')?.value||'');if(!e||!p)return alert('Enter your email and password.');if(!e.includes('@'))return alert('Please enter the full email address you used to create the account.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signInWithPassword({email:e,password:p});if(error){let localAdmin=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p&&x.role==='admin');if(localAdmin){currentUser=localAdmin;addNote(localAdmin.email,'You signed in with local admin access.');save();show('home');return;}let msg=String(error.message||'');if(msg.toLowerCase().includes('invalid'))msg='Login failed. Please check the email and password. Make sure there are no spaces and use the same email used during signup.';return alert(msg);}let u=await loadSupabaseProfile(authData.user);if(!u)return alert('Login worked, but profile was not found.');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home');return;}let u=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p);if(!u)return alert('Wrong email or password');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home')}
 async function register(){let name=$('regName').value.trim(),phone=$('regPhone').value.trim(),email=cleanEmail($('regEmail')?.value),pass=$('regPass').value;let selected=[...document.querySelectorAll('.roleCheck:checked')].map(x=>x.value);if(!selected.length)selected=['customer'];let role=selected[0];if(!name||!phone||!email||!pass)return alert('Please complete all fields including phone number');if($('agreeTerms')&&!$('agreeTerms').checked)return alert('Please agree to the Terms and Privacy Policy.');if(!settings().registrationOpen&&(!currentUser||currentUser.role!=='admin'))return alert('Registration is currently closed.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signUp({email,password:pass,options:{data:{name,phone,role,roles:selected,active_role:role}}});if(error)return alert(error.message);let authUser=authData.user;let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:false};if(authUser){let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();if(res.error){console.warn('Profile save error',res.error);alert('Account created, but profile roles were not saved. Please run the V6 SQL migration if you have not run it yet.');}}
 let u=upsertLocalUser(profile);currentUser=u;addNote(email,'Account created. Check your email if Supabase asks you to confirm before login.');sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your Habesha Agenagn account was created successfully. You can open your dashboard and continue setup.',buttonText:'Open My Dashboard',page:'services',details:{Role:role,Phone:phone}});sendAdminEmailNotice('New user registered','A new user registered on Habesha Agenagn.',{Name:name,Email:email,Role:role});save();alert('Account created. If email confirmation is enabled, please check your email before signing in.');show('home');return;}if(data.users.some(u=>u.email===email))return alert('Account already exists');let u={name,phone,email,pass,role,roles:selected,active_role:role,verified:false};data.users.push(u);currentUser=u;addNote(email,'Account created. Welcome to Habesha Connect.');sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your Habesha Agenagn account was created successfully. You can open your dashboard and continue setup.',buttonText:'Open My Dashboard',page:'services',details:{Role:role,Phone:phone}});sendAdminEmailNotice('New user registered','A new user registered on Habesha Agenagn.',{Name:name,Email:email,Role:role});save();show('home')}
-async function logout(){if(authReady())await hcSupabase.auth.signOut();currentUser=null;save();show('home')}
+async function logout(){currentUser=null;save();show('home');if(authReady())fireAndForget(hcSupabase.auth.signOut(),'Supabase sign out')}
 function resetAppData(){if(confirm('Clear all saved Habesha Connect app data and reload?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));location.reload();}}
 async function getProfileByEmail(email){
  email=cleanEmail(email||'');
@@ -316,7 +320,9 @@ function paymentVisibleForActiveRole(p){
  return !!p.role && p.role===role;
 }
 async function renderPage(p){
- await refreshPageData(p);
+ // V7.8.41: render from local app data first. Supabase refreshes are only done on sign-in,
+ // admin dashboard, and real submit/approve/pay actions. This stops every navigation button
+ // from calling Supabase and freezing on phone/slow network.
  if(p==='home')home();
  if(p==='account')account();
  if(p==='profile')await profile();
@@ -424,15 +430,10 @@ function roleDashboardCards(){
  return `<div class="card"><h3>Welcome</h3><p class="muted">Your role is ${currentUser.role}. Your available tools are shown in the top menu.</p></div>`;
 }
 function services(){if(!requireLogin())return;let roles=currentUser.roles||[currentUser.role||'customer'];let cards=roles.map(r=>{let info=ROLE_INFO[r]||ROLE_INFO.customer;let active=r===currentUser.role;return `<div class="card ${active?'':'locked'}"><div class="service-icon">${info.icon}</div><h3>${info.title} ${active?'<span class="pill good">Active</span>':''}</h3><p class="muted">${info.desc}</p><button class="btn ${active?'ghost':'primary'}" onclick="switchRole('${r}')">${active?'Current Dashboard':'Continue as '+info.title}</button></div>`}).join('');let options=serviceRoleChoices(roles).map(r=>{let has=roles.includes(r);let info=ROLE_INFO[r];let adminNote=r==='admin'?'<span class="small"> — owner only</span>':'';return `<label style="display:block;margin:8px 0"><input class="svcCheck" type="checkbox" value="${r}" ${has?'checked':''} ${r==='admin'?'disabled':''} style="width:auto;margin-right:8px">${info.icon} ${info.title}${adminNote}</label>`}).join('');$('services').innerHTML=`<h2>🧭 My Services</h2><div class="hero"><h1>Welcome back, ${currentUser.name}</h1><p><b>What would you like to do today?</b></p><p>One Habesha Connect account can be a traveler today, sender tomorrow, property owner later, and business owner in the future.</p></div><h3 style="margin-top:22px">Continue as</h3><div class="grid">${cards}</div><div class="card" style="margin-top:18px"><h3>Manage My Roles</h3><p class="muted">Turn services on or off for this account. Admin is protected and cannot be removed from this page.</p><div class="grid"><div>${options}</div><div><p><b>Current active role:</b> <span class="pill">${roleTitle(currentUser.role)}</span></p><p class="muted">The active role controls which dashboard and menu you see.</p><button class="btn primary" onclick="saveRoleChoices()">Save My Services</button></div></div></div>`}
-async function switchRole(role){if(!currentUser)return;if(!(currentUser.roles||[]).includes(role))return alert('Please add this service to your profile first.');currentUser.role=role;currentUser.active_role=role;localStorage.setItem('hc_active_role_'+currentUser.email,role);let u=data.users.find(x=>x.email===currentUser.email);if(u){u.role=role;u.active_role=role}if(authReady()&&currentUser.id){let {error}=await hcSupabase.from('profiles').update({active_role:role,role:role}).eq('id',currentUser.id);if(error)console.warn('Could not update active role',error)}save();show('profile')}
-async function saveRoleChoices(){if(!currentUser)return;let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);if((currentUser.roles||[]).includes('admin')&&!roles.includes('admin'))roles.push('admin');if(!roles.length)return alert('Choose at least one service.');if(!roles.includes(currentUser.role))currentUser.role=roles[0];currentUser.roles=[...new Set(roles)];currentUser.active_role=currentUser.role;let u=data.users.find(x=>x.email===currentUser.email);if(u){u.roles=currentUser.roles;u.role=currentUser.role;u.active_role=currentUser.role}if(authReady()){let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:currentUser.role,role:currentUser.role});let res=currentUser.id?await query.eq('id',currentUser.id):await query.eq('email',currentUser.email);if(res.error)return alert('Could not save roles in Supabase: '+res.error.message)}persistOnly();alert('Your services were saved. Use the top role switcher to change dashboards.');show('services')}
+async function switchRole(role){if(!currentUser)return;if(!(currentUser.roles||[]).includes(role))return alert('Please add this service to your profile first.');currentUser.role=role;currentUser.active_role=role;localStorage.setItem('hc_active_role_'+currentUser.email,role);let u=data.users.find(x=>x.email===currentUser.email);if(u){u.role=role;u.active_role=role}persistOnly();render();show('profile');if(authReady()&&currentUser.id){fireAndForget(hcSupabase.from('profiles').update({active_role:role,role:role}).eq('id',currentUser.id),'active role sync')}}
+async function saveRoleChoices(){if(!currentUser)return;let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);if((currentUser.roles||[]).includes('admin')&&!roles.includes('admin'))roles.push('admin');if(!roles.length)return alert('Choose at least one service.');if(!roles.includes(currentUser.role))currentUser.role=roles[0];currentUser.roles=[...new Set(roles)];currentUser.active_role=currentUser.role;let u=data.users.find(x=>x.email===currentUser.email);if(u){u.roles=currentUser.roles;u.role=currentUser.role;u.active_role=currentUser.role}persistOnly();render();show('services');alert('Your services were saved. Use the top role switcher to change dashboards.');if(authReady()){let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:currentUser.role,role:currentUser.role});fireAndForget(currentUser.id?query.eq('id',currentUser.id):query.eq('email',currentUser.email),'roles sync')}}
 async function profile(){
  if(!requireLogin())return;
- if(authReady()){
-   await loadSupabaseTrips();
-   await loadSupabaseShipments();
-   recalcTripSpacesFromShipments();
- }
  let payments=data.payments.filter(p=>paymentVisibleForActiveRole(p));
  let myShips=data.shipments.filter(x=>x.senderEmail===currentUser.email||x.travelerEmail===currentUser.email||String(x.travelerId||'')===String(currentUser.id||'')||String(x.senderId||'')===String(currentUser.id||'')).length;
  let myRentals=data.rentals.filter(x=>x.ownerEmail===currentUser.email).length;
@@ -727,7 +728,6 @@ function travelerShippingDashboardCards(){
 }
 
 async function shipping(){
- if(authReady()){ await loadSupabaseTrips(); await loadSupabaseShipments(); recalcTripSpacesFromShipments(); }
  let role=currentUser?currentUser.role:null;
  let intro = role==='traveler' ? '<div class="notice">Traveler note: accept or decline sender requests. Space is reserved only after the sender pays and admin approves the shipment.</div>' : '<div class="notice">Shipping note: senders can search verified travelers, request space, and pay after the traveler accepts. Contact information is released after approval.</div>';
  let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date" min="${addDaysIso(5)}"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Post your available luggage space. Sender and traveler can agree on details before payment.</p><button class="btn primary" onclick="addTrip()">Publish Trip</button></div>` : '';
@@ -980,7 +980,6 @@ function rentalRequestsTable(reqs,role){
 function scrollToRentalRequests(){let el=document.getElementById('ownerRentalRequests');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 
 async function rentals(){
- if(authReady()){await loadSupabaseRentals();await loadSupabaseRentalRequests();}
  let role=currentUser?currentUser.role:'guest';
  let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin'));
  let seekerReqs=data.rentalRequests.filter(q=>currentUser&&q.seekerEmail===currentUser.email);
