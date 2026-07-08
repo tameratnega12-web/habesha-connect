@@ -93,6 +93,3 @@ V7.6.3 Trucking Trailer Owner Request Top Panel
 - Cleans old browser-stored Taxi/Limo demo/test records.
 - Admin and owner dashboards no longer keep showing old local Taxi/Limo rows after Supabase records are deleted.
 - No SQL required.
-
-
-V7.8.38: Marketplace mobile/dashboard button response fix. Browse Marketplace now opens approved available listings immediately, Post Item opens the posting form, and My Listings/Requests opens activity without needing a page reset. No SQL required.
