@@ -1,0 +1,3 @@
+-- V7.8.70 Rental Owner Accept -> Rented Fix
+-- No schema changes required.
+-- App flow changed only: seeker request -> owner accept/decline; owner accept marks property Rented.
