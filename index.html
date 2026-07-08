@@ -772,8 +772,15 @@ function daysUntil(dateStr){if(!dateStr)return null;let d=new Date(dateStr+'T00:
 function expiryBadge(dateStr,label){let n=daysUntil(dateStr);if(n===null)return '<span class="pill warn">No '+label+' date</span>';if(n<0)return '<span class="pill bad">'+label+' expired</span>';if(n<=30)return '<span class="pill warn">'+label+' expires in '+n+' days</span>';return '<span class="pill good">'+label+' OK</span>';}
 function activeTripSort(a,b){let ar=Number(a.availableSpace||0),br=Number(b.availableSpace||0);let ad=a.travelDate||'',bd=b.travelDate||'';if((ar>0)!==(br>0))return ar>0?-1:1; if(ad!==bd)return ad.localeCompare(bd);return String(b.id||'').localeCompare(String(a.id||''));}
 function isTripBookable(t){let remaining=Number(t.availableSpace ?? t.remaining_space_lb ?? 0);let status=String(t.status||'Open');let travel=t.travelDate||'';let notFlown=!travel || travel>=addDaysIso(0);return remaining>0 && notFlown && ['Open','Approved'].includes(status) && !['Full','Closed','Cancelled','Canceled','Completed','Delivered','Flown'].includes(status);}
+function goTravelerShipSection(section){
+  show('shipping');
+  setTimeout(()=>{
+    let el=$(section==='requests'?'travelerShipRequests':'travelerOpenTrips');
+    if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'});
+  },80);
+}
 function travelerShippingDashboardCards(){
- return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="show('shipping')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="show('shipping')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
+ return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
 async function shipping(){
@@ -802,9 +809,9 @@ async function shipping(){
  }
  let searchBox=`<div class="card"><h3>Search Filters</h3><label>Search route, city, or date</label><input id="shipSearch" value="${shipFilter}" oninput="shipping()" placeholder="Atlanta, Addis Ababa, 2026-07"><button class="btn ghost" onclick="$('shipSearch').value='';shipping()">Show All</button></div>`;
  let availableTripsHtml=`<h3>Available Traveler Trips</h3><div class="list">${visibleTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">No traveler trips posted yet.</div>'}</div>`;
- let shipmentRequestsHtml=`<h3>Shipment Requests</h3><div class="list">${shipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div>`;
+ let shipmentRequestsHtml=`<section id="travelerShipRequests"><h3>Shipment Requests</h3><div class="list">${shipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div></section>`;
  if(role==='traveler'){
-   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${travelerShippingDashboardCards()}${tripBox}${shipmentRequestsHtml}<h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div>${statsHtml}${intro}`;
+   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${travelerShippingDashboardCards()}${tripBox}${shipmentRequestsHtml}<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>${statsHtml}${intro}`;
  } else if(role==='sender'||role==='customer'||!currentUser){
    $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${searchBox}${availableTripsHtml}${shipmentRequestsHtml}${statsHtml}${intro}`;
  } else if(role==='admin'){
