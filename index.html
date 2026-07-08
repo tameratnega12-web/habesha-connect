@@ -775,18 +775,18 @@ function isTripBookable(t){let remaining=Number(t.availableSpace ?? t.remaining_
 function goTravelerShipSection(section){
   show('shipping');
   setTimeout(()=>{
-    let el=$(section==='requests'?'travelerShipRequests':'travelerOpenTrips');
+    let el=$(section==='post'?'travelerPostTrip':(section==='requests'?'travelerShipRequests':'travelerOpenTrips'));
     if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'});
   },80);
 }
 function travelerShippingDashboardCards(){
- return `<div class="grid"><div class="card"><h3>✈️ My Trips</h3><p class="muted">Post and manage traveler trips.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
+ return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
 async function shipping(){
  let role=currentUser?currentUser.role:null;
  let intro = role==='traveler' ? '<div class="notice">Traveler note: accept or decline sender requests. Space is reserved only after the sender pays and admin approves the shipment.</div>' : '<div class="notice">Shipping note: senders can search verified travelers, request space, and pay after the traveler accepts. Contact information is released after approval.</div>';
- let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date" min="${addDaysIso(5)}"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Post your available luggage space. Sender and traveler can agree on details before payment.</p><button class="btn primary" onclick="addTrip()">Publish Trip</button></div>` : '';
+ let tripBox = role==='traveler' ? `<section id="travelerPostTrip" class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date" min="${addDaysIso(5)}"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Post your available luggage space. Sender and traveler can agree on details before payment.</p><button class="btn primary" onclick="addTrip()">Publish Trip</button></section>` : '';
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();
  let visibleTrips=data.trips.filter(t=>{let openForBooking=role==='admin'||isTripBookable(t);let matches=!shipFilter||String(t.route||'').toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)||String(t.fromCity||'').toLowerCase().includes(shipFilter)||String(t.toCity||'').toLowerCase().includes(shipFilter);return openForBooking&&matches;}).sort(activeTripSort);
  let terminalStatuses=['Completed'];
