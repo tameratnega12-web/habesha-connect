@@ -208,6 +208,7 @@ let currentPage='home';
 let renderingPage=false;
 let adminLoading=false;
 let adminDataLoaded=false;
+let adminBackgroundRefreshing=false;
 async function show(p){
  if(!pages.includes(p))p='home';
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
@@ -1831,37 +1832,37 @@ async function declineTravelerTrip(id){
 async function admin(){
  document.documentElement.style.overflowY='auto'; document.documentElement.style.overflow='auto'; document.body.style.overflowY='auto'; document.body.style.overflow='auto'; document.body.style.position='static'; document.body.style.touchAction='pan-y';
  if(!currentUser||currentUser.role!=='admin'){$('admin').innerHTML='<div class="card"><h2>Admin Access Required</h2><p>Please login as admin or switch to the Admin role.</p></div>';return}
- if(adminLoading)return;
  adminLoading=true;
- if(!adminDataLoaded)$('admin').innerHTML='<div class="card"><h2>⚙️ Admin Dashboard</h2><p>Loading Supabase users and verification records...</p></div>';
  try{
-   // V7.8.43 Admin safe loading fix: the Admin page must still open even if one
-   // Supabase table is slow, missing, or blocked by policy. Load each source safely.
-   if(authReady()){
-     const adminSafeLoad=async(fn,label)=>{
+   // V7.8.46 Admin fast-load fix: open Admin immediately from current/local data.
+   // Supabase refresh runs in the background and re-renders Admin when finished.
+   if(authReady()&&!adminDataLoaded&&!adminBackgroundRefreshing){
+     adminBackgroundRefreshing=true;
+     (async()=>{
+       const adminSafeLoad=async(fn,label)=>{
+         try{ if(typeof fn==='function') await safeAsync(fn(),3500,label); }
+         catch(e){ console.warn((label||'Admin data load')+' failed; Admin stayed open with available local data.',e); }
+       };
        try{
-         if(typeof fn==='function') await safeAsync(fn(),3500,label);
-       }catch(e){
-         console.warn((label||'Admin data load')+' failed; opening admin with available local data.',e);
+         await adminSafeLoad(loadSupabaseRentals,'Admin rentals load');
+         await adminSafeLoad(loadSupabaseRentalRequests,'Admin rental requests load');
+         await adminSafeLoad(loadSupabasePayments,'Admin payments load');
+         await adminSafeLoad(loadSupabaseTrucking,'Admin trucking load');
+         await adminSafeLoad(loadSupabaseMarketplace,'Admin marketplace load');
+         await adminSafeLoad(loadAdminProfiles,'Admin profiles load');
+         adminDataLoaded=true;
+       }finally{
+         adminBackgroundRefreshing=false;
+         if(currentPage==='admin')admin();
        }
-     };
-     await adminSafeLoad(loadSupabaseRentals,'Admin rentals load');
-     await adminSafeLoad(loadSupabaseRentalRequests,'Admin rental requests load');
-     await adminSafeLoad(loadSupabasePayments,'Admin payments load');
-     await adminSafeLoad(loadSupabaseTrucking,'Admin trucking load');
-     await adminSafeLoad(loadSupabaseMarketplace,'Admin marketplace load');
-   }
-   if(!adminDataLoaded){
-     try{await safeAsync(loadAdminProfiles(),3500,'Admin profiles load');}
-     catch(e){console.warn('Admin profiles load failed; opening admin with local users.',e);}
-     adminDataLoaded=true;
+     })();
    }
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
  let managedRoles=['sender','traveler','owner','rent_seeker','truck_owner','customer','driver','business_owner','marketplace','taxi_limo_owner','taxi_limo_driver','admin'];
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
- $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2><div class='notice'><b>V6.3.5 Admin One-Click Refresh Fix:</b> admin buttons now show Working, prevent duplicate clicks, and refresh the admin tables after each action.</div>
+ $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2>${adminBackgroundRefreshing?'<div class="notice"><b>Refreshing Admin data from Supabase...</b> You can keep working while this updates in the background.</div>':''}<div class='notice'><b>V7.8.46 Admin Fast Load Fix:</b> Admin opens immediately; Supabase refreshes in the background.</div>
  <h3>Daily Admin Management</h3><div class="notice"><b>Priority:</b> Shipping Management, Rental Listing Management, and Rental Requests Management are now at the top for faster daily work.</div>
  ${marketplaceAdminManagementHtml()}${taxiAdminHtml()}${homeServicesAdminHtml()}${travelerTripAdminHtml()}<h3>Shipping Management</h3><div class="card"><h3>Official Shipping Money Flow</h3><ol><li>Sender requests space from a traveler trip.</li><li>Traveler accepts or declines.</li><li>Sender pays Habesha Connect.</li><li>Admin approves payment, contact details unlock, and remaining space is reduced.</li><li>Package is delivered.</li><li>Admin manually pays traveler commission and marks Traveler Paid.</li></ol><p class="muted">For Version 1, traveler payouts are manual: Zelle, PayPal, Cash App, or bank transfer. The app records the payout status for admin reports.</p></div><table><tr><th>ID</th><th>Tracking</th><th>Route</th><th>Sender</th><th>Traveler</th><th>Status</th><th>Beta Status</th><th>Traveler Payout</th><th>Actions</th></tr>${data.shipments.map(s=>`<tr><td>${s.id}</td><td>${s.tracking||''}</td><td>${s.route}</td><td>${s.sender} ${verifiedBadge(s.senderVerified)}</td><td>${s.traveler} ${s.travelerEmail?verifiedBadge(s.travelerVerified):''}</td><td>${s.status}</td><td>${s.paid?'Paid':'Unpaid'}</td><td>${s.travelerPaid?'Paid':'Not paid'} ${s.travelerPayoutMethod?('('+s.travelerPayoutMethod+')'):''}</td><td><button class="btn primary" onclick="approveShipment('${s.id}')">Approve Payment</button> <button class="btn ghost" onclick="markDelivered('${s.id}')">Mark Delivered</button> <button class="btn ghost" onclick="payTraveler('${s.id}')">Pay Traveler</button> <button class="btn ghost" onclick="editShipment('${s.id}')">Edit</button> <button class="btn bad" onclick="deleteShipment('${s.id}')">Delete</button></td></tr>`).join('')}</table>
  
