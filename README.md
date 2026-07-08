@@ -1,3 +1,17 @@
+# Habesha Agenagn V7.8.30 Taxi/Limo Clean Hiring Flow
+
+This version cleans the Taxi/Limo module so it focuses on owner-driver hiring only.
+
+Changes:
+- Hides/removes rider taxi request transaction UI from Taxi/Limo pages.
+- Admin dashboard now shows owner applications, vehicle approvals, driver applications, and hire approvals only.
+- Owner dashboard shows Available Drivers, My Active Drivers, Hire Request History, and My Vehicles.
+- Driver dashboard shows application/profile and owner hire requests only.
+- Once admin approves a hire, driver becomes Hired / Not Available and disappears from other owners.
+- Owner or driver can end employment without admin; driver becomes available again.
+
+No SQL required if previous Taxi/Limo SQL already exists.
+
 # Habesha Agenagn V7.4.4 - Email Traveler Sender Request Step 3
 
 Only email notification change added in this version:
