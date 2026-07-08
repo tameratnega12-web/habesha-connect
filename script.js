@@ -2,6 +2,8 @@
 
 
 
+
+
 const $=id=>document.getElementById(id);
 const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','messages','notifications','admin','about','contact','help','report','privacy','terms'];
 const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Jobs',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Manager',messages:'Messages',notifications:'Notifications',admin:'Admin',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
@@ -15,6 +17,20 @@ const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and a
 const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_limo_owner','taxi_limo_driver','service_provider','business_owner','marketplace','customer'];
 function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
 function persistOnly(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));}
+
+// V7.8.41: button/navigation no-wait helpers. Normal screen changes should not wait for Supabase.
+function fireAndForget(promise,label){
+ try{Promise.resolve(promise).catch(e=>console.warn((label||'background task')+' failed',e));}catch(e){console.warn((label||'background task')+' failed',e);}
+}
+async function safeAsync(promise,ms,label){
+ let timeout;
+ try{
+   return await Promise.race([
+     Promise.resolve(promise),
+     new Promise(resolve=>{timeout=setTimeout(()=>{console.warn((label||'Supabase task')+' timed out; continuing locally.');resolve(null);},ms||5000)})
+   ]);
+ }finally{if(timeout)clearTimeout(timeout);}
+}
 function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile.roles.filter(Boolean):[];let base=profile?.role||profile?.active_role||'customer';if(base&&!roles.includes(base))roles.unshift(base);roles=[...new Set(roles.length?roles:['customer'])];return roles}
 function roleTitle(role){return (ROLE_INFO[role]&&ROLE_INFO[role].title)||role}
 function upsertLocalUser(profile){if(!profile||!profile.email)return null;let u=data.users.find(x=>x.email===profile.email);let roles=normalizeRoles(profile);let savedRole=localStorage.getItem('hc_active_role_'+profile.email);let activeRole=(savedRole&&roles.includes(savedRole))?savedRole:(profile.active_role&&roles.includes(profile.active_role)?profile.active_role:(profile.role&&roles.includes(profile.role)?profile.role:roles[0]));let cleaned={id:profile.id||profile.profile_id||'',auth_user_id:profile.auth_user_id||'',name:profile.name||profile.full_name||profile.email,phone:profile.phone||'',email:profile.email,role:activeRole,active_role:activeRole,roles,verified:!!profile.verified,city:profile.city||''};if(u)Object.assign(u,cleaned);else data.users.push(cleaned);return data.users.find(x=>x.email===profile.email)}
@@ -55,18 +71,6 @@ if(!localStorage.getItem(TAXI_LIMO_LOCAL_CLEANUP_KEY)){
   data.taxiLimoVehicles=[];
   data.taxiLimoDriverAssignments=[];
   localStorage.setItem(TAXI_LIMO_LOCAL_CLEANUP_KEY,'1');
-}
-
-
-// V7.8.34 Marketplace cleanup: remove old browser/demo Marketplace rows.
-// Marketplace must show only new user-submitted listings and requests from this version forward.
-// This prevents old test/demo listings from appearing in user or admin dashboards.
-const MARKETPLACE_LOCAL_CLEANUP_KEY='hc_v7834_marketplace_local_cleanup_done';
-if(!localStorage.getItem(MARKETPLACE_LOCAL_CLEANUP_KEY)){
-  data.market=[];
-  data.marketRequests=[];
-  data.savedMarketItems=[];
-  localStorage.setItem(MARKETPLACE_LOCAL_CLEANUP_KEY,'1');
 }
 
 localStorage.setItem('hc_v35', JSON.stringify(data));
@@ -127,30 +131,20 @@ let renderingPage=false;
 let adminLoading=false;
 let adminDataLoaded=false;
 async function show(p){
+ if(!pages.includes(p))p='home';
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
- // Prevent repeated Admin renders from making the page jump or vibrate.
- if(renderingPage && p===currentPage)return;
- if(p==='admin' && adminLoading)return;
- if(p==='admin' && currentPage==='admin' && !$('admin')?.innerHTML.includes('Loading latest data')){
-   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-   let nb=$('nav_admin');if(nb)nb.classList.add('active');
-   if($('mobileNav'))$('mobileNav').value='admin';
-   return;
- }
- renderingPage=true;
+ // V7.8.41: switch visible page immediately. Do not show a Supabase loading screen for normal button clicks.
  const oldScroll=window.scrollY||document.documentElement.scrollTop||0;
- pages.forEach(x=>$(x).classList.add('hide'));
- $(p).classList.remove('hide');
+ pages.forEach(x=>{let el=$(x); if(el)el.classList.add('hide')});
+ let pageEl=$(p); if(pageEl)pageEl.classList.remove('hide');
  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
  let nb=$('nav_'+p);if(nb)nb.classList.add('active');
  if($('mobileNav'))$('mobileNav').value=p;
- if(['shipping','rentals','profile','marketplace','jobs','truck','home_services','business'].includes(p)){
-   $(p).innerHTML='<div class="card"><b>Loading latest data...</b><p class="muted">Refreshing from Supabase.</p></div>';
- }
  if(p==='admin' && currentPage!=='admin'){
    $('admin').innerHTML='<div class="card"><b>Loading Admin Dashboard...</b><p class="muted">Please wait.</p></div>';
  }
  currentPage=p;
+ renderingPage=true;
  try{
    await renderPage(p);
  }catch(err){
@@ -180,9 +174,6 @@ async function refreshPageData(p){
  if(p==='messages'||p==='admin'){
    await loadSupabaseMessages();
  }
- if(p==='marketplace'||p==='admin'){
-   await loadSupabaseMarketplace();
- }
  if(p==='notifications'||p==='admin'){
    await loadSupabaseNotifications();
  }
@@ -203,7 +194,7 @@ function requireLogin(){if(!currentUser){show('account');return false}return tru
 async function login(){let e=cleanEmail($('loginEmail')?.value),p=String($('loginPass')?.value||'');if(!e||!p)return alert('Enter your email and password.');if(!e.includes('@'))return alert('Please enter the full email address you used to create the account.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signInWithPassword({email:e,password:p});if(error){let localAdmin=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p&&x.role==='admin');if(localAdmin){currentUser=localAdmin;addNote(localAdmin.email,'You signed in with local admin access.');save();show('home');return;}let msg=String(error.message||'');if(msg.toLowerCase().includes('invalid'))msg='Login failed. Please check the email and password. Make sure there are no spaces and use the same email used during signup.';return alert(msg);}let u=await loadSupabaseProfile(authData.user);if(!u)return alert('Login worked, but profile was not found.');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home');return;}let u=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p);if(!u)return alert('Wrong email or password');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home')}
 async function register(){let name=$('regName').value.trim(),phone=$('regPhone').value.trim(),email=cleanEmail($('regEmail')?.value),pass=$('regPass').value;let selected=[...document.querySelectorAll('.roleCheck:checked')].map(x=>x.value);if(!selected.length)selected=['customer'];let role=selected[0];if(!name||!phone||!email||!pass)return alert('Please complete all fields including phone number');if($('agreeTerms')&&!$('agreeTerms').checked)return alert('Please agree to the Terms and Privacy Policy.');if(!settings().registrationOpen&&(!currentUser||currentUser.role!=='admin'))return alert('Registration is currently closed.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signUp({email,password:pass,options:{data:{name,phone,role,roles:selected,active_role:role}}});if(error)return alert(error.message);let authUser=authData.user;let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:false};if(authUser){let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();if(res.error){console.warn('Profile save error',res.error);alert('Account created, but profile roles were not saved. Please run the V6 SQL migration if you have not run it yet.');}}
 let u=upsertLocalUser(profile);currentUser=u;addNote(email,'Account created. Check your email if Supabase asks you to confirm before login.');sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your Habesha Agenagn account was created successfully. You can open your dashboard and continue setup.',buttonText:'Open My Dashboard',page:'services',details:{Role:role,Phone:phone}});sendAdminEmailNotice('New user registered','A new user registered on Habesha Agenagn.',{Name:name,Email:email,Role:role});save();alert('Account created. If email confirmation is enabled, please check your email before signing in.');show('home');return;}if(data.users.some(u=>u.email===email))return alert('Account already exists');let u={name,phone,email,pass,role,roles:selected,active_role:role,verified:false};data.users.push(u);currentUser=u;addNote(email,'Account created. Welcome to Habesha Connect.');sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your Habesha Agenagn account was created successfully. You can open your dashboard and continue setup.',buttonText:'Open My Dashboard',page:'services',details:{Role:role,Phone:phone}});sendAdminEmailNotice('New user registered','A new user registered on Habesha Agenagn.',{Name:name,Email:email,Role:role});save();show('home')}
-async function logout(){if(authReady())await hcSupabase.auth.signOut();currentUser=null;save();show('home')}
+async function logout(){currentUser=null;save();show('home');if(authReady())fireAndForget(hcSupabase.auth.signOut(),'Supabase sign out')}
 function resetAppData(){if(confirm('Clear all saved Habesha Connect app data and reload?')){Object.keys(localStorage).filter(k=>k.startsWith('hc')).forEach(k=>localStorage.removeItem(k));location.reload();}}
 async function getProfileByEmail(email){
  email=cleanEmail(email||'');
@@ -289,7 +280,9 @@ function paymentVisibleForActiveRole(p){
  return !!p.role && p.role===role;
 }
 async function renderPage(p){
- await refreshPageData(p);
+ // V7.8.41: render from local app data first. Supabase refreshes are only done on sign-in,
+ // admin dashboard, and real submit/approve/pay actions. This stops every navigation button
+ // from calling Supabase and freezing on phone/slow network.
  if(p==='home')home();
  if(p==='account')account();
  if(p==='profile')await profile();
@@ -397,15 +390,10 @@ function roleDashboardCards(){
  return `<div class="card"><h3>Welcome</h3><p class="muted">Your role is ${currentUser.role}. Your available tools are shown in the top menu.</p></div>`;
 }
 function services(){if(!requireLogin())return;let roles=currentUser.roles||[currentUser.role||'customer'];let cards=roles.map(r=>{let info=ROLE_INFO[r]||ROLE_INFO.customer;let active=r===currentUser.role;return `<div class="card ${active?'':'locked'}"><div class="service-icon">${info.icon}</div><h3>${info.title} ${active?'<span class="pill good">Active</span>':''}</h3><p class="muted">${info.desc}</p><button class="btn ${active?'ghost':'primary'}" onclick="switchRole('${r}')">${active?'Current Dashboard':'Continue as '+info.title}</button></div>`}).join('');let options=serviceRoleChoices(roles).map(r=>{let has=roles.includes(r);let info=ROLE_INFO[r];let adminNote=r==='admin'?'<span class="small"> — owner only</span>':'';return `<label style="display:block;margin:8px 0"><input class="svcCheck" type="checkbox" value="${r}" ${has?'checked':''} ${r==='admin'?'disabled':''} style="width:auto;margin-right:8px">${info.icon} ${info.title}${adminNote}</label>`}).join('');$('services').innerHTML=`<h2>🧭 My Services</h2><div class="hero"><h1>Welcome back, ${currentUser.name}</h1><p><b>What would you like to do today?</b></p><p>One Habesha Connect account can be a traveler today, sender tomorrow, property owner later, and business owner in the future.</p></div><h3 style="margin-top:22px">Continue as</h3><div class="grid">${cards}</div><div class="card" style="margin-top:18px"><h3>Manage My Roles</h3><p class="muted">Turn services on or off for this account. Admin is protected and cannot be removed from this page.</p><div class="grid"><div>${options}</div><div><p><b>Current active role:</b> <span class="pill">${roleTitle(currentUser.role)}</span></p><p class="muted">The active role controls which dashboard and menu you see.</p><button class="btn primary" onclick="saveRoleChoices()">Save My Services</button></div></div></div>`}
-async function switchRole(role){if(!currentUser)return;if(!(currentUser.roles||[]).includes(role))return alert('Please add this service to your profile first.');currentUser.role=role;currentUser.active_role=role;localStorage.setItem('hc_active_role_'+currentUser.email,role);let u=data.users.find(x=>x.email===currentUser.email);if(u){u.role=role;u.active_role=role}if(authReady()&&currentUser.id){let {error}=await hcSupabase.from('profiles').update({active_role:role,role:role}).eq('id',currentUser.id);if(error)console.warn('Could not update active role',error)}save();show('profile')}
-async function saveRoleChoices(){if(!currentUser)return;let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);if((currentUser.roles||[]).includes('admin')&&!roles.includes('admin'))roles.push('admin');if(!roles.length)return alert('Choose at least one service.');if(!roles.includes(currentUser.role))currentUser.role=roles[0];currentUser.roles=[...new Set(roles)];currentUser.active_role=currentUser.role;let u=data.users.find(x=>x.email===currentUser.email);if(u){u.roles=currentUser.roles;u.role=currentUser.role;u.active_role=currentUser.role}if(authReady()){let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:currentUser.role,role:currentUser.role});let res=currentUser.id?await query.eq('id',currentUser.id):await query.eq('email',currentUser.email);if(res.error)return alert('Could not save roles in Supabase: '+res.error.message)}persistOnly();alert('Your services were saved. Use the top role switcher to change dashboards.');show('services')}
+async function switchRole(role){if(!currentUser)return;if(!(currentUser.roles||[]).includes(role))return alert('Please add this service to your profile first.');currentUser.role=role;currentUser.active_role=role;localStorage.setItem('hc_active_role_'+currentUser.email,role);let u=data.users.find(x=>x.email===currentUser.email);if(u){u.role=role;u.active_role=role}persistOnly();render();show('profile');if(authReady()&&currentUser.id){fireAndForget(hcSupabase.from('profiles').update({active_role:role,role:role}).eq('id',currentUser.id),'active role sync')}}
+async function saveRoleChoices(){if(!currentUser)return;let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);if((currentUser.roles||[]).includes('admin')&&!roles.includes('admin'))roles.push('admin');if(!roles.length)return alert('Choose at least one service.');if(!roles.includes(currentUser.role))currentUser.role=roles[0];currentUser.roles=[...new Set(roles)];currentUser.active_role=currentUser.role;let u=data.users.find(x=>x.email===currentUser.email);if(u){u.roles=currentUser.roles;u.role=currentUser.role;u.active_role=currentUser.role}persistOnly();render();show('services');alert('Your services were saved. Use the top role switcher to change dashboards.');if(authReady()){let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:currentUser.role,role:currentUser.role});fireAndForget(currentUser.id?query.eq('id',currentUser.id):query.eq('email',currentUser.email),'roles sync')}}
 async function profile(){
  if(!requireLogin())return;
- if(authReady()){
-   await loadSupabaseTrips();
-   await loadSupabaseShipments();
-   recalcTripSpacesFromShipments();
- }
  let payments=data.payments.filter(p=>paymentVisibleForActiveRole(p));
  let myShips=data.shipments.filter(x=>x.senderEmail===currentUser.email||x.travelerEmail===currentUser.email||String(x.travelerId||'')===String(currentUser.id||'')||String(x.senderId||'')===String(currentUser.id||'')).length;
  let myRentals=data.rentals.filter(x=>x.ownerEmail===currentUser.email).length;
@@ -700,7 +688,6 @@ function travelerShippingDashboardCards(){
 }
 
 async function shipping(){
- if(authReady()){ await loadSupabaseTrips(); await loadSupabaseShipments(); recalcTripSpacesFromShipments(); }
  let role=currentUser?currentUser.role:null;
  let intro = role==='traveler' ? '<div class="notice">Traveler note: accept or decline sender requests. Space is reserved only after the sender pays and admin approves the shipment.</div>' : '<div class="notice">Shipping note: senders can search verified travelers, request space, and pay after the traveler accepts. Contact information is released after approval.</div>';
  let tripBox = role==='traveler' ? `<div class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date" min="${addDaysIso(5)}"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Post your available luggage space. Sender and traveler can agree on details before payment.</p><button class="btn primary" onclick="addTrip()">Publish Trip</button></div>` : '';
@@ -953,7 +940,6 @@ function rentalRequestsTable(reqs,role){
 function scrollToRentalRequests(){let el=document.getElementById('ownerRentalRequests');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 
 async function rentals(){
- if(authReady()){await loadSupabaseRentals();await loadSupabaseRentalRequests();}
  let role=currentUser?currentUser.role:'guest';
  let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin'));
  let seekerReqs=data.rentalRequests.filter(q=>currentUser&&q.seekerEmail===currentUser.email);
@@ -1098,106 +1084,6 @@ async function approveRentalReq(id){
 }
 async function declineRentalReq(id){let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!q)return;q.status='Declined';let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));if(r&&r.status==='Viewing Pending')r.status='Approved';if(authReady()&&q.dbId){let {error}=await hcSupabase.from('rental_requests').update({status:'Declined'}).eq('id',q.dbId);if(error)return alert('Could not decline rental request: '+error.message);}addNote(q.seekerEmail,'Your rental request was declined.');sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental viewing rejected',summary:'Your rental viewing request was declined.',buttonText:'Open Rental Dashboard',page:'rentals',details:{Property:q.propertyTitle,Status:'Declined'}});persistOnly(); if(currentPage==='admin'){await admin();}else{await rentals();}}
 
-
-/* V7.8.35 Marketplace phone + Supabase sync fix
-   This keeps Marketplace working on desktop and phone by reading/writing shared Supabase tables. */
-function marketDbStatusToApp(status){
-  const map={pending_admin:'Pending Admin Approval',admin_approved:'Approved',admin_declined:'Declined',sold_waiting_admin:'Sold Waiting Admin Verification',sold_admin_approved:'Sold Verified',removed:'Removed',pending:'Pending Admin Approval',approved:'Approved',declined:'Declined',sold:'Sold Verified'};
-  return map[String(status||'').toLowerCase()]||status||'Pending Admin Approval';
-}
-function marketAppStatusToDb(status){
-  const s=String(status||'').toLowerCase();
-  if(s.includes('pending'))return 'pending_admin';
-  if(s.includes('approved')||s==='available')return 'admin_approved';
-  if(s.includes('declined'))return 'admin_declined';
-  if(s.includes('sold waiting'))return 'sold_waiting_admin';
-  if(s.includes('sold verified'))return 'sold_admin_approved';
-  if(s.includes('removed'))return 'removed';
-  return 'pending_admin';
-}
-function marketReqDbStatusToApp(status){
-  const map={pending_admin:'Buyer Request Pending Admin',admin_approved:'Admin Approved - Waiting Seller',admin_declined:'Admin Declined',seller_accepted_waiting_admin:'Seller Accepted - Waiting Admin',seller_declined:'Seller Declined',connection_admin_approved:'Connection Approved',connection_admin_declined:'Connection Declined',completed:'Completed',cancelled:'Cancelled'};
-  return map[String(status||'').toLowerCase()]||status||'Buyer Request Pending Admin';
-}
-function marketReqAppStatusToDb(status){
-  const s=String(status||'').toLowerCase();
-  if(s.includes('buyer request pending'))return 'pending_admin';
-  if(s.includes('admin approved'))return 'admin_approved';
-  if(s.includes('admin declined'))return 'admin_declined';
-  if(s.includes('seller accepted'))return 'seller_accepted_waiting_admin';
-  if(s.includes('seller declined'))return 'seller_declined';
-  if(s.includes('connection approved'))return 'connection_admin_approved';
-  if(s.includes('connection declined'))return 'connection_admin_declined';
-  if(s.includes('completed'))return 'completed';
-  if(s.includes('cancelled'))return 'cancelled';
-  return 'pending_admin';
-}
-function marketCurrentAuthId(){return (currentUser&&(currentUser.auth_user_id||currentUser.authUserId||currentUser.user_id))||null;}
-function isMyMarketListing(m){
-  if(!currentUser||!m)return false;
-  return cleanEmail(m.sellerEmail||'')===cleanEmail(currentUser.email||'') || (m.sellerAuthId&&marketCurrentAuthId()&&m.sellerAuthId===marketCurrentAuthId());
-}
-function marketListingFromDb(row){
-  return {
-    id:String(row.id),dbId:row.id,sellerAuthId:row.seller_id||'',seller:row.seller_name||'Seller',sellerEmail:row.seller_email||'',sellerPhone:row.seller_phone||'',
-    title:row.title||'Marketplace Item',description:row.description||'',category:row.category||'Other',condition:row.item_condition||row.condition||'Good',price:Number(row.price)||0,city:row.city||'',
-    photos:Array.isArray(row.photo_urls)?row.photo_urls:[],status:marketDbStatusToApp(row.status),adminNote:row.admin_note||'',createdAt:row.created_at||''
-  };
-}
-function marketRequestFromDb(row){
-  return {
-    id:String(row.id),dbId:row.id,itemId:String(row.listing_id||''),itemTitle:row.item_title||row.marketplace_listings?.title||'Marketplace Item',
-    buyerName:row.buyer_name||'Buyer',buyerEmail:row.buyer_email||'',buyerPhone:row.buyer_phone||'',sellerName:row.seller_name||row.marketplace_listings?.seller_name||'Seller',sellerEmail:row.seller_email||row.marketplace_listings?.seller_email||'',sellerPhone:row.seller_phone||row.marketplace_listings?.seller_phone||'',
-    message:row.message||'',status:marketReqDbStatusToApp(row.status),createdAt:row.created_at||''
-  };
-}
-async function loadSupabaseMarketplace(){
-  if(!authReady())return;
-  try{
-    let listings=await hcSupabase.from('marketplace_listings').select('*').order('created_at',{ascending:false});
-    if(!listings.error&&Array.isArray(listings.data)){data.market=listings.data.map(marketListingFromDb);}
-    else if(listings.error){console.warn('Marketplace listings load error',listings.error.message);}
-    let reqs=await hcSupabase.from('marketplace_purchase_requests').select('*, marketplace_listings(title,seller_name,seller_email,seller_phone)').order('created_at',{ascending:false});
-    if(!reqs.error&&Array.isArray(reqs.data)){data.marketRequests=reqs.data.map(marketRequestFromDb);}
-    else if(reqs.error){console.warn('Marketplace requests load error',reqs.error.message);}
-    persistOnly();
-  }catch(e){console.warn('Marketplace Supabase sync error',e);}
-}
-async function marketInsertListingToSupabase(item){
-  if(!authReady())return {error:null,data:null};
-  let sellerId=marketCurrentAuthId();
-  if(!sellerId){try{let u=await hcSupabase.auth.getUser();sellerId=u?.data?.user?.id||null;}catch(e){}}
-  let payload={seller_id:sellerId,seller_name:item.seller,seller_email:item.sellerEmail,seller_phone:item.sellerPhone,title:item.title,description:item.description,category:item.category,price:item.price,item_condition:item.condition,city:item.city,photo_urls:item.photos||[],status:marketAppStatusToDb(item.status),admin_note:item.adminNote||''};
-  let res=await hcSupabase.from('marketplace_listings').insert(payload).select().single();
-  if(!res.error&&res.data){Object.assign(item,marketListingFromDb(res.data));}
-  return res;
-}
-async function marketUpdateListingStatus(id,status){
-  let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
-  if(!m)return {error:{message:'Listing not found'}};
-  if(authReady()&&(m.dbId||String(m.id).length>20)){
-    return await hcSupabase.from('marketplace_listings').update({status:marketAppStatusToDb(status)}).eq('id',m.dbId||m.id);
-  }
-  return {error:null};
-}
-async function marketInsertRequestToSupabase(req){
-  if(!authReady())return {error:null,data:null};
-  let buyerId=marketCurrentAuthId();
-  if(!buyerId){try{let u=await hcSupabase.auth.getUser();buyerId=u?.data?.user?.id||null;}catch(e){}}
-  let payload={listing_id:req.itemId,buyer_id:buyerId,buyer_name:req.buyerName,buyer_email:req.buyerEmail,buyer_phone:req.buyerPhone,seller_name:req.sellerName,seller_email:req.sellerEmail,seller_phone:req.sellerPhone,item_title:req.itemTitle,message:req.message||'',status:marketReqAppStatusToDb(req.status)};
-  let res=await hcSupabase.from('marketplace_purchase_requests').insert(payload).select().single();
-  if(!res.error&&res.data){Object.assign(req,marketRequestFromDb(res.data));}
-  return res;
-}
-async function marketUpdateRequestStatus(id,status){
-  let r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
-  if(!r)return {error:{message:'Request not found'}};
-  if(authReady()&&(r.dbId||String(r.id).length>20)){
-    return await hcSupabase.from('marketplace_purchase_requests').update({status:marketReqAppStatusToDb(status)}).eq('id',r.dbId||r.id);
-  }
-  return {error:null};
-}
-
 function marketplace(){
  if(!data.marketRequests)data.marketRequests=[];if(!data.savedMarketItems)data.savedMarketItems=[];
  let role=currentUser?currentUser.role:'guest';
@@ -1205,12 +1091,12 @@ function marketplace(){
  let myEmail=currentUser?currentUser.email:'';
  let approved=(data.market||[]).filter(m=>m.status==='Approved'||m.status==='Available');
  let visible=(data.market||[]).filter(m=>isAdmin||m.sellerEmail===myEmail||m.status==='Approved'||m.status==='Available');
- let myListings=(data.market||[]).filter(m=>isMyMarketListing(m));
+ let myListings=(data.market||[]).filter(m=>currentUser&&m.sellerEmail===myEmail);
  let myRequests=(data.marketRequests||[]).filter(r=>currentUser&&(r.buyerEmail===myEmail||r.sellerEmail===myEmail||isAdmin));
  let adminBox=isAdmin?`<h3 style="margin-top:22px">Admin Marketplace Approvals</h3><div class="grid">${marketAdminCards()}</div>`:'';
  $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>
- <div class="notice"><b>Marketplace flow:</b> seller posts item → item appears in Admin Dashboard for approval → admin approves → approved item appears for all users in Browse Marketplace → buyer requests → admin approves request → seller accepts → admin approves contact connection → seller marks sold. Old demo/sample marketplace records are cleared.</div>
- <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions marketplaceMobileActions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
+ <div class="notice"><b>Marketplace flow:</b> seller posts item → item appears in Admin Dashboard for approval → admin approves → approved item appears for all users → buyer requests → admin approves request → seller accepts → admin approves contact connection → seller marks sold.</div>
+ <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
  <div class="grid two">
   <div class="card" id="marketPostPanel"><h3>➕ Post Item</h3>
    <label>Item Title</label><input id="mTitle" placeholder="Example: iPhone, sofa, dining table">
@@ -1233,20 +1119,9 @@ function marketplace(){
  <h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Requests</h3>${myRequests.map(marketRequestCard).join('')||'<p class="muted">No requests yet.</p>'}</div></div>${adminBox}`;
 }
 function marketJump(id){let el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';setTimeout(()=>{el.style.outline='';},1200);}}
-async function openMarketplaceAvailableItems(){
-  if(currentPage!=='marketplace'){await show('marketplace');}
-  await loadSupabaseMarketplace();
-  marketplace();
-  setTimeout(()=>{
-    let title=document.getElementById('marketAvailableTitle');
-    let box=document.getElementById('marketList');
-    if(title)title.scrollIntoView({behavior:'smooth',block:'start'});
-    if(box){box.style.outline='3px solid #14b8a6';box.style.borderRadius='12px';setTimeout(()=>{box.style.outline='';},1400);}
-    filterMarket();
-  },120);
-}
+function openMarketplaceAvailableItems(){let panel=document.getElementById('marketBrowsePanel');let list=document.getElementById('marketAvailableTitle')||document.getElementById('marketList');if(panel){panel.scrollIntoView({behavior:'smooth',block:'start'});}setTimeout(()=>{if(list){list.scrollIntoView({behavior:'smooth',block:'start'});let box=document.getElementById('marketList');if(box){box.style.outline='3px solid #14b8a6';box.style.borderRadius='12px';setTimeout(()=>{box.style.outline='';},1400);}}},250);filterMarket();}
 function marketPhotosHtml(m){let photos=Array.isArray(m.photos)?m.photos:[];if(!photos.length)return '';return `<div class="photoStrip">${photos.slice(0,10).map((ph,i)=>{let src=String(ph||'');if(src.startsWith('data:image')||src.startsWith('http://')||src.startsWith('https://'))return `<img class="marketPhoto" src="${src}" alt="${m.title||'Marketplace item'} photo ${i+1}">`;return `<span class="photoThumb">📷 ${src}</span>`;}).join('')}</div>`}
-function marketCard(m){let myEmail=currentUser?currentUser.email:'';let isOwner=isMyMarketListing(m);let isAdmin=currentUser&&currentUser.role==='admin';let canBuy=currentUser&&!isOwner&&!isAdmin&&(m.status==='Approved'||m.status==='Available');let statusClass=(m.status==='Approved'||m.status==='Available')?'good':m.status==='Declined'?'bad':'warn';return `<div class="card"><h3>${m.title}</h3>${marketPhotosHtml(m)}<p class="muted">${m.category||'Other'} • ${m.condition||'Good'} • ${m.city||''}</p><p><b>${money(m.price)}</b></p><p>${m.description||''}</p><p class="muted">Seller: ${m.seller||'Seller'}</p><span class="pill ${statusClass}">${m.status}</span><div class="actions">${canBuy?`<button class="btn primary" onclick="marketRequestBuy('${m.id}')">Request to Buy</button><button class="btn ghost" onclick="marketSaveItem('${m.id}')">Save Item</button>`:''}${isOwner&&['Approved','Available'].includes(m.status)?`<button class="btn primary" onclick="marketMarkSold('${m.id}')">Mark Sold</button>`:''}${isAdmin&&m.status==='Pending Admin Approval'?`<button class="btn primary" onclick="marketAdminApproveListing('${m.id}')">Approve Listing</button><button class="btn danger" onclick="marketAdminDeclineListing('${m.id}')">Decline</button>`:''}${isAdmin&&m.status==='Sold Waiting Admin Verification'?`<button class="btn primary" onclick="marketAdminVerifySale('${m.id}')">Verify Sold</button>`:''}</div></div>`}
+function marketCard(m){let myEmail=currentUser?currentUser.email:'';let isOwner=currentUser&&m.sellerEmail===myEmail;let isAdmin=currentUser&&currentUser.role==='admin';let canBuy=currentUser&&!isOwner&&!isAdmin&&(m.status==='Approved'||m.status==='Available');let statusClass=(m.status==='Approved'||m.status==='Available')?'good':m.status==='Declined'?'bad':'warn';return `<div class="card"><h3>${m.title}</h3>${marketPhotosHtml(m)}<p class="muted">${m.category||'Other'} • ${m.condition||'Good'} • ${m.city||''}</p><p><b>${money(m.price)}</b></p><p>${m.description||''}</p><p class="muted">Seller: ${m.seller||'Seller'}</p><span class="pill ${statusClass}">${m.status}</span><div class="actions">${canBuy?`<button class="btn primary" onclick="marketRequestBuy('${m.id}')">Request to Buy</button><button class="btn ghost" onclick="marketSaveItem('${m.id}')">Save Item</button>`:''}${isOwner&&['Approved','Available'].includes(m.status)?`<button class="btn primary" onclick="marketMarkSold('${m.id}')">Mark Sold</button>`:''}${isAdmin&&m.status==='Pending Admin Approval'?`<button class="btn primary" onclick="marketAdminApproveListing('${m.id}')">Approve Listing</button><button class="btn danger" onclick="marketAdminDeclineListing('${m.id}')">Decline</button>`:''}${isAdmin&&m.status==='Sold Waiting Admin Verification'?`<button class="btn primary" onclick="marketAdminVerifySale('${m.id}')">Verify Sold</button>`:''}</div></div>`}
 function marketRequestCard(r){let isSeller=currentUser&&r.sellerEmail===currentUser.email;let isBuyer=currentUser&&r.buyerEmail===currentUser.email;let isAdmin=currentUser&&currentUser.role==='admin';let cls=r.status.includes('Approved')?'good':r.status.includes('Declined')?'bad':'warn';return `<div class="item"><b>${r.itemTitle}</b><p>${r.buyerName} wants to buy from ${r.sellerName}</p><span class="pill ${cls}">${r.status}</span><div class="actions">${isSeller&&r.status==='Admin Approved - Waiting Seller'?`<button class="btn primary" onclick="marketSellerAcceptReq('${r.id}')">Accept</button><button class="btn danger" onclick="marketSellerDeclineReq('${r.id}')">Decline</button>`:''}${isAdmin&&r.status==='Buyer Request Pending Admin'?`<button class="btn primary" onclick="marketAdminApproveBuyerReq('${r.id}')">Approve Request</button><button class="btn danger" onclick="marketAdminDeclineBuyerReq('${r.id}')">Decline</button>`:''}${isAdmin&&r.status==='Seller Accepted - Waiting Admin'?`<button class="btn primary" onclick="marketAdminApproveConnection('${r.id}')">Approve Connection</button>`:''}${isBuyer&&r.status==='Connection Approved'?`<button class="btn ghost" onclick="alert('Seller: ${r.sellerName}\nPhone: ${r.sellerPhone||'Not provided'}\nEmail: ${r.sellerEmail}')">Seller Contact</button>`:''}${isSeller&&r.status==='Connection Approved'?`<button class="btn ghost" onclick="alert('Buyer: ${r.buyerName}\nPhone: ${r.buyerPhone||'Not provided'}\nEmail: ${r.buyerEmail}')">Buyer Contact</button>`:''}</div></div>`}
 function marketAdminCards(){let pendListings=(data.market||[]).filter(m=>m.status==='Pending Admin Approval');let pendReqs=(data.marketRequests||[]).filter(r=>r.status==='Buyer Request Pending Admin'||r.status==='Seller Accepted - Waiting Admin');let sold=(data.market||[]).filter(m=>m.status==='Sold Waiting Admin Verification');return `<div class="card"><h3>⏳ Pending Listings</h3>${pendListings.map(marketCard).join('')||'<p class="muted">No pending listings.</p>'}</div><div class="card"><h3>⏳ Pending Buyer Requests</h3>${pendReqs.map(marketRequestCard).join('')||'<p class="muted">No pending requests.</p>'}</div><div class="card"><h3>✅ Sold Verification</h3>${sold.map(marketCard).join('')||'<p class="muted">No sold items waiting.</p>'}</div>`}
 function marketplaceAdminManagementHtml(){
@@ -1268,54 +1143,160 @@ function marketplaceAdminManagementHtml(){
 function readMarketPhotoFile(file){return new Promise((resolve,reject)=>{let reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(file);});}
 async function getMarketUploadedPhotos(){let input=$('mPhotoFiles');let files=input&&input.files?Array.from(input.files).slice(0,10):[];let photos=[];for(let f of files){if(f&&f.type&&f.type.startsWith('image/'))photos.push(await readMarketPhotoFile(f));}return photos;}
 async function previewMarketPhotos(){let box=$('mPhotoPreview');if(!box)return;let input=$('mPhotoFiles');let files=input&&input.files?Array.from(input.files).slice(0,10):[];box.innerHTML=files.map((f,i)=>`<span class="photoThumb">📷 ${f.name}</span>`).join('')+(input&&input.files&&input.files.length>10?'<p class="small">Only the first 10 photos will be saved.</p>':'');}
-async function addMarket(){
- if(!requireLogin())return;
- let title=($('mTitle').value||'').trim(),price=+$('mPrice').value||0,city=($('mCity').value||'').trim();
- if(!title||!price||!city)return alert('Please enter item title, price, and city.');
- let linkPhotos=($('mPhotos').value||'').split(',').map(x=>x.trim()).filter(Boolean);
- let uploadedPhotos=await getMarketUploadedPhotos();
- let photos=[...uploadedPhotos,...linkPhotos].slice(0,10);
- let item={id:'M'+Date.now().toString().slice(-5),title,category:$('mCategory').value,condition:$('mCondition').value,price,city,description:$('mDesc').value||'',photos,seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',sellerAuthId:marketCurrentAuthId(),status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};
- let res=await marketInsertListingToSupabase(item);
- if(res&&res.error){return alert('Item was not saved to Supabase. Please run the Marketplace mobile SQL fix, then try again. '+res.error.message);}
- data.market=data.market||[];
- data.market=data.market.filter(x=>String(x.id)!==String(item.id));
- data.market.unshift(item);
- addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
- if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a marketplace item.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(photos.length),Status:item.status},'marketplace');
- persistOnly();
- marketplace();
- alert('Item submitted with '+photos.length+' photo(s). Admin must approve before buyers can see it.');
-}
+async function addMarket(){if(!requireLogin())return;let title=($('mTitle').value||'').trim(),price=+$('mPrice').value||0,city=($('mCity').value||'').trim();if(!title||!price||!city)return alert('Please enter item title, price, and city.');let linkPhotos=($('mPhotos').value||'').split(',').map(x=>x.trim()).filter(Boolean);let uploadedPhotos=await getMarketUploadedPhotos();let photos=[...uploadedPhotos,...linkPhotos].slice(0,10);let item={id:'M'+Date.now().toString().slice(-5),title,category:$('mCategory').value,condition:$('mCondition').value,price,city,description:$('mDesc').value||'',photos,seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};data.market.unshift(item);addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a marketplace item.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(photos.length),Status:item.status},'marketplace');persistOnly();marketplace();alert('Item submitted with '+photos.length+' photo(s). Admin must approve before buyers can see it.');}
 function filterMarket(){let q=($('mSearch')?.value||'').toLowerCase(),city=($('mFilterCity')?.value||'').toLowerCase(),cat=$('mFilterCategory')?.value||'All Categories',cond=$('mFilterCondition')?.value||'All Conditions';let list=(data.market||[]).filter(m=>m.status==='Approved'||m.status==='Available');list=list.filter(m=>(!q||String(m.title+' '+m.description).toLowerCase().includes(q))&&(!city||String(m.city||'').toLowerCase().includes(city))&&(cat==='All Categories'||m.category===cat)&&(cond==='All Conditions'||m.condition===cond));$('marketList').innerHTML=list.map(marketCard).join('')||'<div class="card"><p>No matching available items.</p></div>'; }
-async function marketRequestBuy(id){
- if(!requireLogin())return;
- let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
- if(!m)return;
- let exists=(data.marketRequests||[]).find(r=>String(r.itemId)===String(id)&&r.buyerEmail===currentUser.email&&!['Cancelled','Admin Declined','Seller Declined'].includes(r.status));
- if(exists)return alert('You already requested this item.');
- let r={id:'MR'+Date.now().toString().slice(-5),itemId:m.dbId||m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Buyer Request Pending Admin',createdAt:new Date().toLocaleString()};
- let res=await marketInsertRequestToSupabase(r);
- if(res&&res.error){return alert('Request was not saved to Supabase. Please run the Marketplace mobile SQL fix, then try again. '+res.error.message);}
- data.marketRequests.unshift(r);
- addNote('admin.habeshaconnect@gmail.com','Marketplace buyer request waiting for approval: '+currentUser.name+' wants '+m.title);
- if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace buyer request waiting for approval','A buyer requested to buy a marketplace item.',{Buyer:currentUser.name,BuyerEmail:currentUser.email,Item:m.title,Seller:m.seller,Status:r.status},'marketplace');
- persistOnly();
- marketplace();
- alert('Request sent to admin for approval.');
-}
+function marketRequestBuy(id){if(!requireLogin())return;let m=(data.market||[]).find(x=>x.id===id);if(!m)return;let exists=(data.marketRequests||[]).find(r=>r.itemId===id&&r.buyerEmail===currentUser.email&&!['Cancelled','Admin Declined','Seller Declined'].includes(r.status));if(exists)return alert('You already requested this item.');let r={id:'MR'+Date.now().toString().slice(-5),itemId:m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Buyer Request Pending Admin',createdAt:new Date().toLocaleString()};data.marketRequests.unshift(r);addNote('admin.habeshaconnect@gmail.com','Marketplace buyer request waiting for approval: '+currentUser.name+' wants '+m.title);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace buyer request waiting for approval','A buyer requested to buy a marketplace item.',{Buyer:currentUser.name,BuyerEmail:currentUser.email,Item:m.title,Seller:m.seller,Status:r.status},'marketplace');persistOnly();marketplace();alert('Request sent to admin for approval.');}
 
-async function marketRefreshAfterAction(){persistOnly();await loadSupabaseMarketplace();if(currentPage==='admin'){adminSuccess();}else{marketplace();}}
+function marketRefreshAfterAction(){persistOnly();if(currentPage==='admin'){adminSuccess();}else{marketplace();}}
 function marketSaveItem(id){if(!requireLogin())return;if(!data.savedMarketItems)data.savedMarketItems=[];if(!data.savedMarketItems.includes(id))data.savedMarketItems.push(id);persistOnly();alert('Item saved.');}
-async function marketAdminApproveListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;let res=await marketUpdateListingStatus(id,'Approved');if(res.error)return alert('Could not approve listing: '+res.error.message);m.status='Approved';addNote(m.sellerEmail,'Your marketplace listing was approved: '+m.title);await marketRefreshAfterAction();}
-async function marketAdminDeclineListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;let res=await marketUpdateListingStatus(id,'Declined');if(res.error)return alert('Could not decline listing: '+res.error.message);m.status='Declined';addNote(m.sellerEmail,'Your marketplace listing was declined: '+m.title);await marketRefreshAfterAction();}
-async function marketAdminApproveBuyerReq(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;let res=await marketUpdateRequestStatus(id,'Admin Approved - Waiting Seller');if(res.error)return alert('Could not approve request: '+res.error.message);r.status='Admin Approved - Waiting Seller';addNote(r.sellerEmail,'Marketplace buyer request approved by admin. Please accept or decline: '+r.itemTitle);addNote(r.buyerEmail,'Your marketplace request is approved by admin and waiting for seller response: '+r.itemTitle);await marketRefreshAfterAction();}
-async function marketAdminDeclineBuyerReq(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;let res=await marketUpdateRequestStatus(id,'Admin Declined');if(res.error)return alert('Could not decline request: '+res.error.message);r.status='Admin Declined';addNote(r.buyerEmail,'Your marketplace buyer request was declined: '+r.itemTitle);await marketRefreshAfterAction();}
-async function marketSellerAcceptReq(id){let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');let res=await marketUpdateRequestStatus(id,'Seller Accepted - Waiting Admin');if(res.error)return alert('Could not accept request: '+res.error.message);r.status='Seller Accepted - Waiting Admin';addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted buyer request. Admin connection approval needed: '+r.itemTitle);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace seller accepted request','Seller accepted a buyer request and admin approval is needed before contact sharing.',{Seller:r.sellerName,Buyer:r.buyerName,Item:r.itemTitle,Status:r.status},'marketplace');await marketRefreshAfterAction();}
-async function marketSellerDeclineReq(id){let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');let res=await marketUpdateRequestStatus(id,'Seller Declined');if(res.error)return alert('Could not decline request: '+res.error.message);r.status='Seller Declined';addNote(r.buyerEmail,'Seller declined your marketplace request: '+r.itemTitle);await marketRefreshAfterAction();}
-async function marketAdminApproveConnection(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;let res=await marketUpdateRequestStatus(id,'Connection Approved');if(res.error)return alert('Could not approve connection: '+res.error.message);r.status='Connection Approved';addNote(r.buyerEmail,'Marketplace connection approved. Seller contact is now available for '+r.itemTitle);addNote(r.sellerEmail,'Marketplace connection approved. Buyer contact is now available for '+r.itemTitle);await marketRefreshAfterAction();}
-async function marketMarkSold(id){let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m||!currentUser||!isMyMarketListing(m))return alert('Seller only.');let res=await marketUpdateListingStatus(id,'Sold Waiting Admin Verification');if(res.error)return alert('Could not mark sold: '+res.error.message);m.status='Sold Waiting Admin Verification';addNote('admin.habeshaconnect@gmail.com','Marketplace item marked sold and waiting for verification: '+m.title);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace sold item verification needed','Seller marked item as sold. Admin verification is needed.',{Seller:m.seller,Item:m.title,Price:money(m.price),Status:m.status},'marketplace');await marketRefreshAfterAction();}
-async function marketAdminVerifySale(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;let res=await marketUpdateListingStatus(id,'Sold Verified');if(res.error)return alert('Could not verify sale: '+res.error.message);m.status='Sold Verified';addNote(m.sellerEmail,'Marketplace sold item verified: '+m.title);await marketRefreshAfterAction();}
+function marketAdminApproveListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>x.id===id);if(!m)return;m.status='Approved';addNote(m.sellerEmail,'Your marketplace listing was approved: '+m.title);marketRefreshAfterAction();}
+function marketAdminDeclineListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>x.id===id);if(!m)return;m.status='Declined';addNote(m.sellerEmail,'Your marketplace listing was declined: '+m.title);marketRefreshAfterAction();}
+function marketAdminApproveBuyerReq(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>x.id===id);if(!r)return;r.status='Admin Approved - Waiting Seller';addNote(r.sellerEmail,'Marketplace buyer request approved by admin. Please accept or decline: '+r.itemTitle);addNote(r.buyerEmail,'Your marketplace request is approved by admin and waiting for seller response: '+r.itemTitle);marketRefreshAfterAction();}
+function marketAdminDeclineBuyerReq(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>x.id===id);if(!r)return;r.status='Admin Declined';addNote(r.buyerEmail,'Your marketplace buyer request was declined: '+r.itemTitle);marketRefreshAfterAction();}
+function marketSellerAcceptReq(id){let r=data.marketRequests.find(x=>x.id===id);if(!r||!currentUser||r.sellerEmail!==currentUser.email)return alert('Seller only.');r.status='Seller Accepted - Waiting Admin';addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted buyer request. Admin connection approval needed: '+r.itemTitle);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace seller accepted request','Seller accepted a buyer request and admin approval is needed before contact sharing.',{Seller:r.sellerName,Buyer:r.buyerName,Item:r.itemTitle,Status:r.status},'marketplace');marketRefreshAfterAction();}
+function marketSellerDeclineReq(id){let r=data.marketRequests.find(x=>x.id===id);if(!r||!currentUser||r.sellerEmail!==currentUser.email)return alert('Seller only.');r.status='Seller Declined';addNote(r.buyerEmail,'Seller declined your marketplace request: '+r.itemTitle);marketRefreshAfterAction();}
+function marketAdminApproveConnection(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>x.id===id);if(!r)return;r.status='Connection Approved';addNote(r.buyerEmail,'Marketplace connection approved. Seller contact is now available for '+r.itemTitle);addNote(r.sellerEmail,'Marketplace connection approved. Buyer contact is now available for '+r.itemTitle);marketRefreshAfterAction();}
+function marketMarkSold(id){let m=data.market.find(x=>x.id===id);if(!m||!currentUser||m.sellerEmail!==currentUser.email)return alert('Seller only.');m.status='Sold Waiting Admin Verification';addNote('admin.habeshaconnect@gmail.com','Marketplace item marked sold and waiting for verification: '+m.title);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace sold item verification needed','Seller marked item as sold. Admin verification is needed.',{Seller:m.seller,Item:m.title,Price:money(m.price),Status:m.status},'marketplace');marketRefreshAfterAction();}
+function marketAdminVerifySale(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>x.id===id);if(!m)return;m.status='Sold Verified';addNote(m.sellerEmail,'Marketplace sold item verified: '+m.title);marketRefreshAfterAction();}
+
+/* V7.8.42 Marketplace phone + Supabase sync fix
+   Scope: Marketplace only. Other workflows are not changed. */
+let __marketplaceLoadedOnce_V7842=false;
+const __marketplaceLocalRender_V7842=marketplace;
+function marketDbStatusToUi(status,type){
+  const s=String(status||'').toLowerCase();
+  if(type==='request'){
+    return ({pending_admin:'Buyer Request Pending Admin',admin_approved:'Admin Approved - Waiting Seller',admin_declined:'Admin Declined',seller_accepted_waiting_admin:'Seller Accepted - Waiting Admin',seller_declined:'Seller Declined',connection_admin_approved:'Connection Approved',connection_admin_declined:'Connection Declined',completed:'Completed',cancelled:'Cancelled'})[s]||status||'Buyer Request Pending Admin';
+  }
+  return ({pending_admin:'Pending Admin Approval',admin_approved:'Approved',admin_declined:'Declined',sold_waiting_admin:'Sold Waiting Admin Verification',sold_admin_approved:'Sold Verified',removed:'Removed'})[s]||status||'Pending Admin Approval';
+}
+function marketUiStatusToDb(status,type){
+  const s=String(status||'');
+  if(type==='request'){
+    return ({'Buyer Request Pending Admin':'pending_admin','Admin Approved - Waiting Seller':'admin_approved','Admin Declined':'admin_declined','Seller Accepted - Waiting Admin':'seller_accepted_waiting_admin','Seller Declined':'seller_declined','Connection Approved':'connection_admin_approved','Connection Declined':'connection_admin_declined','Completed':'completed','Cancelled':'cancelled'})[s]||s.toLowerCase().replaceAll(' ','_');
+  }
+  return ({'Pending Admin Approval':'pending_admin','Approved':'admin_approved','Available':'admin_approved','Declined':'admin_declined','Sold Waiting Admin Verification':'sold_waiting_admin','Sold Verified':'sold_admin_approved','Removed':'removed'})[s]||s.toLowerCase().replaceAll(' ','_');
+}
+async function marketAuthUserId(){
+  if(!authReady())return null;
+  if(currentUser&&currentUser.auth_user_id)return currentUser.auth_user_id;
+  try{let {data}=await hcSupabase.auth.getUser();return data&&data.user?data.user.id:null;}catch(e){return null;}
+}
+function mapSupabaseMarketListing(row){
+  return {id:row.id,dbId:row.id,title:row.title||'Marketplace Item',category:row.category||'Other',condition:row.item_condition||'Good',price:Number(row.price||0),city:row.city||'',description:row.description||'',photos:Array.isArray(row.photo_urls)?row.photo_urls:[],seller:row.seller_name||'Seller',sellerEmail:row.seller_email||'',sellerPhone:row.seller_phone||'',sellerAuthId:row.seller_id||'',status:marketDbStatusToUi(row.status,'listing'),createdAt:row.created_at?new Date(row.created_at).toLocaleString():''};
+}
+function mapSupabaseMarketRequest(row){
+  let listing=row.marketplace_listings||row.listing||{};
+  return {id:row.id,dbId:row.id,itemId:row.listing_id,itemTitle:listing.title||row.item_title||'Marketplace Item',buyerName:row.buyer_name||'Buyer',buyerEmail:row.buyer_email||'',buyerPhone:row.buyer_phone||'',sellerName:listing.seller_name||row.seller_name||'Seller',sellerEmail:listing.seller_email||row.seller_email||'',sellerPhone:listing.seller_phone||row.seller_phone||'',message:row.message||'',status:marketDbStatusToUi(row.status,'request'),createdAt:row.created_at?new Date(row.created_at).toLocaleString():''};
+}
+async function loadSupabaseMarketplace(){
+  if(!authReady())return;
+  let listings=await hcSupabase.from('marketplace_listings').select('*').order('created_at',{ascending:false});
+  if(!listings.error)data.market=(listings.data||[]).map(mapSupabaseMarketListing);else console.warn('Marketplace listings load error',listings.error);
+  let reqs=await hcSupabase.from('marketplace_purchase_requests').select('*, marketplace_listings(*)').order('created_at',{ascending:false});
+  if(!reqs.error)data.marketRequests=(reqs.data||[]).map(mapSupabaseMarketRequest);else console.warn('Marketplace requests load error',reqs.error);
+  let uid=await marketAuthUserId();
+  if(uid){let saved=await hcSupabase.from('marketplace_saved_items').select('listing_id').eq('user_id',uid);if(!saved.error)data.savedMarketItems=(saved.data||[]).map(x=>x.listing_id);}
+  persistOnly();
+}
+marketplace=function(){
+  __marketplaceLocalRender_V7842();
+  if(authReady()&&!__marketplaceLoadedOnce_V7842){
+    __marketplaceLoadedOnce_V7842=true;
+    loadSupabaseMarketplace().then(()=>{if(currentPage==='marketplace')__marketplaceLocalRender_V7842();}).catch(err=>console.warn('Marketplace refresh error',err));
+  }
+};
+async function compressMarketImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=900;
+        let w=img.width,h=img.height;
+        if(w>h&&w>max){h=Math.round(h*max/w);w=max;}else if(h>max){w=Math.round(w*max/h);h=max;}
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.68));
+      };
+      img.onerror=reject;img.src=reader.result;
+    };
+    reader.onerror=reject;reader.readAsDataURL(file);
+  });
+}
+readMarketPhotoFile=compressMarketImage;
+getMarketUploadedPhotos=async function(){let input=$('mPhotoFiles');let files=input&&input.files?Array.from(input.files).slice(0,4):[];let photos=[];for(let f of files){if(f&&f.type&&f.type.startsWith('image/'))photos.push(await compressMarketImage(f));}return photos;};
+previewMarketPhotos=async function(){let box=$('mPhotoPreview');if(!box)return;let input=$('mPhotoFiles');let files=input&&input.files?Array.from(input.files).slice(0,4):[];box.innerHTML=files.map((f,i)=>`<span class="photoThumb">📷 ${f.name}</span>`).join('')+(input&&input.files&&input.files.length>4?'<p class="small">Phone-safe mode: only first 4 photos will be saved.</p>':'');};
+async function insertMarketListingDb(item){
+  if(!authReady())return {error:null,data:null};
+  let uid=await marketAuthUserId();
+  if(!uid)return {error:{message:'Please sign in again before posting to Marketplace.'}};
+  let payload={seller_id:uid,seller_name:item.seller,seller_email:item.sellerEmail,seller_phone:item.sellerPhone,title:item.title,description:item.description,category:item.category,price:item.price,item_condition:item.condition,city:item.city,photo_urls:item.photos,status:marketUiStatusToDb(item.status,'listing')};
+  return await hcSupabase.from('marketplace_listings').insert(payload).select().single();
+}
+async function updateMarketListingDb(item,status){
+  if(!authReady()||!item)return {error:null};
+  let id=item.dbId||item.id;
+  return await hcSupabase.from('marketplace_listings').update({status:marketUiStatusToDb(status||item.status,'listing')}).eq('id',id);
+}
+async function insertMarketRequestDb(req){
+  if(!authReady())return {error:null,data:null};
+  let uid=await marketAuthUserId();
+  if(!uid)return {error:{message:'Please sign in again before requesting this item.'}};
+  let payload={listing_id:req.itemId,buyer_id:uid,buyer_name:req.buyerName,buyer_email:req.buyerEmail,buyer_phone:req.buyerPhone,message:req.message||'',status:marketUiStatusToDb(req.status,'request')};
+  return await hcSupabase.from('marketplace_purchase_requests').insert(payload).select().single();
+}
+async function updateMarketRequestDb(req,status){
+  if(!authReady()||!req)return {error:null};
+  let id=req.dbId||req.id;
+  return await hcSupabase.from('marketplace_purchase_requests').update({status:marketUiStatusToDb(status||req.status,'request')}).eq('id',id);
+}
+addMarket=async function(){
+  if(!requireLogin())return;
+  let title=($('mTitle').value||'').trim(),price=+$('mPrice').value||0,city=($('mCity').value||'').trim();
+  if(!title||!price||!city)return alert('Please enter item title, price, and city.');
+  let linkPhotos=($('mPhotos').value||'').split(',').map(x=>x.trim()).filter(Boolean);
+  let uploadedPhotos=await getMarketUploadedPhotos();
+  let photos=[...uploadedPhotos,...linkPhotos].slice(0,10);
+  let item={id:'M'+Date.now().toString().slice(-5),title,category:$('mCategory').value,condition:$('mCondition').value,price,city,description:$('mDesc').value||'',photos,seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+  let res=await insertMarketListingDb(item);
+  if(res.error)return alert('Marketplace item was not saved to Supabase. Please run the Marketplace SQL, then try again. '+res.error.message);
+  if(res.data){let mapped=mapSupabaseMarketListing(res.data);Object.assign(item,mapped);}
+  data.market.unshift(item);
+  addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
+  if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a marketplace item.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(photos.length),Status:item.status},'marketplace');
+  persistOnly();marketplace();alert('Item submitted with '+photos.length+' photo(s). Admin must approve before buyers can see it.');
+};
+marketRequestBuy=async function(id){
+  if(!requireLogin())return;
+  let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;
+  let exists=(data.marketRequests||[]).find(r=>String(r.itemId)===String(m.dbId||m.id)&&r.buyerEmail===currentUser.email&&!['Cancelled','Admin Declined','Seller Declined'].includes(r.status));
+  if(exists)return alert('You already requested this item.');
+  let r={id:'MR'+Date.now().toString().slice(-5),itemId:m.dbId||m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Buyer Request Pending Admin',createdAt:new Date().toLocaleString()};
+  let res=await insertMarketRequestDb(r);
+  if(res.error)return alert('Marketplace request was not saved to Supabase. Please run the Marketplace SQL, then try again. '+res.error.message);
+  if(res.data){r.id=res.data.id;r.dbId=res.data.id;}
+  data.marketRequests.unshift(r);
+  addNote('admin.habeshaconnect@gmail.com','Marketplace buyer request waiting for approval: '+currentUser.name+' wants '+m.title);
+  if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace buyer request waiting for approval','A buyer requested to buy a marketplace item.',{Buyer:currentUser.name,BuyerEmail:currentUser.email,Item:m.title,Seller:m.seller,Status:r.status},'marketplace');
+  persistOnly();marketplace();alert('Request sent to admin for approval.');
+};
+marketRefreshAfterAction=async function(){persistOnly();await loadSupabaseMarketplace().catch(()=>{});if(currentPage==='admin'){adminSuccess();}else{marketplace();}};
+marketSaveItem=async function(id){
+  if(!requireLogin())return;if(!data.savedMarketItems)data.savedMarketItems=[];
+  if(!data.savedMarketItems.includes(id))data.savedMarketItems.push(id);
+  let uid=await marketAuthUserId();if(authReady()&&uid){await hcSupabase.from('marketplace_saved_items').upsert({listing_id:id,user_id:uid},{onConflict:'listing_id,user_id'}).catch(()=>{});}
+  persistOnly();alert('Item saved.');
+};
+marketAdminApproveListing=async function(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;m.status='Approved';let r=await updateMarketListingDb(m,'Approved');if(r.error)return alert('Could not approve Marketplace listing: '+r.error.message);addNote(m.sellerEmail,'Your marketplace listing was approved: '+m.title);await marketRefreshAfterAction();};
+marketAdminDeclineListing=async function(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;m.status='Declined';let r=await updateMarketListingDb(m,'Declined');if(r.error)return alert('Could not decline Marketplace listing: '+r.error.message);addNote(m.sellerEmail,'Your marketplace listing was declined: '+m.title);await marketRefreshAfterAction();};
+marketAdminApproveBuyerReq=async function(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;r.status='Admin Approved - Waiting Seller';let res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not approve Marketplace buyer request: '+res.error.message);addNote(r.sellerEmail,'Marketplace buyer request approved by admin. Please accept or decline: '+r.itemTitle);addNote(r.buyerEmail,'Your marketplace request is approved by admin and waiting for seller response: '+r.itemTitle);await marketRefreshAfterAction();};
+marketAdminDeclineBuyerReq=async function(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;r.status='Admin Declined';let res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not decline Marketplace buyer request: '+res.error.message);addNote(r.buyerEmail,'Your marketplace buyer request was declined: '+r.itemTitle);await marketRefreshAfterAction();};
+marketSellerAcceptReq=async function(id){let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||r.sellerEmail!==currentUser.email)return alert('Seller only.');r.status='Seller Accepted - Waiting Admin';let res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not accept Marketplace request: '+res.error.message);addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted buyer request. Admin connection approval needed: '+r.itemTitle);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace seller accepted request','Seller accepted a buyer request and admin approval is needed before contact sharing.',{Seller:r.sellerName,Buyer:r.buyerName,Item:r.itemTitle,Status:r.status},'marketplace');await marketRefreshAfterAction();};
+marketSellerDeclineReq=async function(id){let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||r.sellerEmail!==currentUser.email)return alert('Seller only.');r.status='Seller Declined';let res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not decline Marketplace request: '+res.error.message);addNote(r.buyerEmail,'Seller declined your marketplace request: '+r.itemTitle);await marketRefreshAfterAction();};
+marketAdminApproveConnection=async function(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;r.status='Connection Approved';let res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not approve Marketplace connection: '+res.error.message);addNote(r.buyerEmail,'Marketplace connection approved. Seller contact is now available for '+r.itemTitle);addNote(r.sellerEmail,'Marketplace connection approved. Buyer contact is now available for '+r.itemTitle);await marketRefreshAfterAction();};
+marketMarkSold=async function(id){let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m||!currentUser||m.sellerEmail!==currentUser.email)return alert('Seller only.');m.status='Sold Waiting Admin Verification';let r=await updateMarketListingDb(m,m.status);if(r.error)return alert('Could not mark Marketplace item sold: '+r.error.message);addNote('admin.habeshaconnect@gmail.com','Marketplace item marked sold and waiting for verification: '+m.title);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace sold item verification needed','Seller marked item as sold. Admin verification is needed.',{Seller:m.seller,Item:m.title,Price:money(m.price),Status:m.status},'marketplace');await marketRefreshAfterAction();};
+marketAdminVerifySale=async function(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;m.status='Sold Verified';let r=await updateMarketListingDb(m,m.status);if(r.error)return alert('Could not verify Marketplace sale: '+r.error.message);addNote(m.sellerEmail,'Marketplace sold item verified: '+m.title);await marketRefreshAfterAction();};
 
 function jobs(){$('jobs').innerHTML=`<h2>💼 Jobs</h2><div class="grid"><div class="card"><h3>Post Job</h3><input id="jTitle" placeholder="Job title"><input id="jCompany" placeholder="Company"><input id="jCity" placeholder="City"><input id="jPay" placeholder="$15/hr"><button class="btn primary" onclick="addJob()">Post Job</button></div>${data.jobs.map(j=>`<div class="card"><h3>${j.title}</h3><p>${j.company} • ${j.city}</p><p><b>${j.pay}</b></p><span class="pill good">${j.status}</span><div class="actions"><button class="btn primary" onclick="applyJob('${j.id}')">Apply</button><button class="btn">Save</button></div></div>`).join('')}</div>`}
 function addJob(){if(!requireLogin())return;data.jobs.unshift({id:'J'+Date.now().toString().slice(-5),title:$('jTitle').value||'Job',company:$('jCompany').value||'Company',city:$('jCity').value||'Atlanta',pay:$('jPay').value||'Negotiable',status:'Open'});save()}
@@ -1431,7 +1412,7 @@ function homeServices(){
  let reqRows=myReqs.map(r=>{let canProviderAnswer=(r.providerEmail===currentUser.email&&r.status==='Pending Provider Review');return `<tr><td>${r.serviceTitle}</td><td>${r.customerName}<br><span class="small">${r.customerEmail}</span></td><td>${r.customerPhone||''}</td><td>${r.city||''}</td><td>${r.preferredDate||''} ${r.preferredTime||''}</td><td>${r.details||''}</td><td>${homeServiceStatusBadge(r.status)}</td><td>${canProviderAnswer?`<button class="btn primary" onclick="providerAcceptHomeServiceRequest('${r.id}')">Accept</button> <button class="btn bad" onclick="providerDeclineHomeServiceRequest('${r.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No home service requests yet.</td></tr>';
  $('home_services').innerHTML=`<h2>🛠️ Home Services</h2><div class="hero"><h1>Home Services</h1><p><b>${HOME_SERVICE_CATEGORIES.join(', ')}.</b></p><p class="muted">Flow: provider posts service → admin approves → customer requests with calendar/time → customer reviews summary → admin approves → provider accepts/declines.</p></div><div class="grid">${providerForm}${customerBox}${requestForm}</div><h3>Approved Services</h3><table><tr><th>Category</th><th>Service</th><th>City</th><th>Price</th><th>Provider</th><th>Status</th><th>Action</th></tr>${serviceRows}</table><h3>My Service Posts</h3><table><tr><th>Service</th><th>Category</th><th>City</th><th>Price</th><th>Status</th><th>Created</th></tr>${postRows}</table><h3>My Home Service Requests</h3><table><tr><th>Service</th><th>Customer</th><th>Phone</th><th>City</th><th>Date / Time</th><th>Details</th><th>Status</th><th>Action</th></tr>${reqRows}</table>`;
 }
-async function postHomeService(){if(!requireLogin())return;if(currentUser.role!=='service_provider'&&currentUser.role!=='business_owner'&&currentUser.role!=='admin')return alert('Only service providers, business owners, or admin can post home services. Add Home Service Provider in My Services first.');let title=($('hsTitle').value||'').trim(),category=$('hsCategory').value,city=($('hsCity').value||'').trim(),price=($('hsPrice').value||'').trim(),description=($('hsDescription').value||'').trim();if(!title||!city||!price||!description)return alert('Please complete service type, title, city, price, and description.');let item={id:'HS'+Date.now().toString().slice(-6),providerName:currentUser.name,providerEmail:currentUser.email,providerPhone:currentUser.phone||'',category,title,city,price,description,status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};let res=await syncHomeServicePostToSupabase(item);if(res.error)return alert('Home service was not saved to Supabase. Please run the Home Services SQL, then try again. '+res.error.message);data.homeServicePosts.unshift(item);addNote(currentUser.email,'Home service submitted for admin approval: '+title+'.');sendAdminEmailNotice('Home service waiting for approval','A service provider submitted a new home service for admin approval.',{Provider:currentUser.name,Email:currentUser.email,Service:title,Category:category,City:city,Price:price},'admin');persistOnly();alert('Home service submitted. Admin approval is required before customers can request it.');homeServices();}
+async function postHomeService(){if(!requireLogin())return;if(currentUser.role!=='service_provider'&&currentUser.role!=='business_owner'&&currentUser.role!=='admin')return alert('Only service providers, business owners, or admin can post home services. Add Home Service Provider in My Services first.');let title=($('hsTitle').value||'').trim(),category=$('hsCategory').value,city=($('hsCity').value||'').trim(),price=($('hsPrice').value||'').trim(),description=($('hsDescription').value||'').trim();if(!title||!city||!price||!description)return alert('Please complete service type, title, city, price, and description.');let item={id:'HS'+Date.now().toString().slice(-6),providerName:currentUser.name,providerEmail:currentUser.email,providerPhone:currentUser.phone||'',category,title,city,price,description,status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};let res=await syncHomeServicePostToSupabase(item);if(res.error)return alert('Home service was not saved to Supabase. Please run the Home Services SQL, then try again. '+res.error.message);data.homeServicePosts.unshift(item);addNote(currentUser.email,'Home service submitted for admin approval: '+title+'.');sendAdminEmailNotice('Home service waiting for approval','A service provider submitted a new home service for admin approval.',{Provider:currentUser.name,Email:currentUser.email,Service:title,Category:category,City:city,Price:price},'admin');persistOnly();alert('Home service submitted. Admin approval is required before customers can request it.');homeServices();}
 let activeHomeServiceRequestId='';
 function requestHomeService(id){if(!requireLogin())return;let svc=(data.homeServicePosts||[]).find(p=>p.id===id);if(!svc)return alert('Service not found.');if(svc.providerEmail===currentUser.email)return alert('You cannot request your own service.');activeHomeServiceRequestId=id;homeServices();setTimeout(()=>{let el=$('homeServiceRequestForm');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},50);}
 function cancelHomeServiceRequest(){activeHomeServiceRequestId='';homeServices();}
@@ -1776,13 +1757,27 @@ async function admin(){
  adminLoading=true;
  if(!adminDataLoaded)$('admin').innerHTML='<div class="card"><h2>⚙️ Admin Dashboard</h2><p>Loading Supabase users and verification records...</p></div>';
  try{
+   // V7.8.43 Admin safe loading fix: the Admin page must still open even if one
+   // Supabase table is slow, missing, or blocked by policy. Load each source safely.
    if(authReady()){
-     await loadSupabaseRentals();
-     await loadSupabaseRentalRequests();
-     await loadSupabasePayments();
-     await loadSupabaseTrucking();
+     const adminSafeLoad=async(fn,label)=>{
+       try{
+         if(typeof fn==='function') await safeAsync(fn(),3500,label);
+       }catch(e){
+         console.warn((label||'Admin data load')+' failed; opening admin with available local data.',e);
+       }
+     };
+     await adminSafeLoad(loadSupabaseRentals,'Admin rentals load');
+     await adminSafeLoad(loadSupabaseRentalRequests,'Admin rental requests load');
+     await adminSafeLoad(loadSupabasePayments,'Admin payments load');
+     await adminSafeLoad(loadSupabaseTrucking,'Admin trucking load');
+     await adminSafeLoad(loadSupabaseMarketplace,'Admin marketplace load');
    }
-   if(!adminDataLoaded){await loadAdminProfiles();adminDataLoaded=true;}
+   if(!adminDataLoaded){
+     try{await safeAsync(loadAdminProfiles(),3500,'Admin profiles load');}
+     catch(e){console.warn('Admin profiles load failed; opening admin with local users.',e);}
+     adminDataLoaded=true;
+   }
  let revenue=data.payments.reduce((a,p)=>a+p.amount,0);
  let managedRoles=['sender','traveler','owner','rent_seeker','truck_owner','customer','driver','business_owner','marketplace','taxi_limo_owner','taxi_limo_driver','admin'];
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
@@ -2104,7 +2099,23 @@ function applyLanguageUi(){
 }
 const _hcRender=render; render=function(){_hcRender();applyLanguageUi();};
 const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);applyLanguageUi();};
-const _hcShow=show; show=async function(p){await _hcShow(p);applyLanguageUi();};
+const _hcShow=show; show=function(p){let r=_hcShow(p);applyLanguageUi();return r;};
+
+// V7.8.44: global click guard. If any async action or Supabase request leaves the page in a bad state,
+// normal navigation buttons still work without needing to refresh/reset the page.
+document.addEventListener('click',function(e){
+  const btn=e.target&&e.target.closest?e.target.closest('button[onclick]'):null;
+  if(!btn)return;
+  document.body.style.pointerEvents='auto';
+  document.documentElement.style.pointerEvents='auto';
+  const code=btn.getAttribute('onclick')||'';
+  const m=code.match(/^\s*show\(['"]([^'"]+)['"]\)\s*;?\s*$/);
+  if(m){e.preventDefault();e.stopPropagation();show(m[1]);}
+},true);
+if(window.addEventListener){
+window.addEventListener('error',function(e){console.warn('App error caught without freezing buttons:',e.message||e.error);document.body.style.pointerEvents='auto';document.documentElement.style.pointerEvents='auto';});
+window.addEventListener('unhandledrejection',function(e){console.warn('Background task failed without freezing buttons:',e.reason);document.body.style.pointerEvents='auto';document.documentElement.style.pointerEvents='auto';});
+}
 
 render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await initAuth();}})();
 
