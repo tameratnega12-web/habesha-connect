@@ -93,3 +93,6 @@ V7.6.3 Trucking Trailer Owner Request Top Panel
 - Cleans old browser-stored Taxi/Limo demo/test records.
 - Admin and owner dashboards no longer keep showing old local Taxi/Limo rows after Supabase records are deleted.
 - No SQL required.
+
+
+V7.8.35: Marketplace mobile Supabase fix. Run supabase/v7_8_35_marketplace_mobile_supabase_fix.sql once.
