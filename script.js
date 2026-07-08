@@ -1,59 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V7.8.36 Marketplace Admin Approval Crash Fix</title>
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.marketPhoto{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f8fafc}.photoPreview{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoPreview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 
-/* V7.8.35 Marketplace mobile fix */
-.marketplaceMobileActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-.marketplaceMobileActions .btn{min-height:44px}
-@media(max-width:720px){
-  #marketplace .grid.two,#marketplace .grid.three,#marketplace .grid{grid-template-columns:1fr!important}
-  #marketplace .card{padding:16px;margin-bottom:12px}
-  #marketplace .actions,#marketplace .marketplaceMobileActions{display:grid!important;grid-template-columns:1fr!important;gap:10px}
-  #marketplace .btn{width:100%;font-size:15px;padding:13px 12px}
-  #marketplace input,#marketplace select,#marketplace textarea{font-size:16px;min-height:44px}
-  #marketList{display:grid;grid-template-columns:1fr!important;gap:12px}
-  .marketPhoto{width:100%;max-width:150px;height:120px}
-}
-</style>
-</head>
-<body>
-<header>
-  <div class="top"><div><div class="brand">Habesha Connect</div><div class="tag">Community • Shipping • Rentals • Taxi/Limo • Marketplace • Jobs • Trucking • Business</div></div><div id="userBox"></div></div>
-  <div class="nav" id="nav"></div>
-  <div class="mobilebar"><select id="mobileNav" onchange="show(this.value)"></select></div>
-</header>
-<main class="container">
-  <section id="home" class="page"></section>
-  <section id="account" class="page hide"></section>
-  <section id="profile" class="page hide"></section>
-  <section id="services" class="page hide"></section>
-  <section id="shipping" class="page hide"></section>
-  <section id="rentals" class="page hide"></section>
-  <section id="marketplace" class="page hide"></section>
-  <section id="jobs" class="page hide"></section>
-  <section id="truck" class="page hide"></section>
-  <section id="home_services" class="page hide"></section>
-  <section id="taxi" class="page hide"></section>
-  <section id="business" class="page hide"></section>
-  <section id="messages" class="page hide"></section>
-  <section id="notifications" class="page hide"></section>
-  <section id="admin" class="page hide"></section>
-  <section id="about" class="page hide"></section>
-  <section id="contact" class="page hide"></section>
-  <section id="help" class="page hide"></section>
-  <section id="report" class="page hide"></section>
-  <section id="privacy" class="page hide"></section>
-  <section id="terms" class="page hide"></section>
-</main>
-<div class="footer">Habesha Connect V7.8.36 Marketplace Admin Approval Crash Fix — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-config.js"></script>
-<script>
 
 
 
@@ -1154,7 +1099,7 @@ async function approveRentalReq(id){
 async function declineRentalReq(id){let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!q)return;q.status='Declined';let r=data.rentals.find(x=>String(x.id)===String(q.rentalId)||String(x.dbId)===String(q.rentalId));if(r&&r.status==='Viewing Pending')r.status='Approved';if(authReady()&&q.dbId){let {error}=await hcSupabase.from('rental_requests').update({status:'Declined'}).eq('id',q.dbId);if(error)return alert('Could not decline rental request: '+error.message);}addNote(q.seekerEmail,'Your rental request was declined.');sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental viewing rejected',summary:'Your rental viewing request was declined.',buttonText:'Open Rental Dashboard',page:'rentals',details:{Property:q.propertyTitle,Status:'Declined'}});persistOnly(); if(currentPage==='admin'){await admin();}else{await rentals();}}
 
 
-/* V7.8.36 Marketplace admin approval crash fix
+/* V7.8.35 Marketplace phone + Supabase sync fix
    This keeps Marketplace working on desktop and phone by reading/writing shared Supabase tables. */
 function marketDbStatusToApp(status){
   const map={pending_admin:'Pending Admin Approval',admin_approved:'Approved',admin_declined:'Declined',sold_waiting_admin:'Sold Waiting Admin Verification',sold_admin_approved:'Sold Verified',removed:'Removed',pending:'Pending Admin Approval',approved:'Approved',declined:'Declined',sold:'Sold Verified'};
@@ -1360,35 +1305,17 @@ async function marketRequestBuy(id){
  alert('Request sent to admin for approval.');
 }
 
-async function marketRefreshAfterAction(){
-  persistOnly();
-  try{await loadSupabaseMarketplace();}catch(e){console.warn('Marketplace refresh after action failed',e);}
-  try{
-    if(currentPage==='admin'){
-      adminDataLoaded=false;
-      await admin();
-    }else if(currentPage==='marketplace'){
-      marketplace();
-    }
-  }catch(e){
-    console.error('Marketplace screen refresh failed',e);
-    alert('Marketplace action was saved. Please refresh once if the list does not update.');
-  }
-}
-async function marketRunAction(label,fn){
-  try{return await fn();}
-  catch(e){console.error('Marketplace '+label+' error',e);alert('Marketplace '+label+' failed: '+(e&&e.message?e.message:e));}
-}
+async function marketRefreshAfterAction(){persistOnly();await loadSupabaseMarketplace();if(currentPage==='admin'){adminSuccess();}else{marketplace();}}
 function marketSaveItem(id){if(!requireLogin())return;if(!data.savedMarketItems)data.savedMarketItems=[];if(!data.savedMarketItems.includes(id))data.savedMarketItems.push(id);persistOnly();alert('Item saved.');}
-async function marketAdminApproveListing(id){return marketRunAction('approve listing',async()=>{if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return alert('Listing not found.');let res=await marketUpdateListingStatus(id,'Approved');if(res&&res.error)return alert('Could not approve listing: '+res.error.message);m.status='Approved';addNote(m.sellerEmail,'Your marketplace listing was approved: '+m.title);await marketRefreshAfterAction();});}
-async function marketAdminDeclineListing(id){return marketRunAction('decline listing',async()=>{if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return alert('Listing not found.');let res=await marketUpdateListingStatus(id,'Declined');if(res&&res.error)return alert('Could not decline listing: '+res.error.message);m.status='Declined';addNote(m.sellerEmail,'Your marketplace listing was declined: '+m.title);await marketRefreshAfterAction();});}
-async function marketAdminApproveBuyerReq(id){return marketRunAction('approve buyer request',async()=>{if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return alert('Request not found.');let res=await marketUpdateRequestStatus(id,'Admin Approved - Waiting Seller');if(res&&res.error)return alert('Could not approve request: '+res.error.message);r.status='Admin Approved - Waiting Seller';addNote(r.sellerEmail,'Marketplace buyer request approved by admin. Please accept or decline: '+r.itemTitle);addNote(r.buyerEmail,'Your marketplace request is approved by admin and waiting for seller response: '+r.itemTitle);await marketRefreshAfterAction();});}
-async function marketAdminDeclineBuyerReq(id){return marketRunAction('decline buyer request',async()=>{if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return alert('Request not found.');let res=await marketUpdateRequestStatus(id,'Admin Declined');if(res&&res.error)return alert('Could not decline request: '+res.error.message);r.status='Admin Declined';addNote(r.buyerEmail,'Your marketplace buyer request was declined: '+r.itemTitle);await marketRefreshAfterAction();});}
-async function marketSellerAcceptReq(id){return marketRunAction('seller accept request',async()=>{let r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');let res=await marketUpdateRequestStatus(id,'Seller Accepted - Waiting Admin');if(res&&res.error)return alert('Could not accept request: '+res.error.message);r.status='Seller Accepted - Waiting Admin';addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted buyer request. Admin connection approval needed: '+r.itemTitle);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace seller accepted request','Seller accepted a buyer request and admin approval is needed before contact sharing.',{Seller:r.sellerName,Buyer:r.buyerName,Item:r.itemTitle,Status:r.status},'marketplace');await marketRefreshAfterAction();});}
-async function marketSellerDeclineReq(id){return marketRunAction('seller decline request',async()=>{let r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');let res=await marketUpdateRequestStatus(id,'Seller Declined');if(res&&res.error)return alert('Could not decline request: '+res.error.message);r.status='Seller Declined';addNote(r.buyerEmail,'Seller declined your marketplace request: '+r.itemTitle);await marketRefreshAfterAction();});}
-async function marketAdminApproveConnection(id){return marketRunAction('approve connection',async()=>{if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return alert('Request not found.');let res=await marketUpdateRequestStatus(id,'Connection Approved');if(res&&res.error)return alert('Could not approve connection: '+res.error.message);r.status='Connection Approved';addNote(r.buyerEmail,'Marketplace connection approved. Seller contact is now available for '+r.itemTitle);addNote(r.sellerEmail,'Marketplace connection approved. Buyer contact is now available for '+r.itemTitle);await marketRefreshAfterAction();});}
-async function marketMarkSold(id){return marketRunAction('mark sold',async()=>{let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m||!currentUser||!isMyMarketListing(m))return alert('Seller only.');let res=await marketUpdateListingStatus(id,'Sold Waiting Admin Verification');if(res&&res.error)return alert('Could not mark sold: '+res.error.message);m.status='Sold Waiting Admin Verification';addNote('admin.habeshaconnect@gmail.com','Marketplace item marked sold and waiting for verification: '+m.title);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace sold item verification needed','Seller marked item as sold. Admin verification is needed.',{Seller:m.seller,Item:m.title,Price:money(m.price),Status:m.status},'marketplace');await marketRefreshAfterAction();});}
-async function marketAdminVerifySale(id){return marketRunAction('verify sale',async()=>{if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return alert('Listing not found.');let res=await marketUpdateListingStatus(id,'Sold Verified');if(res&&res.error)return alert('Could not verify sale: '+res.error.message);m.status='Sold Verified';addNote(m.sellerEmail,'Marketplace sold item verified: '+m.title);await marketRefreshAfterAction();});}
+async function marketAdminApproveListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;let res=await marketUpdateListingStatus(id,'Approved');if(res.error)return alert('Could not approve listing: '+res.error.message);m.status='Approved';addNote(m.sellerEmail,'Your marketplace listing was approved: '+m.title);await marketRefreshAfterAction();}
+async function marketAdminDeclineListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;let res=await marketUpdateListingStatus(id,'Declined');if(res.error)return alert('Could not decline listing: '+res.error.message);m.status='Declined';addNote(m.sellerEmail,'Your marketplace listing was declined: '+m.title);await marketRefreshAfterAction();}
+async function marketAdminApproveBuyerReq(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;let res=await marketUpdateRequestStatus(id,'Admin Approved - Waiting Seller');if(res.error)return alert('Could not approve request: '+res.error.message);r.status='Admin Approved - Waiting Seller';addNote(r.sellerEmail,'Marketplace buyer request approved by admin. Please accept or decline: '+r.itemTitle);addNote(r.buyerEmail,'Your marketplace request is approved by admin and waiting for seller response: '+r.itemTitle);await marketRefreshAfterAction();}
+async function marketAdminDeclineBuyerReq(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;let res=await marketUpdateRequestStatus(id,'Admin Declined');if(res.error)return alert('Could not decline request: '+res.error.message);r.status='Admin Declined';addNote(r.buyerEmail,'Your marketplace buyer request was declined: '+r.itemTitle);await marketRefreshAfterAction();}
+async function marketSellerAcceptReq(id){let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');let res=await marketUpdateRequestStatus(id,'Seller Accepted - Waiting Admin');if(res.error)return alert('Could not accept request: '+res.error.message);r.status='Seller Accepted - Waiting Admin';addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted buyer request. Admin connection approval needed: '+r.itemTitle);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace seller accepted request','Seller accepted a buyer request and admin approval is needed before contact sharing.',{Seller:r.sellerName,Buyer:r.buyerName,Item:r.itemTitle,Status:r.status},'marketplace');await marketRefreshAfterAction();}
+async function marketSellerDeclineReq(id){let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');let res=await marketUpdateRequestStatus(id,'Seller Declined');if(res.error)return alert('Could not decline request: '+res.error.message);r.status='Seller Declined';addNote(r.buyerEmail,'Seller declined your marketplace request: '+r.itemTitle);await marketRefreshAfterAction();}
+async function marketAdminApproveConnection(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let r=data.marketRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!r)return;let res=await marketUpdateRequestStatus(id,'Connection Approved');if(res.error)return alert('Could not approve connection: '+res.error.message);r.status='Connection Approved';addNote(r.buyerEmail,'Marketplace connection approved. Seller contact is now available for '+r.itemTitle);addNote(r.sellerEmail,'Marketplace connection approved. Buyer contact is now available for '+r.itemTitle);await marketRefreshAfterAction();}
+async function marketMarkSold(id){let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m||!currentUser||!isMyMarketListing(m))return alert('Seller only.');let res=await marketUpdateListingStatus(id,'Sold Waiting Admin Verification');if(res.error)return alert('Could not mark sold: '+res.error.message);m.status='Sold Waiting Admin Verification';addNote('admin.habeshaconnect@gmail.com','Marketplace item marked sold and waiting for verification: '+m.title);if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace sold item verification needed','Seller marked item as sold. Admin verification is needed.',{Seller:m.seller,Item:m.title,Price:money(m.price),Status:m.status},'marketplace');await marketRefreshAfterAction();}
+async function marketAdminVerifySale(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;let res=await marketUpdateListingStatus(id,'Sold Verified');if(res.error)return alert('Could not verify sale: '+res.error.message);m.status='Sold Verified';addNote(m.sellerEmail,'Marketplace sold item verified: '+m.title);await marketRefreshAfterAction();}
 
 function jobs(){$('jobs').innerHTML=`<h2>💼 Jobs</h2><div class="grid"><div class="card"><h3>Post Job</h3><input id="jTitle" placeholder="Job title"><input id="jCompany" placeholder="Company"><input id="jCity" placeholder="City"><input id="jPay" placeholder="$15/hr"><button class="btn primary" onclick="addJob()">Post Job</button></div>${data.jobs.map(j=>`<div class="card"><h3>${j.title}</h3><p>${j.company} • ${j.city}</p><p><b>${j.pay}</b></p><span class="pill good">${j.status}</span><div class="actions"><button class="btn primary" onclick="applyJob('${j.id}')">Apply</button><button class="btn">Save</button></div></div>`).join('')}</div>`}
 function addJob(){if(!requireLogin())return;data.jobs.unshift({id:'J'+Date.now().toString().slice(-5),title:$('jTitle').value||'Job',company:$('jCompany').value||'Company',city:$('jCity').value||'Atlanta',pay:$('jPay').value||'Negotiable',status:'Open'});save()}
@@ -2183,6 +2110,3 @@ render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await ini
 
 
 
-</script>
-</body>
-</html>
