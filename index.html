@@ -2103,6 +2103,121 @@ const _hcRender=render; render=function(){_hcRender();applyLanguageUi();};
 const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);applyLanguageUi();};
 const _hcShow=show; show=async function(p){await _hcShow(p);applyLanguageUi();};
 
+
+/* V7.8.39 Global button response safety patch
+   Fixes stuck buttons after sign-in by never waiting for slow Supabase calls
+   before changing the visible dashboard/navigation. */
+(function(){
+  const expose=()=>{
+    ['show','logout','switchRole','saveRoleChoices','render','services','profile','home','marketplace','jobs','truck','rentals','shipping','admin'].forEach(k=>{
+      try{ if(typeof window[k]==='undefined' && typeof eval(k)==='function') window[k]=eval(k); }catch(e){}
+    });
+  };
+
+  if(typeof show==='function'){
+    const originalShow=show;
+    let hcNavToken=0;
+    show=async function(page){
+      hcNavToken++;
+      const token=hcNavToken;
+      // Always unlock navigation before a new click. This prevents one slow render
+      // from freezing logout, My Services, role switching, or mobile menu taps.
+      renderingPage=false;
+      try{
+        return await originalShow(page);
+      }catch(err){
+        console.error('Safe show error',err);
+        renderingPage=false;
+        try{
+          const fallback=currentUser?'services':'account';
+          pages.forEach(x=>$(x)?.classList.add('hide'));
+          $(fallback)?.classList.remove('hide');
+          if($(fallback)) $(fallback).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Please refresh once, or use My Services to continue.</p><button class="btn primary" onclick="location.reload()">Refresh App</button></div>';
+        }catch(e){}
+      }finally{
+        if(token===hcNavToken) renderingPage=false;
+      }
+    };
+  }
+
+  // Logout must work even if Supabase signOut is slow/unavailable.
+  logout=function(){
+    const oldEmail=currentUser&&currentUser.email;
+    renderingPage=false;
+    currentUser=null;
+    try{ data.currentUser=null; localStorage.setItem('hc_v35',JSON.stringify(data)); }catch(e){}
+    try{ render(); }catch(e){}
+    try{ show('home'); }catch(e){}
+    if(typeof authReady==='function' && authReady()){
+      try{ hcSupabase.auth.signOut().catch(e=>console.warn('Supabase signOut delayed',e)); }catch(e){ console.warn('Supabase signOut error',e); }
+    }
+    if(oldEmail) console.log('Logged out:',oldEmail);
+  };
+
+  // Role/service switching should update the UI first, then sync Supabase in background.
+  switchRole=function(role){
+    if(!currentUser) return;
+    const roles=currentUser.roles||[currentUser.role||'customer'];
+    if(!roles.includes(role)) return alert('Please add this service to your profile first.');
+    currentUser.role=role;
+    currentUser.active_role=role;
+    try{ localStorage.setItem('hc_active_role_'+currentUser.email,role); }catch(e){}
+    const u=(data.users||[]).find(x=>cleanEmail(x.email)===cleanEmail(currentUser.email));
+    if(u){ u.role=role; u.active_role=role; }
+    persistOnly();
+    renderingPage=false;
+    render();
+    show(role==='marketplace'?'marketplace':'profile');
+    if(typeof authReady==='function' && authReady() && currentUser.id){
+      hcSupabase.from('profiles').update({active_role:role,role:role}).eq('id',currentUser.id)
+        .then(({error})=>{ if(error) console.warn('Could not update active role',error); })
+        .catch(e=>console.warn('Active role sync delayed',e));
+    }
+  };
+
+  // Save services locally immediately. Sync database after the page responds.
+  saveRoleChoices=function(){
+    if(!currentUser) return;
+    let roles=[...document.querySelectorAll('.svcCheck:checked')].map(x=>x.value);
+    if((currentUser.roles||[]).includes('admin')&&!roles.includes('admin')) roles.push('admin');
+    if(!roles.length) return alert('Choose at least one service.');
+    if(!roles.includes(currentUser.role)) currentUser.role=roles[0];
+    currentUser.roles=[...new Set(roles)];
+    currentUser.active_role=currentUser.role;
+    const u=(data.users||[]).find(x=>cleanEmail(x.email)===cleanEmail(currentUser.email));
+    if(u){ u.roles=currentUser.roles; u.role=currentUser.role; u.active_role=currentUser.role; }
+    persistOnly();
+    renderingPage=false;
+    alert('Your services were saved. You can switch services now.');
+    render();
+    show('services');
+    if(typeof authReady==='function' && authReady()){
+      let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:currentUser.role,role:currentUser.role});
+      let req=currentUser.id?query.eq('id',currentUser.id):query.eq('email',currentUser.email);
+      req.then(({error})=>{ if(error) alert('Services saved on this device, but Supabase did not update: '+error.message); })
+         .catch(e=>console.warn('Role sync delayed',e));
+    }
+  };
+
+  // The older one-click protection was too broad on the Services page. Keep buttons tappable.
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest('button');
+    if(!btn) return;
+    if(btn.disabled && /Current Dashboard|Continue as|My Services|Logout|Open|Profile/i.test(btn.textContent||'')){
+      btn.disabled=false;
+      btn.dataset.busy='0';
+      btn.style.opacity='';
+      btn.style.cursor='';
+    }
+  },true);
+
+  expose();
+  window.show=show;
+  window.logout=logout;
+  window.switchRole=switchRole;
+  window.saveRoleChoices=saveRoleChoices;
+})();
+
 render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await initAuth();}})();
 
 
