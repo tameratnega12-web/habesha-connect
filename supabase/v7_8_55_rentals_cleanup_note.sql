@@ -1,0 +1,3 @@
+-- V7.8.55 Rentals Cleanup
+-- No database schema changes required.
+-- This version only cleans rental front-end workflow behavior.

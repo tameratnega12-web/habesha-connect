@@ -1,5 +1,5 @@
--- V7.8.47 Business Manager Supabase table
--- Run this only if Business Manager shows a Supabase table/policy error.
+-- V7.8.47 Business Directory Supabase table
+-- Run this only if Business Directory shows a Supabase table/policy error.
 
 create table if not exists public.business_records (
   id uuid primary key default gen_random_uuid(),

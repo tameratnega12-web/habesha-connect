@@ -1,0 +1,3 @@
+-- V7.8.54 Shipping Cleanup
+-- No new SQL schema changes are required for this shipping cleanup.
+-- This file is included for version tracking only.

@@ -1,4 +1,4 @@
--- V7.8.51 Community Events table
+-- V7.8.51 Events table
 create table if not exists public.community_events (
   id uuid primary key default gen_random_uuid(),
   local_ref text unique,
