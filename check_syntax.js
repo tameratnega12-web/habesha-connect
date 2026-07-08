@@ -1,48 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V7.2.0 Beta Ready</title>
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{touch-action:manipulation;
-  -webkit-tap-highlight-color:rgba(0,0,0,0.08);
-border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.marketPhoto{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f8fafc}.photoPreview{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoPreview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
-</style>
-</head>
-<body>
-<header>
-  <div class="top"><div><div class="brand">Habesha Connect</div><div class="tag">Community • Shipping • Rentals • Taxi/Limo • Marketplace • Jobs • Trucking • Business</div></div><div id="userBox"></div></div>
-  <div class="nav" id="nav"></div>
-  <div class="mobilebar"><select id="mobileNav" onchange="show(this.value)"></select></div>
-</header>
-<main class="container">
-  <section id="home" class="page"></section>
-  <section id="account" class="page hide"></section>
-  <section id="profile" class="page hide"></section>
-  <section id="services" class="page hide"></section>
-  <section id="shipping" class="page hide"></section>
-  <section id="rentals" class="page hide"></section>
-  <section id="marketplace" class="page hide"></section>
-  <section id="jobs" class="page hide"></section>
-  <section id="truck" class="page hide"></section>
-  <section id="home_services" class="page hide"></section>
-  <section id="taxi" class="page hide"></section>
-  <section id="business" class="page hide"></section>
-  <section id="messages" class="page hide"></section>
-  <section id="notifications" class="page hide"></section>
-  <section id="admin" class="page hide"></section>
-  <section id="about" class="page hide"></section>
-  <section id="contact" class="page hide"></section>
-  <section id="help" class="page hide"></section>
-  <section id="report" class="page hide"></section>
-  <section id="privacy" class="page hide"></section>
-  <section id="terms" class="page hide"></section>
-</main>
-<div class="footer">Habesha Connect V7.2.0 Beta Ready — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-config.js"></script>
-<script>
+
 
 
 
@@ -1172,9 +1128,8 @@ async function updateMarketplaceRequestDb(req,fields){
   if(!authReady()||!req.dbId)return {error:null};
   return await hcSupabase.from('marketplace_purchase_requests').update(fields).eq('id',req.dbId);
 }
-function marketplace(mode){
+function marketplace(){
  if(!data.market)data.market=[]; if(!data.marketRequests)data.marketRequests=[]; if(!data.savedMarketItems)data.savedMarketItems=[];
- window.hcMarketplaceMode = mode || window.hcMarketplaceMode || 'dashboard';
  let role=currentUser?currentUser.role:'guest';
  let isAdmin=role==='admin';
  let myEmail=currentUser?currentUser.email:'';
@@ -1184,7 +1139,7 @@ function marketplace(mode){
  let adminBox=isAdmin?`<h3 style="margin-top:22px">Admin Marketplace Approvals</h3><div class="grid">${marketAdminCards()}</div>`:'';
  $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>
  <div class="notice"><b>Marketplace flow:</b> Seller posts item → Admin approves listing → Approved item appears in Browse Marketplace for all users → Buyer requests item → Admin approves buyer request → Seller accepts or declines → Admin approves connection → Contact info unlocks → Seller marks sold → Admin verifies sold.</div>
- <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="openMarketplacePost()">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button><button class="btn ghost" onclick="openMarketplaceMyActivity()">📋 My Listings / Requests</button></div></div>
+ <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
  <div class="grid two">
   <div class="card" id="marketPostPanel"><h3>➕ Post Item</h3>
    <label>Item Title</label><input id="mTitle" placeholder="Example: iPhone, sofa, dining table">
@@ -1204,35 +1159,10 @@ function marketplace(mode){
   </div>
  </div>
  <h3 id="marketAvailableTitle" style="margin-top:22px">Available Marketplace Items</h3><div id="marketList" class="grid">${approved.map(marketCard).join('')||'<div class="card"><p>No approved marketplace items available yet.</p></div>'}</div>
- <h3 style="margin-top:22px">My Marketplace Activity</h3><div id="marketActivityPanel" class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Requests</h3>${myRequests.map(marketRequestCard).join('')||'<p class="muted">No requests yet.</p>'}</div></div>${adminBox}`;
+ <h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Requests</h3>${myRequests.map(marketRequestCard).join('')||'<p class="muted">No requests yet.</p>'}</div></div>${adminBox}`;
 }
-async function ensureMarketplaceOpen(mode){
-  if(!requireLogin())return false;
-  window.hcMarketplaceMode=mode||'dashboard';
-  if(currentPage!=='marketplace'){
-    await show('marketplace');
-  }else{
-    if(authReady())await loadSupabaseMarketplace();
-    marketplace(window.hcMarketplaceMode);
-  }
-  return true;
-}
-async function marketJump(id){
-  if(!(await ensureMarketplaceOpen(id==='marketPostPanel'?'post':'browse')))return;
-  setTimeout(()=>{let el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';setTimeout(()=>{el.style.outline='';},1200);}},120);
-}
-async function openMarketplacePost(){
-  if(!(await ensureMarketplaceOpen('post')))return;
-  setTimeout(()=>{let el=document.getElementById('marketPostPanel');if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';setTimeout(()=>{el.style.outline='';},1200);}},120);
-}
-async function openMarketplaceAvailableItems(){
-  if(!(await ensureMarketplaceOpen('browse')))return;
-  setTimeout(()=>{filterMarket();let list=document.getElementById('marketAvailableTitle')||document.getElementById('marketList');if(list){list.scrollIntoView({behavior:'smooth',block:'start'});let box=document.getElementById('marketList');if(box){box.style.outline='3px solid #14b8a6';box.style.borderRadius='12px';setTimeout(()=>{box.style.outline='';},1400);}}},120);
-}
-async function openMarketplaceMyActivity(){
-  if(!(await ensureMarketplaceOpen('activity')))return;
-  setTimeout(()=>{let el=document.getElementById('marketActivityPanel');if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';setTimeout(()=>{el.style.outline='';},1200);}},120);
-}
+function marketJump(id){let el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';setTimeout(()=>{el.style.outline='';},1200);}}
+function openMarketplaceAvailableItems(){let panel=document.getElementById('marketBrowsePanel');let list=document.getElementById('marketAvailableTitle')||document.getElementById('marketList');if(panel){panel.scrollIntoView({behavior:'smooth',block:'start'});}setTimeout(()=>{if(list){list.scrollIntoView({behavior:'smooth',block:'start'});let box=document.getElementById('marketList');if(box){box.style.outline='3px solid #14b8a6';box.style.borderRadius='12px';setTimeout(()=>{box.style.outline='';},1400);}}},250);filterMarket();}
 function marketPhotosHtml(m){let photos=Array.isArray(m.photos)?m.photos:[];if(!photos.length)return '';return `<div class="photoStrip">${photos.slice(0,10).map((ph,i)=>{let src=String(ph||'');if(src.startsWith('data:image')||src.startsWith('http://')||src.startsWith('https://'))return `<img class="marketPhoto" src="${src}" alt="${m.title||'Marketplace item'} photo ${i+1}">`;return `<span class="photoThumb">📷 ${src}</span>`;}).join('')}</div>`}
 function marketCard(m){let myEmail=currentUser?currentUser.email:'';let isOwner=currentUser&&m.sellerEmail===myEmail;let isAdmin=currentUser&&currentUser.role==='admin';let canBuy=currentUser&&!isOwner&&!isAdmin&&(m.status==='Approved'||m.status==='Available');let statusClass=(m.status==='Approved'||m.status==='Available')?'good':m.status==='Declined'?'bad':'warn';return `<div class="card"><h3>${m.title}</h3>${marketPhotosHtml(m)}<p class="muted">${m.category||'Other'} • ${m.condition||'Good'} • ${m.city||''}</p><p><b>${money(m.price)}</b></p><p>${m.description||''}</p><p class="muted">Seller: ${m.seller||'Seller'}</p><span class="pill ${statusClass}">${m.status}</span><div class="actions">${canBuy?`<button class="btn primary" onclick="marketRequestBuy('${m.id}')">Request to Buy</button><button class="btn ghost" onclick="marketSaveItem('${m.id}')">Save Item</button>`:''}${isOwner&&['Approved','Available'].includes(m.status)?`<button class="btn primary" onclick="marketMarkSold('${m.id}')">Mark Sold</button>`:''}${isAdmin&&m.status==='Pending Admin Approval'?`<button class="btn primary" onclick="marketAdminApproveListing('${m.id}')">Approve Listing</button><button class="btn danger" onclick="marketAdminDeclineListing('${m.id}')">Decline</button>`:''}${isAdmin&&m.status==='Sold Waiting Admin Verification'?`<button class="btn primary" onclick="marketAdminVerifySale('${m.id}')">Verify Sold</button>`:''}</div></div>`}
 function marketRequestCard(r){let isSeller=currentUser&&r.sellerEmail===currentUser.email;let isBuyer=currentUser&&r.buyerEmail===currentUser.email;let isAdmin=currentUser&&currentUser.role==='admin';let cls=String(r.status||'').includes('Approved')?'good':String(r.status||'').includes('Declined')?'bad':'warn';return `<div class="item"><b>${r.itemTitle}</b><p>${r.buyerName} wants to buy from ${r.sellerName}</p><span class="pill ${cls}">${r.status}</span><div class="actions">${isSeller&&r.status==='Admin Approved - Waiting Seller'?`<button class="btn primary" onclick="marketSellerAcceptReq('${r.id}')">Accept</button><button class="btn danger" onclick="marketSellerDeclineReq('${r.id}')">Decline</button>`:''}${isAdmin&&r.status==='Buyer Request Pending Admin'?`<button class="btn primary" onclick="marketAdminApproveBuyerReq('${r.id}')">Approve Request</button><button class="btn danger" onclick="marketAdminDeclineBuyerReq('${r.id}')">Decline</button>`:''}${isAdmin&&r.status==='Seller Accepted - Waiting Admin'?`<button class="btn primary" onclick="marketAdminApproveConnection('${r.id}')">Approve Connection</button>`:''}${isBuyer&&r.status==='Connection Approved'?`<button class="btn ghost" onclick="alert('Seller: ${r.sellerName}\nPhone: ${r.sellerPhone||'Not provided'}\nEmail: ${r.sellerEmail}')">Seller Contact</button>`:''}${isSeller&&r.status==='Connection Approved'?`<button class="btn ghost" onclick="alert('Buyer: ${r.buyerName}\nPhone: ${r.buyerPhone||'Not provided'}\nEmail: ${r.buyerEmail}')">Buyer Contact</button>`:''}</div></div>`}
@@ -1275,8 +1205,7 @@ async function addMarket(){
  if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a marketplace item.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(photos.length),Status:item.status},'marketplace');
  persistOnly();
  if(authReady())await loadSupabaseMarketplace();
- window.hcMarketplaceMode='activity';
- marketplace('activity');
+ marketplace();
  alert('Item submitted with '+photos.length+' photo(s). Admin must approve before buyers can see it.');
 }
 function filterMarket(){let q=($('mSearch')?.value||'').toLowerCase(),city=($('mFilterCity')?.value||'').toLowerCase(),cat=$('mFilterCategory')?.value||'All Categories',cond=$('mFilterCondition')?.value||'All Conditions';let list=(data.market||[]).filter(m=>m.status==='Approved'||m.status==='Available');list=list.filter(m=>(!q||String((m.title||'')+' '+(m.description||'')).toLowerCase().includes(q))&&(!city||String(m.city||'').toLowerCase().includes(city))&&(cat==='All Categories'||m.category===cat)&&(cond==='All Conditions'||m.condition===cond));if($('marketList'))$('marketList').innerHTML=list.map(marketCard).join('')||'<div class="card"><p>No matching available items.</p></div>'; }
@@ -1298,11 +1227,10 @@ async function marketRequestBuy(id){
  if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Marketplace buyer request waiting for approval','A buyer requested to buy a marketplace item.',{Buyer:currentUser.name,BuyerEmail:currentUser.email,Item:m.title,Seller:m.seller,Status:r.status},'marketplace');
  persistOnly();
  if(authReady())await loadSupabaseMarketplace();
- window.hcMarketplaceMode='activity';
- marketplace('activity');
+ marketplace();
  alert('Request sent to admin for approval.');
 }
-async function marketRefreshAfterAction(){persistOnly();if(authReady())await loadSupabaseMarketplace();if(currentPage==='admin'){adminSuccess();}else{marketplace(window.hcMarketplaceMode||'dashboard');}}
+async function marketRefreshAfterAction(){persistOnly();if(authReady())await loadSupabaseMarketplace();if(currentPage==='admin'){adminSuccess();}else{marketplace();}}
 function marketSaveItem(id){if(!requireLogin())return;if(!data.savedMarketItems)data.savedMarketItems=[];if(!data.savedMarketItems.includes(id))data.savedMarketItems.push(id);persistOnly();alert('Item saved.');}
 async function marketAdminApproveListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;m.status='Approved';let r=await updateMarketplaceListingDb(m,{status:'admin_approved'});if(r.error)return alert('Could not approve listing in Supabase: '+r.error.message);addNote(m.sellerEmail,'Your marketplace listing was approved: '+m.title);await marketRefreshAfterAction();}
 async function marketAdminDeclineListing(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let m=data.market.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!m)return;m.status='Declined';let r=await updateMarketplaceListingDb(m,{status:'admin_declined'});if(r.error)return alert('Could not decline listing in Supabase: '+r.error.message);addNote(m.sellerEmail,'Your marketplace listing was declined: '+m.title);await marketRefreshAfterAction();}
@@ -2107,6 +2035,3 @@ render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await ini
 
 
 
-</script>
-</body>
-</html>
