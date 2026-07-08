@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V7.8.43 Admin Safe Load Fix</title>
+<title>Habesha Connect V7.8.45 LocalStorage Overflow Fix</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.marketPhoto{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f8fafc}.photoPreview{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoPreview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 </style>
@@ -37,7 +37,7 @@
   <section id="privacy" class="page hide"></section>
   <section id="terms" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V7.8.43 Admin Safe Load Fix — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
+<div class="footer">Habesha Connect V7.8.45 LocalStorage Overflow Fix — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script>
@@ -56,7 +56,45 @@ function passwordField(id,placeholder,auto){return `<div style="display:flex;gap
 const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post and manage rental properties.'},rent_seeker:{icon:'🔍',title:'Rent Seeker',desc:'Search rentals and request viewings.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Manage business listings and tools.'},marketplace:{icon:'🛒',title:'Marketplace',desc:'Buy, sell, post items, browse items, and manage marketplace requests.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},taxi_limo_owner:{icon:'🚕',title:'Taxi/Limo Owner',desc:'Manage taxi/limo vehicles, owner dashboard, and driver requests.'},taxi_limo_driver:{icon:'🚕',title:'Taxi/Limo Driver',desc:'Apply to drive, accept approved ride requests, and manage taxi/limo rides.'},taxi_driver:{icon:'🚕',title:'Taxi/Limo Driver',desc:'Apply to drive, accept approved ride requests, and manage taxi/limo rides.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, taxi, jobs, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
 const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_limo_owner','taxi_limo_driver','service_provider','business_owner','marketplace','customer'];
 function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
-function persistOnly(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));}
+
+const HC_STORAGE_KEY='hc_v35';
+function stripLargeForStorage(value){
+  try{
+    return JSON.parse(JSON.stringify(value,function(key,val){
+      if(typeof val==='string'){
+        if(val.startsWith('data:image')||val.startsWith('data:video')||val.startsWith('data:application'))return '';
+        if(val.length>2000)return val.slice(0,500)+'...';
+      }
+      return val;
+    }),function(key,val){
+      if(Array.isArray(val))return val.filter(x=>x!==''&&x!==null&&x!==undefined);
+      return val;
+    });
+  }catch(e){console.warn('Storage cleanup failed; saving minimum session only.',e);return null;}
+}
+function minimalStorageData(){
+  return {currentUser:currentUser||null,users:(data&&data.users)||[],settings:(data&&data.settings)||Object.assign({},DEFAULT_SETTINGS),notifications:[],payments:[],messages:[],favorites:[],reviews:[],shipments:[],trips:[],rentals:[],rentalRequests:[],market:[],marketRequests:[],savedMarketItems:[],jobs:[],trucks:[],truckJobs:[],truckApplications:[],truckDriverProfiles:[],trailerRentals:[],homeServicePosts:[],homeServiceRequests:[],taxiDriverApps:[],taxiRideRequests:[],taxiLimoOwners:[],taxiLimoVehicles:[],taxiLimoDriverAssignments:[],businesses:[]};
+}
+function safeSetHC(obj){
+  try{
+    let slim=stripLargeForStorage(obj)||minimalStorageData();
+    localStorage.setItem(HC_STORAGE_KEY,JSON.stringify(slim));
+    return true;
+  }catch(e){
+    console.warn('Browser storage was full. Saving only small login/session data so buttons keep working.',e);
+    try{localStorage.removeItem(HC_STORAGE_KEY);localStorage.setItem(HC_STORAGE_KEY,JSON.stringify(minimalStorageData()));return true;}catch(e2){console.warn('Minimum storage save failed; app will continue without freezing.',e2);return false;}
+  }
+}
+function safeLoadData(){
+  try{
+    let raw=localStorage.getItem(HC_STORAGE_KEY);
+    if(!raw)return seed();
+    let parsed=JSON.parse(raw)||seed();
+    return stripLargeForStorage(parsed)||seed();
+  }catch(e){console.warn('Old browser storage could not be loaded; starting clean local cache.',e);try{localStorage.removeItem(HC_STORAGE_KEY);}catch(_e){}return seed();}
+}
+function persistOnly(){data.currentUser=currentUser;safeSetHC(data);}
+
 
 // V7.8.41: button/navigation no-wait helpers. Normal screen changes should not wait for Supabase.
 function fireAndForget(promise,label){
@@ -75,7 +113,7 @@ function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile
 function roleTitle(role){return (ROLE_INFO[role]&&ROLE_INFO[role].title)||role}
 function upsertLocalUser(profile){if(!profile||!profile.email)return null;let u=data.users.find(x=>x.email===profile.email);let roles=normalizeRoles(profile);let savedRole=localStorage.getItem('hc_active_role_'+profile.email);let activeRole=(savedRole&&roles.includes(savedRole))?savedRole:(profile.active_role&&roles.includes(profile.active_role)?profile.active_role:(profile.role&&roles.includes(profile.role)?profile.role:roles[0]));let cleaned={id:profile.id||profile.profile_id||'',auth_user_id:profile.auth_user_id||'',name:profile.name||profile.full_name||profile.email,phone:profile.phone||'',email:profile.email,role:activeRole,active_role:activeRole,roles,verified:!!profile.verified,city:profile.city||''};if(u)Object.assign(u,cleaned);else data.users.push(cleaned);return data.users.find(x=>x.email===profile.email)}
 async function loadSupabaseProfile(user){if(!authReady()||!user)return null;let {data:profile,error}=await hcSupabase.from('profiles').select('*').eq('auth_user_id',user.id).maybeSingle();if(error)console.warn('Profile load error',error);if(!profile){profile={auth_user_id:user.id,name:user.user_metadata?.name||user.email,phone:user.user_metadata?.phone||'',email:user.email,role:user.user_metadata?.role||'customer',roles:user.user_metadata?.roles||[user.user_metadata?.role||'customer'],active_role:user.user_metadata?.active_role||user.user_metadata?.role||'customer',verified:false};let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();profile=res.data||profile;}return upsertLocalUser(profile)}
-async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Please check configuration.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){currentUser=u;data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));render();}}}
+async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Please check configuration.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){currentUser=u;data.currentUser=currentUser;safeSetHC(data);render();}}}
 
 const PROPERTY_TYPES=['Home','Apartment','Basement','Roommate','Town House','Business'];
 const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:10,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false};
@@ -86,7 +124,7 @@ const ETHIOPIA_CITIES=['Addis Ababa','Adama (Nazret)','Bahir Dar','Gondar','Hawa
 function options(arr,selected=''){return arr.map(x=>`<option ${x===selected?'selected':''}>${x}</option>`).join('')}
 function routeSelects(prefix='ship'){return `<div class="grid two"><div><label>From (U.S. City)</label><select id="${prefix}From">${options(US_CITIES,'Atlanta, GA')}</select></div><div><label>To (Ethiopia City)</label><select id="${prefix}To">${options(ETHIOPIA_CITIES,'Addis Ababa')}</select></div></div><p class="muted">Use the arrows to choose the main U.S. city and Ethiopia destination city.</p>`}
 
-let data=JSON.parse(localStorage.getItem('hc_v35')||'null')||seed();
+let data=safeLoadData();
 // V7.3.4 beta cleanup: do not show old old browser records from browser storage.
 // Keep users, current login, profile roles, and settings, but reset marketplace activity
 // so every dashboard displays only real new activity after this update.
@@ -113,11 +151,11 @@ if(!localStorage.getItem(TAXI_LIMO_LOCAL_CLEANUP_KEY)){
   localStorage.setItem(TAXI_LIMO_LOCAL_CLEANUP_KEY,'1');
 }
 
-localStorage.setItem('hc_v35', JSON.stringify(data));
 let currentUser=data.currentUser||null;
+safeSetHC(data);
 
 function seed(){return {currentUser:null,users:[],notifications:[],payments:[],messages:[],favorites:[],reviews:[],shipments:[],trips:[],rentals:[],rentalRequests:[],market:[],jobs:[],trucks:[],truckJobs:[],truckApplications:[],truckDriverProfiles:[],trailerRentals:[],homeServicePosts:[],homeServiceRequests:[],taxiDriverApps:[],taxiRideRequests:[],taxiLimoOwners:[],taxiLimoVehicles:[],taxiLimoDriverAssignments:[],marketRequests:[],savedMarketItems:[],businesses:[],settings:Object.assign({},DEFAULT_SETTINGS)}}
-function save(){data.currentUser=currentUser;localStorage.setItem('hc_v35',JSON.stringify(data));render()}
+function save(){data.currentUser=currentUser;safeSetHC(data);render()}
 function money(n){return '$'+Number(n||0).toLocaleString()}
 function ensureArrays(){if(!data.trucks)data.trucks=[];if(!data.truckJobs)data.truckJobs=[];if(!data.truckApplications)data.truckApplications=[];if(!data.truckDriverProfiles)data.truckDriverProfiles=[];if(!data.trailerRentals)data.trailerRentals=[];if(!data.homeServicePosts)data.homeServicePosts=[];if(!data.homeServiceRequests)data.homeServiceRequests=[];if(!data.taxiDriverApps)data.taxiDriverApps=[];if(!data.taxiRideRequests)data.taxiRideRequests=[];if(!data.taxiLimoOwners)data.taxiLimoOwners=[];if(!data.taxiLimoVehicles)data.taxiLimoVehicles=[];if(!data.taxiLimoDriverAssignments)data.taxiLimoDriverAssignments=[];if(!data.marketRequests)data.marketRequests=[];if(!data.savedMarketItems)data.savedMarketItems=[];if(!data.rentalRequests)data.rentalRequests=[];if(!data.rentals)data.rentals=[];if(!data.shipments)data.shipments=[];if(!data.trips)data.trips=[];if(!data.favorites)data.favorites=[];if(!data.reviews)data.reviews=[];data.users.forEach(u=>{if(u.verified===undefined)u.verified=false});data.trips.forEach(t=>{t.totalSpace=+t.totalSpace||0;t.availableSpace=(t.availableSpace===undefined?+t.totalSpace:+t.availableSpace)||0;t.travelerPhone=t.travelerPhone||'';t.travelerEmail=t.travelerEmail||'';t.travelerVerified=!!(data.users.find(u=>u.email===t.travelerEmail)?.verified||t.travelerVerified);t.status=t.status||'Open';t.listingFeePaid=!!t.listingFeePaid;t.listingFeeAmount=Number(t.listingFeeAmount||settings().travelerTripListingFee||10);t.listingFeeRefunded=!!t.listingFeeRefunded;});data.shipments.forEach(s=>{s.senderPhone=s.senderPhone||'';s.travelerPhone=s.travelerPhone||'';s.receiver=s.receiver||'Receiver not entered';s.receiverPhone=s.receiverPhone||'';s.tracking=s.tracking||('HC-'+s.id);s.packagePhotos=s.packagePhotos||[];s.senderVerified=!!(data.users.find(u=>u.email===s.senderEmail)?.verified||s.senderVerified);s.travelerVerified=!!(data.users.find(u=>u.email===s.travelerEmail)?.verified||s.travelerVerified);if(s.paid===undefined)s.paid=(s.status==='Paid'||s.status==='Payment Pending Admin Review'||s.status==='Approved'||s.paymentStatus==='Paid');s.travelerListingFeeRefund=Number(s.travelerListingFeeRefund||0);s.travelerPayoutAmount=Number(s.travelerPayoutAmount||0);});data.rentals.forEach(r=>{r.ownerPhone=r.ownerPhone||'';r.ownerEmail=r.ownerEmail||'';r.owner=r.owner||'Owner';r.status=r.status||'Pending';r.propertyType=r.propertyType||'Home';r.appFee=r.appFee||settings().seekerViewingFee;r.ownerFee=r.ownerFee||settings().ownerListingFee;if(r.ownerPaid===undefined)r.ownerPaid=(r.status==='Approved'||r.status==='Available');r.photos=r.photos||[];r.deposit=r.deposit||0;r.moveDate=r.moveDate||'';r.leaseTerm=r.leaseTerm||'';r.pets=r.pets||'No';r.parking=r.parking||'No';r.furnished=r.furnished||'No';r.utilities=r.utilities||'Not included';r.ownerRating=avgOwnerRating(r.ownerEmail)});}
 function verifiedBadge(ok){return ok?'<span class="pill good">Verified</span>':'<span class="pill warn">Not Verified</span>'}
