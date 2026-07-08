@@ -1,0 +1,3 @@
+-- V7.8.73 Home Services request fix
+-- No database schema changes required.
+-- This release fixes front-end service lookup when a customer requests an approved service.

@@ -1,3 +1,5 @@
-# V7.8.72 Trailer Rental Payment Approval
+# V7.8.73 Fix Notes
 
-This clean package uses V7.8.71 as the base and fixes only the Trailer Rental payment approval step.
+Base: V7.8.72 Trailer Payment Base 71 Clean Fix.
+
+Fixed only Home Services request selection. Other modules were not intentionally changed.

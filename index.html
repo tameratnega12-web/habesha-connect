@@ -2770,24 +2770,58 @@ marketAdminApproveConnection=async function(id){
 marketAdminCards=function(){let pendListings=(data.market||[]).filter(m=>m.status==='Pending Admin Approval');let payment=(data.marketRequests||[]).filter(r=>['Payment Pending Admin Approval','Seller Accepted - Waiting Admin'].includes(r.status));let sold=(data.market||[]).filter(m=>m.status==='Sold Waiting Admin Verification');return `<div class="card"><h3>⏳ Pending Listings</h3>${pendListings.map(marketCard).join('')||'<p class="muted">No pending listings.</p>'}</div><div class="card"><h3>💳 Manual Payment Approvals</h3>${payment.map(marketRequestCard).join('')||'<p class="muted">No payments waiting.</p>'}</div><div class="card"><h3>✅ Sold Verification</h3>${sold.map(marketCard).join('')||'<p class="muted">No sold items waiting.</p>'}</div>`;};
 
 /* HOME SERVICES: Admin approves provider posts only. Customer requests go directly to provider. */
-submitHomeServiceRequest=async function(id){
- if(!requireLogin())return;let svc=(data.homeServicePosts||[]).find(x=>x.id===id);if(!svc)return alert('Service not found.');
+function findHomeServicePostByRef(ref){
+ const key=String(ref||'').trim();
+ if(!key)return null;
+ return (data.homeServicePosts||[]).find(p=>String(p.id||'')===key||String(p.dbId||'')===key||String(p.localRef||'')===key||String(p.local_ref||'')===key)||null;
+}
+requestHomeService=function(id){
+ if(!requireLogin())return;
+ let svc=findHomeServicePostByRef(id);
+ if(!svc)return alert('Service not found. Please refresh Home Services and try again.');
+ if(svc.status!=='Approved'&&svc.status!=='Available')return alert('This service is not approved yet.');
  if(svc.providerEmail===currentUser.email)return alert('You cannot request your own service.');
- if(svc.status!=='Approved')return alert('This service is not available for customer requests.');
- let city=askRequired('Your city/location:', currentUser.city||''); if(city===null)return;
- let phone=askRequired('Your phone number:', currentUser.phone||'', phoneOk, 'Phone number must be numbers only.'); if(phone===null)return;
- let preferredDate=prompt('Preferred date:', addDaysIso(1)); if(preferredDate===null)return;
- let time=prompt('Preferred time:', ''); if(time===null)return;
- let details=prompt('Describe what you need:', ''); if(details===null)return;
- let req={id:'HSR'+Date.now().toString().slice(-6),serviceId:svc.dbId||svc.id,serviceTitle:svc.title,providerName:svc.providerName,providerEmail:svc.providerEmail,providerPhone:svc.providerPhone||'',customerName:currentUser.name,customerEmail:currentUser.email,customerPhone:phone,city,preferredDate,preferredTime:time,details,status:'Pending Provider Review',createdAt:new Date().toLocaleString()};
- let res=await insertHomeServiceRequestDb(req);
+ activeHomeServiceRequestId=svc.id||svc.dbId||id;
+ homeServices();
+ setTimeout(()=>{let el=$('homeServiceRequestForm');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},50);
+};
+submitHomeServiceRequest=async function(id){
+ if(!requireLogin())return;
+ let ref=id||activeHomeServiceRequestId;
+ let svc=findHomeServicePostByRef(ref);
+ if(!svc&&authReady()){
+   await loadSupabaseHomeServices();
+   svc=findHomeServicePostByRef(ref);
+ }
+ if(!svc)return alert('Service not found. Please refresh Home Services and try again.');
+ if(svc.providerEmail===currentUser.email)return alert('You cannot request your own service.');
+ if(svc.status!=='Approved'&&svc.status!=='Available')return alert('This service is not available for customer requests.');
+ let phoneEl=$('hsReqPhone'), cityEl=$('hsReqCity'), dateEl=$('hsReqDate'), timeEl=$('hsReqTime'), detailsEl=$('hsReqDetails');
+ let phone=(phoneEl?phoneEl.value:(currentUser.phone||'')).trim();
+ let city=(cityEl?cityEl.value:'').trim();
+ let preferredDate=(dateEl?dateEl.value:'').trim();
+ let time=(timeEl?timeEl.value:'').trim();
+ let details=(detailsEl?detailsEl.value:'').trim();
+ if(!phone){phone=askRequired('Your phone number:', currentUser.phone||'', phoneOk, 'Phone number must be numbers only.');if(phone===null)return;}
+ if(!phoneOk(phone))return alert('Phone number must be numbers only.');
+ if(!city){city=askRequired('Your city/location:', currentUser.city||'');if(city===null)return;}
+ if(!preferredDate){preferredDate=prompt('Preferred date:', addDaysIso(1));if(preferredDate===null)return;}
+ if(!time){time=prompt('Preferred time:', '');if(time===null)return;}
+ if(!details){details=prompt('Describe what you need:', '');if(details===null)return;}
+ let summary='Please review your home service request:\n\nService: '+(svc.title||'')+'\nProvider: '+(svc.providerName||'')+'\nPhone: '+phone+'\nCity / Area: '+city+'\nPreferred Date: '+preferredDate+'\nPreferred Time: '+time+'\nDetails: '+details+'\n\nClick OK to submit this request, or Cancel to revise it.';
+ if(!confirm(summary))return;
+ let req={id:'HSR'+Date.now().toString().slice(-6),serviceId:svc.dbId||svc.id,serviceLocalRef:svc.id,serviceTitle:svc.title,providerName:svc.providerName,providerEmail:svc.providerEmail,providerPhone:svc.providerPhone||'',customerName:currentUser.name,customerEmail:currentUser.email,customerPhone:phone,city,preferredDate,preferredTime:time,details,status:'Pending Provider Review',createdAt:new Date().toLocaleString()};
+ let res=await syncHomeServiceRequestToSupabase(req,svc);
  if(res.error)return alert('Home service request was not saved to Supabase. Please run the Home Services SQL, then try again. '+res.error.message);
- if(res.data){req.id=res.data.id;req.dbId=res.data.id;}
+ if(res.data){req.id=res.data.local_ref||req.id;req.dbId=res.data.id;}
  data.homeServiceRequests.unshift(req);
  addNote(svc.providerEmail,'New home service request from '+currentUser.name+' for '+svc.title+'.');
  sendEmailNotice({to:svc.providerEmail,name:svc.providerName,subject:'New home service request',summary:'A customer requested your home service. Please accept or decline.',buttonText:'Open Home Services',page:'home_services',details:{Customer:currentUser.name,Phone:phone,Service:svc.title,City:city,PreferredDate:preferredDate,PreferredTime:time,Details:details}});
  addNote(currentUser.email,'Home service request sent to provider: '+svc.title+'.');
- persistOnly();alert('Request sent directly to the service provider.');homeServices();
+ activeHomeServiceRequestId='';
+ persistOnly();
+ alert('Request sent directly to the service provider.');
+ homeServices();
 };
 
 /* TRUCKING: Driver applications go directly to truck owner after approved job post. Owner acceptance completes hiring. */
