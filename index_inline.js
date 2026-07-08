@@ -85,6 +85,20 @@ if(!localStorage.getItem(BETA_CLEANUP_KEY)){
 data.payments=[];
 data.messages=[];
 data.notifications=[];
+
+// V7.8.31 Taxi/Limo cleanup: remove old browser/demo Taxi/Limo rows.
+// If old test rows were stored in localStorage, they can still appear even after
+// Supabase table rows are deleted. This cleanup clears those local-only records once.
+const TAXI_LIMO_LOCAL_CLEANUP_KEY='hc_v7831_taxi_limo_local_cleanup_done';
+if(!localStorage.getItem(TAXI_LIMO_LOCAL_CLEANUP_KEY)){
+  data.taxiDriverApps=[];
+  data.taxiRideRequests=[];
+  data.taxiLimoOwners=[];
+  data.taxiLimoVehicles=[];
+  data.taxiLimoDriverAssignments=[];
+  localStorage.setItem(TAXI_LIMO_LOCAL_CLEANUP_KEY,'1');
+}
+
 localStorage.setItem('hc_v35', JSON.stringify(data));
 let currentUser=data.currentUser||null;
 

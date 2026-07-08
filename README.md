@@ -87,3 +87,9 @@ V7.6.3 Trucking Trailer Owner Request Top Panel
 ## V7.6.4 Admin Email Copy Fix
 - Admin/support recipient: admin.habeshaconnect@gmail.com
 - Updated app.js, index_script.js, and index_inline.js so every `sendAdminEmailNotice(...)` sends to both inboxes.
+
+
+## V7.8.31 Taxi/Limo Local Demo Cleanup
+- Cleans old browser-stored Taxi/Limo demo/test records.
+- Admin and owner dashboards no longer keep showing old local Taxi/Limo rows after Supabase records are deleted.
+- No SQL required.
