@@ -1728,7 +1728,34 @@ function bmEsc(v){return String(v||'').replace(/[&<>"']/g,function(c){return {'&
 function bmProfileRecords(){return businessRecords().filter(b=>b.recordType==='business_profile'||b.record_type==='business_profile'||b.category||b.offers||b.about)}
 function bmMyProfile(){if(!currentUser)return null;return bmProfileRecords().find(b=>(b.ownerEmail||b.owner_email||b.createdBy||'').toLowerCase()===(currentUser.email||'').toLowerCase())||null}
 function mapBusinessRecordFromDb(row){let d=row.details||{};return Object.assign({},d,{id:row.local_ref||row.id,dbId:row.id,recordType:row.record_type||d.recordType||'business_profile',businessName:row.business_name||d.businessName||d.name||'Business',name:row.business_name||d.name||'Business',category:row.business_type||d.category||d.type||'Other',type:row.business_type||d.type||d.category||'Other',ownerEmail:row.owner_email||d.ownerEmail||'',date:row.record_date||d.date||new Date().toISOString().slice(0,10),source:'supabase'});}
-async function loadBusinessFromSupabase(){if(!authReady())return;try{let q=hcSupabase.from('business_records').select('*').eq('record_type','business_profile').order('created_at',{ascending:false});let res=await q;if(res.error){console.warn('Business Directory Supabase load error',res.error);return;}let remote=(res.data||[]).map(mapBusinessRecordFromDb);let localOnly=businessRecords().filter(x=>x.source!=='supabase'&&!x.dbId);data.businesses=[...remote,...localOnly];persistOnly();if(currentPage==='business')business();}catch(e){console.warn('Business Directory background load failed',e)}}
+let businessDirectoryLoading=false;
+let businessDirectoryLoadedAt=0;
+async function loadBusinessFromSupabase(options){
+  options=options||{};
+  if(!authReady())return;
+  if(businessDirectoryLoading)return;
+  if(!options.force && Date.now()-businessDirectoryLoadedAt<30000)return;
+  businessDirectoryLoading=true;
+  try{
+    let q=hcSupabase.from('business_records').select('*').eq('record_type','business_profile').order('created_at',{ascending:false});
+    let res=await q;
+    if(res.error){console.warn('Business Directory Supabase load error',res.error);return;}
+    let remote=(res.data||[]).map(mapBusinessRecordFromDb);
+    let localOnly=businessRecords().filter(x=>x.source!=='supabase'&&!x.dbId);
+    data.businesses=[...remote,...localOnly];
+    businessDirectoryLoadedAt=Date.now();
+    persistOnly();
+    // Do NOT rebuild the full Business Directory page here. Rebuilding while a user taps
+    // a select/drop-down on phone closes the list and makes the arrow look broken.
+    if(currentPage==='business' && $('businessList')){
+      filterBusinessDirectory();
+    }
+  }catch(e){
+    console.warn('Business Directory background load failed',e);
+  }finally{
+    businessDirectoryLoading=false;
+  }
+}
 async function syncBusinessRecordToSupabase(rec){if(!authReady()||!currentUser||!rec)return {error:null};try{let payload={local_ref:rec.id,business_name:rec.businessName||rec.name||'Business',business_type:rec.category||rec.type||'Other',record_type:'business_profile',period:'Directory',record_date:rec.date||new Date().toISOString().slice(0,10),income_amount:0,expense_amount:0,amount:0,notes:rec.about||rec.description||'',owner_email:currentUser.email||rec.ownerEmail||'',owner_id:businessUserKey(),details:rec};let res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().single();if(!res.error&&res.data){rec.dbId=res.data.id;rec.source='supabase';persistOnly();}else if(res.error){console.warn('Business Directory Supabase save error',res.error);}return res;}catch(e){console.warn('Business Directory background save failed',e);return {error:e};}}
 function addBusinessLocal(rec){let arr=businessRecords();let i=arr.findIndex(x=>x.id===rec.id||((x.ownerEmail||x.createdBy)===(rec.ownerEmail||rec.createdBy)&&x.recordType==='business_profile'));if(i>=0)arr[i]=rec;else arr.unshift(rec);persistOnly();fireAndForget(syncBusinessRecordToSupabase(rec),'business directory sync');business();return rec}
 function businessCategoryOptions(selected){let cats=['Restaurant / Food','Coffee Shop / Bakery','Grocery / Market','Tax / Accounting','Insurance','Mechanic / Auto','Beauty Salon / Barber','Home Service','Real Estate','Doctor / Dentist','Church / Community','Trucking / Transport','Taxi / Limo','Retail Store','Other'];return cats.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('')}
