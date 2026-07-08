@@ -39,7 +39,127 @@
   <section id="terms" class="page hide"></section>
 </main>
 <div class="footer">Habesha Connect V7.8.64 Simplified Admin Payment Flow — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+/* V7.8.69 RENTALS: restore requested flow
+   Owner posts property -> Admin approves property -> Seeker requests -> Admin approves/declines request.
+   Admin approval marks property Rented. Admin decline keeps/returns property Available. No seeker $10 payment. */
+function rentalRequestActionButtons(q,role){
+  const st=String(q.status||'Pending');
+  const id=q.id||q.dbId;
+  if(role==='admin'){
+    if(['Pending','Pending Admin Review','Pending Owner Review','Waiting Owner Review'].includes(st)){
+      return `<button class="btn primary" onclick="approveRentalReq('${id}')">Approve - Mark Rented</button> <button class="btn bad" onclick="declineRentalReq('${id}')">Decline</button>`;
+    }
+    return '-';
+  }
+  return '-';
+}
+function rentalRequestsTable(reqs,role){
+  let wrapId=role==='owner'?' id="ownerRentalRequests"':'';
+  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${(q.status==='Approved'||role==='admin'||role==='owner')?(q.ownerPhone||''):'Shown after admin approval'}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+}
+rentalRequestsHtml=function(reqs,role,anchor){
+  let wrapId=anchor?` id="${anchor}"`:(role==='owner'?' id="ownerRentalRequests"':'');
+  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${(q.status==='Approved'||role==='admin'||role==='owner')?(q.ownerPhone||''):'Shown after admin approval'}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+};
+async function requestViewing(id){
+ if(!requireLogin())return;
+ if(!authReady())return alert('Supabase is required to send rental viewing requests. Please refresh the page and log in again.');
+ if(!currentUser.id)return alert('Your profile ID is missing. Please log out, log back in, and try again.');
+ await loadSupabaseRentals();
+ await loadSupabaseRentalRequests();
+ let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+ if(!r)return alert('Rental listing not found. Please refresh and try again.');
+ if(!['Approved','Available'].includes(String(r.status||'')))return alert('This property is not available for requests.');
+ if(r.ownerEmail===currentUser.email||String(r.ownerId||'')===String(currentUser.id||''))return alert('You cannot request your own property.');
+ let propertyKey=r.dbId||r.id;
+ let existing=data.rentalRequests.find(q=>(String(q.rentalId)===String(r.id)||String(q.rentalId)===String(r.dbId)||String(q.rentalId)===String(propertyKey))&&(String(q.seekerId||'')===String(currentUser.id||'')||q.seekerEmail===currentUser.email)&&!['Declined','Cancelled'].includes(String(q.status||'')));
+ if(existing){alert('You already sent a viewing request for this property.');await rentals();return;}
+ let payload={property_id:propertyKey,seeker_id:currentUser.id,paid:false,amount_paid:0,status:'Pending Admin Review'};
+ let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
+ if(res.error){
+   let msg=String(res.error.message||'').toLowerCase();
+   if(msg.includes('amount_paid')){delete payload.amount_paid;res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();}
+   if(res.error&&msg.includes('paid')){delete payload.paid;res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();}
+   if(res.error)return alert('Viewing request could not be saved to Supabase: '+res.error.message);
+ }
+ let localReq={id:res.data.id,dbId:res.data.id,rentalId:propertyKey,propertyTitle:r.title,seekerName:currentUser.name,seekerPhone:currentUser.phone||'',seekerEmail:currentUser.email,seekerId:currentUser.id||'',ownerName:r.owner,ownerPhone:r.ownerPhone||'',ownerEmail:r.ownerEmail||'',ownerId:r.ownerId||'',status:'Pending Admin Review',paymentStatus:'No payment required',paid:false,amountPaid:0,time:new Date().toLocaleString(),source:'supabase'};
+ data.rentalRequests.unshift(localReq);
+ addNote('admin.habeshaconnect@gmail.com','New rental viewing request for '+r.title+' from '+currentUser.name+'. Admin approval is needed.');
+ sendAdminEmailNotice('Rental viewing request needs admin approval','A rent seeker requested a property viewing. Admin approval will mark the property rented.',{Seeker:currentUser.name,Email:currentUser.email,Property:r.title,Owner:r.owner,OwnerEmail:r.ownerEmail},'admin');
+ addNote(currentUser.email,'Your viewing request was sent to admin for approval. No payment is required during beta.');
+ persistOnly();
+ alert('Viewing request submitted. Waiting for admin approval. No payment required.');
+ await rentals();
+}
+function __findRentalForReqV7869(q){
+  return data.rentals.find(r=>String(r.id)===String(q.rentalId)||String(r.dbId)===String(q.rentalId)||String(r.id)===String(q.propertyId)||String(r.dbId)===String(q.propertyId));
+}
+async function __updateRentalStatusV7869(r,status){
+  if(!r)return {error:null};
+  const old=r.status;
+  r.status=status;
+  persistOnly();
+  let res={error:null};
+  if(authReady()&&r.dbId)res=await hcSupabase.from('properties').update({status}).eq('id',r.dbId);
+  if(res.error){r.status=old;persistOnly();}
+  return res;
+}
+approveRentalReq=async function(id){
+  if(!requireAdmin())return;
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  if(!['Pending','Pending Admin Review','Pending Owner Review','Waiting Owner Review'].includes(String(q.status||'')))return alert('This rental request is not waiting for admin approval.');
+  let rental=__findRentalForReqV7869(q);
+  let oldQ=q.status;
+  q.status='Approved'; q.paymentStatus='No payment required'; q.paid=false; q.amountPaid=0;
+  persistOnly();
+  let reqRes={error:null};
+  if(authReady()&&q.dbId)reqRes=await hcSupabase.from('rental_requests').update({status:'Approved',paid:false,amount_paid:0}).eq('id',q.dbId);
+  if(reqRes.error){q.status=oldQ;persistOnly();return alert('Could not approve rental request: '+reqRes.error.message);}
+  let propRes=await __updateRentalStatusV7869(rental,'Rented');
+  if(propRes.error)return alert('Request approved, but property could not be marked Rented in Supabase: '+propRes.error.message);
+  // Cancel other unfinished requests for this property so seekers do not continue requesting a rented property.
+  let propertyKey=String((rental&&rental.dbId)||q.rentalId||'');
+  (data.rentalRequests||[]).forEach(other=>{
+    if(other!==q && String(other.rentalId)===propertyKey && !['Approved','Declined','Cancelled'].includes(String(other.status||''))){other.status='Cancelled';}
+  });
+  addNote(q.seekerEmail,'Admin approved your rental request. The property is now marked Rented. Owner contact is available.');
+  addNote(q.ownerEmail,'Admin approved a rental request for your property. The property is now marked Rented.');
+  sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental request approved',summary:'Admin approved your rental request. The property is now marked rented and owner contact is available.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Owner:q.ownerName,OwnerPhone:q.ownerPhone,Status:'Approved / Rented'}});
+  persistOnly();
+  if(currentPage==='admin')adminSuccess('Rental request approved. Property marked Rented.'); else await rentals();
+};
+declineRentalReq=async function(id){
+  if(!requireAdmin())return;
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  let rental=__findRentalForReqV7869(q);
+  let oldQ=q.status;
+  q.status='Declined'; q.paymentStatus='No payment required'; q.paid=false; q.amountPaid=0;
+  persistOnly();
+  let reqRes={error:null};
+  if(authReady()&&q.dbId)reqRes=await hcSupabase.from('rental_requests').update({status:'Declined',paid:false,amount_paid:0}).eq('id',q.dbId);
+  if(reqRes.error){q.status=oldQ;persistOnly();return alert('Could not decline rental request: '+reqRes.error.message);}
+  // If this request did not rent the property, keep/return property Available.
+  if(rental && String(rental.status||'')!=='Rented'){
+    let propRes=await __updateRentalStatusV7869(rental,'Available');
+    if(propRes.error)return alert('Request declined, but property could not be returned to Available: '+propRes.error.message);
+  }
+  addNote(q.seekerEmail,'Admin declined your rental request. No payment was required.');
+  addNote(q.ownerEmail,'Admin declined a rental request for your property. The property remains available.');
+  sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental request declined',summary:'Admin declined your rental request. The property remains available.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Status:'Declined'}});
+  persistOnly();
+  if(currentPage==='admin')adminSuccess('Rental request declined. Property remains Available.'); else await rentals();
+};
+async function adminApproveRentalReq(id){return approveRentalReq(id);}
+async function adminDeclineRentalReq(id){return declineRentalReq(id);}
+async function adminFinalApproveRentalReq(id){return alert('Final admin approval was removed from Rentals. Admin approval of the seeker request is the final step and marks the property Rented.');}
+async function ownerAcceptRentalReq(id){return alert('Owner accept/decline was removed from the Rental flow. Admin approves or declines the seeker request.');}
+async function ownerDeclineRentalReq(id){return alert('Owner accept/decline was removed from the Rental flow. Admin approves or declines the seeker request.');}
+
+</script>
 <script src="js/supabase-config.js"></script>
 <script>
 
@@ -117,7 +237,7 @@ async function loadSupabaseProfile(user){if(!authReady()||!user)return null;let 
 async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Please check configuration.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){currentUser=u;data.currentUser=currentUser;safeSetHC(data);render();setTimeout(()=>refreshCurrentPage(),120);}}}
 
 const PROPERTY_TYPES=['Home','Apartment','Basement','Roommate','Town House','Business'];
-const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:10,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false};
+const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:0,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false};
 function settings(){data.settings=Object.assign({},DEFAULT_SETTINGS,data.settings||{});return data.settings}
 function setMoneySetting(key,val){let v=Number(val);if(!isNaN(v)&&v>=0){settings()[key]=v;save()}}
 const US_CITIES=['Atlanta, GA','Washington, DC','New York, NY','Chicago, IL','Dallas, TX','Houston, TX','Los Angeles, CA','Seattle, WA','Boston, MA','Miami, FL','Minneapolis, MN','Denver, CO','Philadelphia, PA','San Francisco, CA'];
@@ -974,7 +1094,7 @@ function mapDbRental(row){
     status: row.status || 'Pending',
     ownerPaid: row.owner_paid===undefined ? ['Pending','Approved','Available'].includes(row.status||'') : !!row.owner_paid,
     ownerFee: Number(row.owner_fee || settings().ownerListingFee),
-    appFee: Number(row.app_fee || settings().seekerViewingFee),
+    appFee: Number(row.app_fee || 0),
     ownerRating: avgOwnerRating(owner.email || row.owner_email || ''),
     source:'supabase'
   };
@@ -1014,7 +1134,7 @@ function mapDbRentalRequest(row){
     status: row.status || 'Pending',
     paymentStatus: row.paid===false?'Unpaid':'Paid',
     paid: row.paid!==false,
-    amountPaid: Number(row.amount_paid || settings().seekerViewingFee || 10),
+    amountPaid: Number(row.amount_paid || 0),
     time: row.created_at || new Date().toLocaleString(),
     source:'supabase'
   };
@@ -1055,7 +1175,7 @@ function rentalStatsFor(list,reqs){
   let active=list.filter(r=>['Approved','Available'].includes(r.status)&&r.ownerPaid).length;
   let rented=list.filter(r=>r.status==='Rented').length;
   let ownerFees=list.filter(r=>r.ownerPaid).reduce((a,r)=>a+Number(r.ownerFee||settings().ownerListingFee||0),0);
-  let seekerFees=reqs.filter(q=>(q.paymentStatus||'Paid')==='Paid'||q.paid).reduce((a,q)=>a+Number(q.amountPaid||settings().seekerViewingFee||0),0);
+  let seekerFees=0;
   return {total:list.length,active,rented,requests:reqs.length,ownerFees,seekerFees,totalRevenue:ownerFees+seekerFees};
 }
 function rentalRequestPaymentDisplay(q,role){
@@ -1066,7 +1186,7 @@ function rentalRequestPaymentDisplay(q,role){
 }
 function paymentPrivacyNotice(){return '<div class="notice"><b>Payment privacy:</b> Travelers, senders, owners, and seekers only see their own payment information. Admin can see all party payments.</div>';}
 function rentalStatsCards(title,st){
-  return `<h3>${title}</h3><div class="grid"><div class="card"><p>Total Properties</p><div class="stat">${st.total}</div></div><div class="card"><p>Available</p><div class="stat">${st.active}</div></div><div class="card"><p>Rented</p><div class="stat">${st.rented}</div></div><div class="card"><p>Viewing Requests</p><div class="stat">${st.requests}</div></div><div class="card"><p>Owner Fees</p><div class="stat">${money(st.ownerFees)}</div></div><div class="card"><p>Seeker Fees</p><div class="stat">${money(st.seekerFees)}</div></div></div>`;
+  return `<h3>${title}</h3><div class="grid"><div class="card"><p>Total Properties</p><div class="stat">${st.total}</div></div><div class="card"><p>Available</p><div class="stat">${st.active}</div></div><div class="card"><p>Rented</p><div class="stat">${st.rented}</div></div><div class="card"><p>Viewing Requests</p><div class="stat">${st.requests}</div></div><div class="card"><p>Owner Fees</p><div class="stat">${money(st.ownerFees)}</div></div></div>`;
 }
 function rentalStatsCardsCustom(title,items){
   return `<h3>${title}</h3><div class="grid">${items.map(x=>`<div class="card"><p>${x[0]}</p><div class="stat">${x[1]}</div></div>`).join('')}</div>`;
@@ -1109,7 +1229,7 @@ async function rentals(){
    ['Total Properties',ownerStats.total],['Available',ownerStats.active],['Rented',ownerStats.rented],['Viewing Requests',ownerStats.requests],['Owner Fees',money(ownerStats.ownerFees)]
  ]);
  let seekerSummary=rentalStatsCardsCustom('🔍 My Rental Activity',[
-   ['Available',availableForSeeker.length],['Seeker Fees',money(seekerStats.seekerFees)]
+   ['Available',availableForSeeker.length],['My Requests',seekerReqs.length]
  ]);
  let adminSummary=rentalStatsCards('📊 Rental Statistics',adminStats);
  let ownerDashboard=`<h2>🏠 Rental Dashboard</h2><div class="grid"><div class="card"><h3>🏠 My Properties</h3><p class="muted">Add and manage rental listings.</p><button class="btn primary" onclick="document.getElementById('rentTitle')?.focus()">Add Property</button></div><div class="card"><h3>👀 Rental Requests</h3><p class="muted">See rent seeker requests and approve or decline them.</p><button class="btn primary" onclick="scrollToRentalRequests()">See Rental Requests</button></div><div class="card"><h3>⭐ Reviews</h3><p class="muted">Owner ratings and feedback.</p></div></div>`;
