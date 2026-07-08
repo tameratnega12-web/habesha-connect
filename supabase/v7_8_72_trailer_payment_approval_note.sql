@@ -1,0 +1,4 @@
+-- Habesha Agenagn V7.8.72
+-- Trailer Rental Payment Approval Fix
+-- No SQL changes are required for this version.
+-- This file is included only for version tracking.

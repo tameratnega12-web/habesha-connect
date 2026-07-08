@@ -1,24 +1,10 @@
-# Habesha Agenagn / Habesha Connect V7.8.53
+# Habesha Agenagn V7.8.72
 
-Final cleanup release based on V7.8.52.
+Base: V7.8.71 Rental Owner Decision Safe Fix.
 
-Includes:
-- Shipping
-- Rentals
-- Trucking
-- Trailer rental
-- Taxi/Limo
-- Marketplace
-- Home Services
-- Jobs
-- Business Directory
-- Events
-- Admin approvals
-- Multi-role accounts
-- English/Amharic support
-- Supabase integration
+Targeted fix only:
+- Trailer Rental admin page now shows **Approve Payment** when a trailer rental is waiting for manual payment approval.
+- Admin approval changes the trailer rental status to **Rented**.
+- No database schema change is required.
 
-SQL:
-Run the matching SQL files already required by earlier versions. V7.8.53 has no new schema change; optional file: supabase/v7_8_53_final_cleanup.sql.
-
-V7.8.59 Marketplace category cleanup (working copy only): marketplace flow stage guards, stale mobile refresh fix, and sold-item request cleanup.
+Upload the files in this folder to GitHub. Do not upload the ZIP itself only.
