@@ -1,0 +1,12 @@
+V7.8.39 Button Response / Sign-in Flow Fix
+
+Fixed:
+- After sign-in, buttons could look stuck when Supabase was slow.
+- My Services / role switch buttons now change the screen immediately.
+- Logout now clears the user immediately, then signs out from Supabase in the background.
+- Save My Services now saves locally immediately, then syncs Supabase in the background.
+- Marketplace role opens the Marketplace page directly after switching.
+- Removed the broad Services-page button lock that could make service buttons feel inactive.
+
+SQL:
+- No new SQL required for this fix.

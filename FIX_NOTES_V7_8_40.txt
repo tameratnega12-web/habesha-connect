@@ -1,0 +1,15 @@
+Habesha Agenagn V7.8.40 - Full Button / Navigation Response Fix
+
+Fixed global stuck-button problem after sign-in:
+- Page navigation now switches immediately before Supabase refresh starts.
+- My Services opens immediately.
+- Marketplace opens immediately.
+- Logout clears the signed-in user immediately and signs out from Supabase in background.
+- Role switcher changes dashboard immediately and syncs active_role to Supabase in background.
+- Save My Services updates locally immediately and syncs roles to Supabase in background.
+- Supabase refresh calls now have short timeouts so slow phone/network connections do not freeze the UI.
+- Added global error guards so JavaScript errors do not leave the page unclickable.
+- Kept existing workflows and SQL files.
+
+No new SQL required.
+Upload this full ZIP to GitHub/Vercel.
