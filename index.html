@@ -114,7 +114,7 @@ function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile
 function roleTitle(role){return (ROLE_INFO[role]&&ROLE_INFO[role].title)||role}
 function upsertLocalUser(profile){if(!profile||!profile.email)return null;let u=data.users.find(x=>x.email===profile.email);let roles=normalizeRoles(profile);let savedRole=localStorage.getItem('hc_active_role_'+profile.email);let activeRole=(savedRole&&roles.includes(savedRole))?savedRole:(profile.active_role&&roles.includes(profile.active_role)?profile.active_role:(profile.role&&roles.includes(profile.role)?profile.role:roles[0]));let cleaned={id:profile.id||profile.profile_id||'',auth_user_id:profile.auth_user_id||'',name:profile.name||profile.full_name||profile.email,phone:profile.phone||'',email:profile.email,role:activeRole,active_role:activeRole,roles,verified:!!profile.verified,city:profile.city||''};if(u)Object.assign(u,cleaned);else data.users.push(cleaned);return data.users.find(x=>x.email===profile.email)}
 async function loadSupabaseProfile(user){if(!authReady()||!user)return null;let {data:profile,error}=await hcSupabase.from('profiles').select('*').eq('auth_user_id',user.id).maybeSingle();if(error)console.warn('Profile load error',error);if(!profile){profile={auth_user_id:user.id,name:user.user_metadata?.name||user.email,phone:user.user_metadata?.phone||'',email:user.email,role:user.user_metadata?.role||'customer',roles:user.user_metadata?.roles||[user.user_metadata?.role||'customer'],active_role:user.user_metadata?.active_role||user.user_metadata?.role||'customer',verified:false};let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();profile=res.data||profile;}return upsertLocalUser(profile)}
-async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Please check configuration.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){currentUser=u;data.currentUser=currentUser;safeSetHC(data);render();}}}
+async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Please check configuration.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){currentUser=u;data.currentUser=currentUser;safeSetHC(data);render();setTimeout(()=>refreshCurrentPage(),120);}}}
 
 const PROPERTY_TYPES=['Home','Apartment','Basement','Roommate','Town House','Business'];
 const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:10,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false};
@@ -215,6 +215,30 @@ let renderingPage=false;
 let adminLoading=false;
 let adminDataLoaded=false;
 let adminBackgroundRefreshing=false;
+let pageSyncRunning=false;
+let lastPageSyncAt={};
+function isSharedDataPage(p){return ['shipping','rentals','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
+async function backgroundPageSync(p,force=false){
+ if(!authReady()||!isSharedDataPage(p))return;
+ if(pageSyncRunning)return;
+ let now=Date.now();
+ if(!force && (now-(lastPageSyncAt[p]||0)<2500))return;
+ lastPageSyncAt[p]=now;
+ pageSyncRunning=true;
+ try{
+   await safeAsync(refreshPageData(p),12000,'page sync '+p);
+   if(currentPage===p){
+     await renderPage(p);
+   }
+ }catch(e){
+   console.warn('Background page sync failed',p,e);
+ }finally{
+   pageSyncRunning=false;
+ }
+}
+function refreshCurrentPage(){backgroundPageSync(currentPage,true);}
+window.addEventListener('focus',()=>refreshCurrentPage());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshCurrentPage();});
 async function show(p){
  if(!pages.includes(p))p='home';
  if(!isAllowedPage(p)){p=currentUser?'services':'account'}
@@ -232,6 +256,7 @@ async function show(p){
  renderingPage=true;
  try{
    await renderPage(p);
+   setTimeout(()=>backgroundPageSync(p),80);
  }catch(err){
    console.error('Page render error',err);
    if($(p))$(p).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Something stopped this page from opening. Please refresh once. If it continues, send a screenshot of this page.</p><button class="btn primary" onclick="location.reload()">Refresh App</button></div>';
@@ -248,13 +273,17 @@ async function openTruckSection(sectionId){
 async function refreshPageData(p){
  if(!authReady())return;
  if(p==='profile'||p==='shipping'||p==='admin'){
-   await loadSupabasePayments();
    await loadSupabaseTrips();
    await loadSupabaseShipments();
    recalcTripSpacesFromShipments();
+   if(p==='profile'||p==='admin')await loadSupabasePayments();
  }
  if(p==='profile'||p==='rentals'||p==='admin'){
    await loadSupabaseRentals();
+   if(typeof loadSupabaseRentalRequests==='function')await loadSupabaseRentalRequests();
+ }
+ if(p==='marketplace'||p==='admin'||p==='profile'){
+   if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();
  }
  if(p==='messages'||p==='admin'){
    await loadSupabaseMessages();
@@ -267,7 +296,15 @@ async function refreshPageData(p){
  }
  if(p==='home_services'||p==='admin'||p==='profile'){
    await loadSupabaseHomeServices();
+ }
+ if(p==='taxi'||p==='admin'||p==='profile'){
    await loadSupabaseTaxiLimo();
+ }
+ if(p==='business'||p==='admin'||p==='profile'){
+   if(typeof loadBusinessFromSupabase==='function')await loadBusinessFromSupabase({force:true});
+ }
+ if(p==='events'||p==='admin'||p==='profile'){
+   if(typeof loadEventsFromSupabase==='function')await loadEventsFromSupabase({force:true});
  }
  if(p==='admin' && !adminDataLoaded){
    await loadAdminProfiles();
@@ -785,7 +822,8 @@ function travelerShippingDashboardCards(){
 
 async function shipping(){
  let role=currentUser?currentUser.role:null;
- let intro = role==='traveler' ? '<div class="notice">Traveler note: accept or decline sender requests. Space is reserved only after the sender pays and admin approves the shipment.</div>' : '<div class="notice">Shipping note: senders can search verified travelers, request space, and pay after the traveler accepts. Contact information is released after approval.</div>';
+ let syncNotice='<div class="notice"><b>Phone sync:</b> This page refreshes shared shipping data from Supabase in the background. If another phone just posted or admin just approved, tap <button class="btn ghost" onclick="refreshCurrentPage()">Refresh Latest Data</button></div>';
+ let intro = syncNotice + (role==='traveler' ? '<div class="notice">Traveler note: accept or decline sender requests. Space is reserved only after the sender pays and admin approves the shipment.</div>' : '<div class="notice">Shipping note: senders can search verified travelers, request space, and pay after the traveler accepts. Contact information is released after approval.</div>');
  let tripBox = role==='traveler' ? `<section id="travelerPostTrip" class="card"><h3>Post Traveler Trip</h3>${routeSelects('trip')}<label>Travel Date</label><input id="tripDate" type="date" min="${addDaysIso(5)}"><label>Available Space lb</label><input id="tripSpace" type="number" value="100"><p class="muted">Post your available luggage space. Sender and traveler can agree on details before payment.</p><button class="btn primary" onclick="addTrip()">Publish Trip</button></section>` : '';
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();
  let visibleTrips=data.trips.filter(t=>{let openForBooking=role==='admin'||isTripBookable(t);let matches=!shipFilter||String(t.route||'').toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)||String(t.fromCity||'').toLowerCase().includes(shipFilter)||String(t.toCity||'').toLowerCase().includes(shipFilter);return openForBooking&&matches;}).sort(activeTripSort);
@@ -1304,8 +1342,7 @@ async function loadSupabaseMarketplace(){
 }
 marketplace=function(){
   __marketplaceLocalRender_V7842();
-  if(authReady()&&!__marketplaceLoadedOnce_V7842){
-    __marketplaceLoadedOnce_V7842=true;
+  if(authReady()){
     loadSupabaseMarketplace().then(()=>{if(currentPage==='marketplace')__marketplaceLocalRender_V7842();}).catch(err=>console.warn('Marketplace refresh error',err));
   }
 };
@@ -1886,7 +1923,7 @@ function eventRecords(){if(!data.events)data.events=[];return data.events}
 function eventEsc(v){return String(v||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function eventVisibleList(){let now=new Date().toISOString().slice(0,10);return eventRecords().filter(e=>{if(currentUser&&currentUser.role==='admin')return true;if(currentUser&&e.organizerEmail===currentUser.email)return true;return e.status==='Approved'&&(!e.date||e.date>=now);}).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))}
 async function syncEventToSupabase(ev){if(!authReady()||!ev)return {error:null};try{return await hcSupabase.from('community_events').upsert({local_ref:ev.id,title:ev.title,category:ev.category,organizer_name:ev.organizerName,organizer_email:ev.organizerEmail,phone:ev.phone,email:ev.email,description:ev.description,event_date:ev.date,start_time:ev.startTime,end_time:ev.endTime,venue:ev.venue,address:ev.address,city:ev.city,state:ev.state,zip:ev.zip,admission:ev.admission,adult_price:Number(ev.adultPrice||0),child_price:Number(ev.childPrice||0),vip_price:Number(ev.vipPrice||0),capacity:Number(ev.capacity||0),flyer_url:ev.flyerUrl,social_link:ev.social,status:ev.status,details:ev},{onConflict:'local_ref'});}catch(e){console.warn('Event Supabase sync failed',e);return {error:e};}}
-async function loadEventsFromSupabase(){if(!authReady())return;try{let res=await hcSupabase.from('community_events').select('*').order('event_date',{ascending:true});if(res.error)return console.warn('Events load error',res.error);(res.data||[]).forEach(r=>{let ev=Object.assign({},r.details||{}, {id:(r.details&&r.details.id)||r.local_ref||String(r.id), dbId:r.id, title:r.title, category:r.category, organizerName:r.organizer_name, organizerEmail:r.organizer_email, phone:r.phone, email:r.email, description:r.description, date:r.event_date, startTime:r.start_time, endTime:r.end_time, venue:r.venue, address:r.address, city:r.city, state:r.state, zip:r.zip, admission:r.admission, adultPrice:r.adult_price, childPrice:r.child_price, vipPrice:r.vip_price, capacity:r.capacity, flyerUrl:r.flyer_url, social:r.social_link, status:r.status||'Pending Admin Approval'});let i=eventRecords().findIndex(x=>x.id===ev.id||x.dbId===ev.dbId);if(i>=0)data.events[i]=ev;else data.events.push(ev);});persistOnly();if(currentPage==='events')filterEvents();}catch(e){console.warn('Events background load failed',e)}}
+async function loadEventsFromSupabase(options){if(!authReady())return;try{let res=await hcSupabase.from('community_events').select('*').order('event_date',{ascending:true});if(res.error)return console.warn('Events load error',res.error);let remote=(res.data||[]).map(r=>Object.assign({},r.details||{}, {id:(r.details&&r.details.id)||r.local_ref||String(r.id), dbId:r.id, title:r.title, category:r.category, organizerName:r.organizer_name, organizerEmail:r.organizer_email, phone:r.phone, email:r.email, description:r.description, date:r.event_date, startTime:r.start_time, endTime:r.end_time, venue:r.venue, address:r.address, city:r.city, state:r.state, zip:r.zip, admission:r.admission, adultPrice:r.adult_price, childPrice:r.child_price, vipPrice:r.vip_price, capacity:r.capacity, flyerUrl:r.flyer_url, social:r.social_link, status:r.status||'Pending Admin Approval', source:'supabase'}));let localOnly=eventRecords().filter(x=>x.source!=='supabase'&&!x.dbId);data.events=[...remote,...localOnly];persistOnly();if(currentPage==='events')filterEvents();}catch(e){console.warn('Events background load failed',e)}}
 function eventCard(e){let price=e.admission==='Paid'?`Paid${e.adultPrice?' • Adult '+money(e.adultPrice):''}${e.childPrice?' • Child '+money(e.childPrice):''}`:'Free';let waiting=(e.status||'Pending Admin Approval')==='Pending Admin Approval';let adminActions=(currentUser&&currentUser.role==='admin'&&waiting)?`<div class="actions"><button class="btn primary" onclick="approveEvent('${e.id}')">Approve</button><button class="btn bad" onclick="declineEvent('${e.id}')">Decline</button></div>`:'';let ownerStatus=(currentUser&&e.organizerEmail===currentUser.email&&currentUser.role!=='admin')?`<p><b>Status:</b> <span class="pill ${e.status==='Approved'?'good':e.status==='Declined'?'bad':'warn'}">${eventEsc(e.status)}</span></p>`:'';let isOrganizer=currentUser&&e.organizerEmail===currentUser.email;let canRegister=currentUser&&currentUser.role!=='admin'&&!isOrganizer&&e.status==='Approved';let registerBtn=!currentUser?`<button class="btn ghost" onclick="show('account')">Login to Register</button>`:(canRegister?`<button class="btn ghost" onclick="registerForEvent('${e.id}')">Register Interest</button>`:'');return `<div class="card"><h3>📅 ${eventEsc(e.title)}</h3><p><span class="pill good">${eventEsc(e.category||'Event')}</span> <span class="pill">${eventEsc(price)}</span> ${e.status&&e.status!=='Approved'?'<span class="pill warn">'+eventEsc(e.status)+'</span>':''}</p>${e.flyerUrl?`<p><img src="${eventEsc(e.flyerUrl)}" style="max-width:100%;border-radius:12px" alt="Event flyer"></p>`:''}<p><b>Date:</b> ${eventEsc(e.date||'Not listed')} ${e.startTime?' • <b>Time:</b> '+eventEsc(e.startTime)+(e.endTime?' - '+eventEsc(e.endTime):''):''}</p><p><b>Location:</b> ${eventEsc([e.venue,e.city,e.state].filter(Boolean).join(', ')||'Not listed')}</p><p>${eventEsc(e.description||'No description yet.')}</p>${ownerStatus}<p><b>Organizer:</b> ${eventEsc(e.organizerName||'Organizer')} ${e.phone?' • <b>Phone:</b> '+eventEsc(e.phone):''}</p><div class="actions">${e.phone?`<a class="btn primary" href="tel:${eventEsc(e.phone)}">Call Organizer</a>`:''}${e.address?`<a class="btn ghost" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.address+' '+(e.city||''))}">Directions</a>`:''}${e.social?`<a class="btn ghost" target="_blank" href="${eventEsc(e.social)}">Website / Social</a>`:''}${registerBtn}</div>${adminActions}</div>`}
 function eventsPendingList(){return eventRecords().filter(e=>(e.status||'Pending Admin Approval')==='Pending Admin Approval')}
 function eventsAdminManagementHtml(){let rows=eventsPendingList().map(e=>`<tr><td>${eventEsc(e.title||'Event')}</td><td>${eventEsc(e.category||'')}</td><td>${eventEsc(e.date||'')}</td><td>${eventEsc([e.city,e.state].filter(Boolean).join(', '))}</td><td>${eventEsc(e.organizerName||'')}</td><td>${eventEsc(e.phone||'')}</td><td><button class="btn primary" onclick="approveEvent('${e.id}')">Approve</button> <button class="btn bad" onclick="declineEvent('${e.id}')">Decline</button></td></tr>`).join('')||'<tr><td colspan="7">No events waiting for approval.</td></tr>';return `<h3>Events Approvals</h3><table><tr><th>Event</th><th>Category</th><th>Date</th><th>City</th><th>Organizer</th><th>Phone</th><th>Actions</th></tr>${rows}</table>`}

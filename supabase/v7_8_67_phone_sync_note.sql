@@ -1,0 +1,3 @@
+-- V7.8.67 Phone / Multi-Device Sync Fix
+-- No database schema changes required.
+-- This release updates client-side Supabase refresh behavior only.
