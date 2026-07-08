@@ -1,0 +1,9 @@
+-- V7.8.68 Rental Request Owner + Final Admin Flow Fix
+-- No database schema changes required.
+-- Uses existing rental_requests.status values:
+-- Pending Admin Review
+-- Waiting Owner Review
+-- Owner Accepted - Waiting Final Admin Approval
+-- Approved
+-- Declined
+-- Owner Declined
