@@ -567,7 +567,7 @@ function roleWelcome(){
  return '<p><b>Your dashboard:</b> open the tools available for your Habesha Connect role.</p>';
 }
 function roleServices(){
- const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['🔎','Job Seekers','Approved jobs from Business Directory businesses. Job seekers contact the business directly.'],truck:['🚚','Trucking','Truck owners, drivers, hiring posts, records, tracking, maintenance, and job applications.'],home_services:['🛠️','Home Services','Cleaners, movers, repair, electricians, plumbers, and helpers.'],taxi:['🚕','Taxi/Limo','Taxi/Limo owners hire approved available drivers. Drivers apply first and show their availability.'],business:['🏢','Business Directory','Create or browse community business profiles, services, hours, phone, menu, and directions.'],events:['📅','Events','Community, church, cultural, business, family, charity, and sports events.']};
+ const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],messages:['💬','Messages','Chat with users connected to your requests and listings.'],notifications:['🔔','Notifications','Account alerts, request updates, approvals, and payment notices.'],admin:['⚙️','Admin Center','Verify users, manage reports, payments, settings, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['🔎','Job Seekers','Approved jobs from Business Directory businesses. Job seekers contact the business directly.'],truck:['🚚','Trucking','Truck owners, drivers, and trailer owners can post jobs, find drivers, apply for jobs, and rent trailers.'],home_services:['🛠️','Home Services','Cleaners, movers, repair, electricians, plumbers, and helpers.'],taxi:['🚕','Taxi/Limo','Taxi/Limo owners hire approved available drivers. Drivers apply first and show their availability.'],business:['🏢','Business Directory','Create or browse community business profiles, services, hours, phone, menu, and directions.'],events:['📅','Events','Community, church, cultural, business, family, charity, and sports events.']};
  const allowed=visiblePages().filter(p=>info[p]);
  return allowed.map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
 }
@@ -1713,7 +1713,25 @@ async function deleteTruckJob(id){if(!currentUser||currentUser.role!=='admin')re
 async function deleteTruckApplication(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this driver application?'))return;let a=(data.truckApplications||[]).find(x=>x.id===id);let r=await deleteTruckApplicationDb(a);if(r.error)return alert('Could not delete application in Supabase: '+r.error.message);data.truckApplications=(data.truckApplications||[]).filter(a=>a.id!==id);persistOnly();adminSuccess();}
 function deleteDriverProfile(email){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');if(!confirm('Delete this driver profile?'))return;data.truckDriverProfiles=(data.truckDriverProfiles||[]).filter(p=>p.driverEmail!==email);persistOnly();adminSuccess();}
 function truck(){
- if(!currentUser){let truckDash=categoryDashboard('Trucking Dashboard','Choose what you want to do in Trucking.',[signInButton('Sign In as Truck Owner / Driver')]);$('truck').innerHTML=`<h2>🚚 Trucking Connect</h2>${truckDash}<div class="grid"><div class="card"><h3>Truck Owners</h3><p>Post driver jobs, record trucks, drivers, insurance, registration, maintenance, loads, income, expenses, and tracking.</p></div><div class="card"><h3>Drivers</h3><p>Create a driver profile, search truck driving jobs, apply, and track applications.</p></div></div>`;return;}
+ if(!currentUser){
+  let openJobs=(data.truckJobs||[]).filter(j=>j.status==='Open');
+  let publicTrailers=(data.trailerRentals||[]).filter(t=>t.status==='Available');
+  let guestDash=categoryDashboard('Trucking & Trailer Dashboard','Choose what you want to do.',[
+   categoryButton('📢 Post Driver Job',"show('account')",true),
+   categoryButton('🚚 Open Jobs for Drivers','guestTruckJobs',false),
+   categoryButton('👤 Create Driver Profile',"show('account')",false),
+   categoryButton('👥 See Driver Applications',"show('account')",false),
+   categoryButton('🚛 Post Trailer for Rent',"show('account')",false),
+   categoryButton('🔎 Available Trailers for Rent','guestTrailerRentals',false),
+   categoryButton('📋 Trailer Rental Requests',"show('account')",false),
+   categoryButton('📁 My Applications',"show('account')",false)
+  ]);
+  let ownerCard=`<div class="card"><h3>Truck Owners</h3><div class="actions"><button class="btn primary" onclick="show('account')">Post Driver Job</button><button class="btn ghost" onclick="show('account')">See Driver Applications</button><button class="btn ghost" onclick="jumpToSection('guestTrailerRentals')">Available Trailers for Rent</button></div></div>`;
+  let driverCard=`<div class="card"><h3>Drivers</h3><div class="actions"><button class="btn primary" onclick="show('account')">Create Driver Profile</button><button class="btn ghost" onclick="jumpToSection('guestTruckJobs')">Open Jobs for Drivers</button><button class="btn ghost" onclick="show('account')">My Applications</button></div></div>`;
+  let trailerCard=`<div class="card"><h3>Trailer Owners</h3><div class="actions"><button class="btn primary" onclick="show('account')">Post Trailer for Rent</button><button class="btn ghost" onclick="show('account')">Trailer Rental Requests</button><button class="btn ghost" onclick="jumpToSection('guestTrailerRentals')">Available Trailers</button></div></div>`;
+  let jobsRows=openJobs.map(j=>`<tr><td>${j.ownerName||''}</td><td>${j.title||''}</td><td>${j.route||''}</td><td>${j.schedule||''}</td><td>${j.requirements||''}</td><td><button class="btn primary" onclick="show('account')">Sign In to Apply</button></td></tr>`).join('')||'<tr><td colspan="6">No approved truck jobs yet.</td></tr>';
+  let trailerRows=publicTrailers.map(t=>`<tr><td>${t.ownerName||''}</td><td>${t.trailerType||''}<br><span class="small">${t.description||''}</span></td><td>${t.location||''}</td><td>${t.price||''}</td><td>${t.availability||''}</td><td><button class="btn primary" onclick="show('account')">Sign In to Request</button></td></tr>`).join('')||'<tr><td colspan="6">No available trailers yet.</td></tr>';
+  $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2>${guestDash}<div class="grid">${ownerCard}${driverCard}${trailerCard}</div><h3 id="guestTruckJobs">Open Jobs for Drivers</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Schedule</th><th>Requirements</th><th>Action</th></tr>${jobsRows}</table><h3 id="guestTrailerRentals">Available Trailers for Rent</h3><table><tr><th>Owner</th><th>Trailer</th><th>Location</th><th>Price</th><th>Available</th><th>Action</th></tr>${trailerRows}</table>`;return;}
  let role=currentUser.role;
  let myTruckRecords=(data.trucks||[]).filter(t=>role==='admin'||t.ownerEmail===currentUser.email||t.driverEmail===currentUser.email);
  let myJobs=(data.truckJobs||[]).filter(j=>role==='admin'||j.ownerEmail===currentUser.email);
@@ -1734,7 +1752,16 @@ function truck(){
 
  let summary=`<div class="grid"><div class="card"><p>Total Truck Records</p><div class="stat">${myTruckRecords.length}</div></div><div class="card"><p>Open Driver Jobs</p><div class="stat">${availableJobs.length}</div></div><div class="card"><p>Applications</p><div class="stat">${myApps.length}</div></div><div class="card"><p>Trailer Rentals</p><div class="stat">${trailerRentals.length}</div></div><div class="card"><p>Truck Profit</p><div class="stat">${money(myTruckRecords.reduce((a,t)=>a+(+t.income||0)-(+t.expenses||0),0))}</div></div></div>`;
  let topMatchPanels=(role==='driver')?jobsTable:(role==='truck_owner')?appsTable+driverProfilesTable:driverProfilesTable+jobsTable;
- let truckDash=categoryDashboard('Trucking Dashboard','Choose what you want to do in Trucking.',[role==='truck_owner'?categoryButton('📢 Post Jobs','jobPostCard',true):'',role==='driver'?categoryButton('🚚 Available Jobs','availableTruckJobs',true):'',categoryButton('🚛 Available Trailers','trailerRentalsTable',false),categoryButton('📋 Applications','truckApplicationsTable',false)]);
+ let truckDash=categoryDashboard('Trucking & Trailer Dashboard','Choose what you want to do.',[
+  (role==='truck_owner'||role==='admin')?categoryButton('📢 Post Driver Job','jobPostCard',true):'',
+  categoryButton('🚚 Open Jobs for Drivers','availableTruckJobs',role==='driver'),
+  (role==='driver'||role==='admin')?categoryButton('👤 Create Driver Profile','driverProfileCard',false):'',
+  (role==='truck_owner'||role==='admin')?categoryButton('👥 See Driver Applications','truckApplicationsTable',false):'',
+  (role==='truck_owner'||role==='admin')?categoryButton('🚛 Post Trailer for Rent','trailerRentCard',false):'',
+  categoryButton('🔎 Available Trailers for Rent','trailerRentalsTable',false),
+  (role==='truck_owner'||role==='admin')?categoryButton('📋 Trailer Rental Requests','trailerRentalsTable',false):'',
+  (role==='driver'||role==='admin')?categoryButton('📁 My Applications','truckApplicationsTable',false):''
+ ]);
  $('truck').innerHTML=`<h2>🚚 Trucking Connect</h2>${truckDash}${role==='truck_owner'?ownerQuick:''}${role==='driver'?driverQuick:''}${topMatchPanels}${summary}${(role==='truck_owner'||role==='admin')?ownerPanel:''}${(role==='driver'||role==='admin')?driverPanel:''}${role==='truck_owner'?'':appsTable}${trailerTable}${recordsTable}`;
  setTimeout(showTruckExpiryWarnings,80);
 }
