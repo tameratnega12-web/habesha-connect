@@ -1,1 +1,1 @@
-V7.8.74 Business Directory approval flow fix. No SQL required.
+Clean release. Owner listing dashboard separated from public customer directory.
