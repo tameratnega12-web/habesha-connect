@@ -1,0 +1,3 @@
+-- V7.8.74 Business Directory admin visibility fix
+-- No database schema change required.
+-- Code now loads pending business profiles from Supabase in Admin and preserves original owner_email during admin approval.

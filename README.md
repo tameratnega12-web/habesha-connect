@@ -1,8 +1,5 @@
-# Habesha Agenagn V7.8.73
+Habesha Agenagn V7.8.74
 
-Home Services customer request fix.
+Business Directory admin approval visibility fix.
 
-- Fixed the Home Services "Service not found" message when a customer requests an approved service.
-- Customer request now uses the selected service correctly on phone and desktop.
-- Request goes directly to the service provider for review.
-- No SQL needed.
+Clean package: current files only.
