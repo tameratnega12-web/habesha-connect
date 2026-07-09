@@ -1,1 +1,5 @@
-Clean release. Fixes Business Directory owner submission so Admin can see pending profiles for approval, and customers see profiles only after approval.
+# V7.8.77 Notes
+
+Use this version after V7.8.76.
+
+Run the SQL file if Business Directory approvals still show pending after approval or if Customer cannot see approved listings.
