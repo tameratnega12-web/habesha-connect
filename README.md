@@ -1,9 +1,10 @@
-# Habesha Agenagn V7.8.77
+# Habesha Agenagn V7.8.78
 
-Business Directory approval + customer view fix.
+Business Directory approval status fix.
 
-Changes:
-- Admin approval now saves approved/declined status to Supabase.
-- Approved business listings stay visible in Admin as Approved.
-- Customers now have Business Directory in their menu/dashboard.
-- Customers can browse approved business profiles.
+Fixes:
+- Admin approval row stays visible after approval.
+- Approved business shows as Approved instead of returning with active Approve button.
+- Customer Business Directory still shows approved businesses.
+
+Run the SQL file in Supabase SQL Editor.
