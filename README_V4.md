@@ -1,1 +1,1 @@
-Clean release package. Use index.html and run the SQL file if needed.
+V7.8.80 clean release. No SQL needed.

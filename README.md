@@ -1,9 +1,8 @@
-# Habesha Connect V7.8.79 Jobs Feature
+Habesha Agenagn V7.8.80
 
-Adds the Jobs module:
-- Employer role can post general community jobs.
-- Admin approves job postings once.
-- Job Seeker/Customer can browse approved jobs and apply.
-- Employer can accept or decline applications.
+Fix: Business Directory and Jobs admin approval emails.
 
-Run the SQL file in Supabase SQL Editor before testing Jobs.
+Changes:
+- Business owner profile submission now sends admin approval email.
+- Job post admin approval email opens Admin dashboard.
+- No database changes required.
