@@ -2150,7 +2150,56 @@ async function loadBusinessFromSupabase(options){
     businessDirectoryLoading=false;
   }
 }
-async function syncBusinessRecordToSupabase(rec){if(!authReady()||!currentUser||!rec)return {error:null};try{let ownerEmail=rec.ownerEmail||rec.owner_email||rec.createdBy||currentUser.email||'';rec.status=rec.status||'Pending Admin Approval';let details=Object.assign({},rec,{status:rec.status});let payload={local_ref:rec.id,business_name:rec.businessName||rec.name||'Business',business_type:rec.category||rec.type||'Other',record_type:'business_profile',period:'Directory',record_date:rec.date||new Date().toISOString().slice(0,10),income_amount:0,expense_amount:0,amount:0,notes:rec.about||rec.description||'',owner_email:ownerEmail,owner_id:rec.ownerId||rec.owner_id||ownerEmail||businessUserKey(),status:rec.status,details:details,updated_at:new Date().toISOString()};let res;if(rec.dbId){res=await hcSupabase.from('business_records').update(payload).eq('id',rec.dbId).select().single();if(res.error&&String(res.error.message||'').toLowerCase().includes('no rows')){res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().single();}}else{res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().single();}if(!res.error&&res.data){rec.dbId=res.data.id;rec.source='supabase';rec.status=res.data.status||rec.status;persistOnly();}else if(res.error){console.warn('Business Directory Supabase save error',res.error);}return res;}catch(e){console.warn('Business Directory background save failed',e);return {error:e};}}
+async function syncBusinessRecordToSupabase(rec){
+  if(!authReady()||!currentUser||!rec)return {error:null};
+  try{
+    let ownerEmail=rec.ownerEmail||rec.owner_email||rec.createdBy||currentUser.email||'';
+    rec.status=rec.status||'Pending Admin Approval';
+    let details=Object.assign({},rec,{status:rec.status});
+    let payload={
+      local_ref:rec.id,
+      business_name:rec.businessName||rec.name||'Business',
+      business_type:rec.category||rec.type||'Other',
+      record_type:'business_profile',
+      period:'Directory',
+      record_date:rec.date||new Date().toISOString().slice(0,10),
+      income_amount:0,
+      expense_amount:0,
+      amount:0,
+      notes:rec.about||rec.description||'',
+      owner_email:ownerEmail,
+      owner_id:rec.ownerId||rec.owner_id||ownerEmail||businessUserKey(),
+      status:rec.status,
+      details:details,
+      updated_at:new Date().toISOString()
+    };
+    let res=null;
+    if(rec.dbId){
+      res=await hcSupabase.from('business_records').update(payload).eq('id',rec.dbId).select().single();
+    }
+    if(!res || res.error){
+      let existing=await hcSupabase.from('business_records').select('id').eq('local_ref',rec.id).maybeSingle();
+      if(existing && existing.data && existing.data.id){
+        res=await hcSupabase.from('business_records').update(payload).eq('id',existing.data.id).select().single();
+      }else{
+        res=await hcSupabase.from('business_records').insert(payload).select().single();
+      }
+    }
+    if(!res.error&&res.data){
+      rec.dbId=res.data.id;
+      rec.source='supabase';
+      rec.status=res.data.status||rec.status;
+      rec.details=Object.assign({},rec.details||{},{status:rec.status});
+      persistOnly();
+    }else if(res.error){
+      console.warn('Business Directory Supabase save error',res.error);
+    }
+    return res;
+  }catch(e){
+    console.warn('Business Directory background save failed',e);
+    return {error:e};
+  }
+}
 function addBusinessLocal(rec){let arr=businessRecords();let i=arr.findIndex(x=>x.id===rec.id||((x.ownerEmail||x.createdBy)===(rec.ownerEmail||rec.createdBy)&&x.recordType==='business_profile'));if(i>=0)arr[i]=rec;else arr.unshift(rec);persistOnly();business();return rec}
 function businessCategoryOptions(selected){let cats=['Restaurant / Food','Coffee Shop / Bakery','Grocery / Market','Tax / Accounting','Insurance','Mechanic / Auto','Beauty Salon / Barber','Home Service','Real Estate','Doctor / Dentist','Church / Community','Trucking / Transport','Taxi / Limo','Retail Store','Other'];return cats.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('')}
 function businessStatusPill(b){let st=b.status||'Pending Admin Approval';let cls=st==='Approved'?'good':st==='Declined'?'bad':'warn';return `<span class="pill ${cls}">${bmEsc(st)}</span>`}
@@ -2162,7 +2211,7 @@ function scrollToPublicBusiness(id){let el=$('biz_'+id);if(el){el.scrollIntoView
 function business(){let profiles=bmCustomerProfiles();let my=bmMyProfile();let isOwner=currentUser&&(currentUser.role==='business_owner'||(currentUser.roles||[]).includes('business_owner')||currentUser.role==='admin');let rows=profiles.map(b=>businessCard(b,'public')).join('')||'<div class="card"><p class="muted">No approved businesses listed yet.</p></div>';let ownerPanel=isOwner?`<div id="businessOwnerPanel">${businessOwnerPanel(my)}</div>`:`<div class="card"><h3>Own a business?</h3><p>Create a business profile so the community can find what you serve, your hours, phone number, address, menu, and services.</p><button class="btn primary" onclick="show('services')">Add Business Owner Role</button></div>`;$('business').innerHTML=`<h2>🏢 Business Directory</h2><div class="hero"><h1>Find Habesha community businesses</h1><p><b>Restaurants, stores, tax offices, insurance agents, mechanics, salons, home services, trucking, taxi/limo, and more.</b></p><p class="muted">Business owners manage their own listing here. Customers only see approved public profiles.</p></div><div class="grid two">${ownerPanel}<div class="card"><h3>Search Public Businesses</h3><input id="bizSearch" placeholder="Search restaurant, tax, insurance, city, service..." oninput="filterBusinessDirectory()"><select id="bizCategory" onchange="filterBusinessDirectory()"><option>All Categories</option>${businessCategoryOptions('')}</select><p class="muted">Customers can browse approved businesses, call, get directions, and view what each business offers.</p></div></div><h3 style="margin-top:20px">Public Business Directory</h3><div id="businessList" class="grid">${rows}</div>`;fireAndForget(loadBusinessFromSupabase(),'business directory load');}
 function businessProfileForm(b){b=b||{};return `<div class="card"><h3>${b.id?'Update My Business Profile':'Create My Business Profile'}</h3><input id="bizId" type="hidden" value="${bmEsc(b.id||'')}"><label>Business Name</label><input id="bizName" placeholder="Example: Habesha Restaurant" value="${bmEsc(b.businessName||b.name||'')}"><div class="grid two"><div><label>Business Category</label><select id="bizType">${businessCategoryOptions(b.category||b.type)}</select></div><div><label>City / Area</label><input id="bizCity" placeholder="Clarkston, Atlanta, Decatur..." value="${bmEsc(b.city||'')}"></div></div><label>About / What do you serve?</label><textarea id="bizAbout" placeholder="Tell the community what you serve, what you sell, or what services you provide.">${bmEsc(b.about||'')}</textarea><label>What do you offer?  Separate with commas</label><input id="bizOffers" placeholder="Injera, tibs, vegan food, catering, coffee, delivery" value="${bmEsc(b.offers||'')}"><div class="grid two"><div><label>Phone</label><input id="bizPhone" placeholder="Phone number" value="${bmEsc(b.phone||'')}"></div><div><label>Email</label><input id="bizEmail" placeholder="Business email" value="${bmEsc(b.email||currentUser.email||'')}"></div></div><label>Address</label><input id="bizAddress" placeholder="Business address" value="${bmEsc(b.address||'')}"><label>Business Hours</label><input id="bizHours" placeholder="Mon-Sat 10am-9pm, Sunday closed" value="${bmEsc(b.hours||'')}"><label>Menu / Website Link</label><input id="bizMenu" placeholder="Menu, website, or Google listing link" value="${bmEsc(b.menuUrl||b.website||'')}"><div class="grid two"><div><label>Facebook Link</label><input id="bizFacebook" placeholder="optional" value="${bmEsc(b.facebook||'')}"></div><div><label>Instagram Link</label><input id="bizInstagram" placeholder="optional" value="${bmEsc(b.instagram||'')}"></div></div><label>Languages</label><input id="bizLanguages" placeholder="English, Amharic, Afaan Oromo, Tigrinya" value="${bmEsc(b.languages||'')}"><label>Payment Methods</label><input id="bizPayments" placeholder="Cash, card, Zelle, Apple Pay" value="${bmEsc(b.payments||'')}"><button class="btn primary" onclick="saveBusinessProfile()">Save Business Profile</button></div>`}
 function filterBusinessDirectory(){let q=($('bizSearch')&&$('bizSearch').value||'').toLowerCase();let c=($('bizCategory')&&$('bizCategory').value)||'All Categories';let list=bmCustomerProfiles().filter(b=>{let hay=[b.businessName,b.name,b.category,b.type,b.city,b.about,b.offers,b.address].join(' ').toLowerCase();let okQ=!q||hay.includes(q);let okC=c==='All Categories'||(b.category||b.type||'')===c;return okQ&&okC;});$('businessList').innerHTML=list.map(businessCard).join('')||'<div class="card"><p class="muted">No matching businesses found.</p></div>';}
-async function saveBusinessProfile(){if(!requireLogin())return;let name=($('bizName').value||'').trim();let category=$('bizType').value;let about=($('bizAbout').value||'').trim();let phone=($('bizPhone').value||'').trim();if(!name||!category||!about||!phone)return alert('Please enter business name, category, about/what you serve, and phone number.');let existingId=$('bizId').value||'';let existing=existingId?businessRecords().find(x=>x.id===existingId):bmMyProfile();let rec={id:existing?existing.id:'BD'+Date.now().toString().slice(-8),dbId:existing?existing.dbId:undefined,source:existing?existing.source:undefined,recordType:'business_profile',businessName:name,name:name,category:category,type:category,about:about,offers:$('bizOffers').value||'',phone:phone,email:$('bizEmail').value||currentUser.email||'',address:$('bizAddress').value||'',city:$('bizCity').value||'',hours:$('bizHours').value||'',menuUrl:$('bizMenu').value||'',website:$('bizMenu').value||'',facebook:$('bizFacebook').value||'',instagram:$('bizInstagram').value||'',languages:$('bizLanguages').value||'',payments:$('bizPayments').value||'',ownerName:currentUser.name||'',ownerEmail:currentUser.email||'',createdBy:currentUser.email||'',status:existing?((existing.status==='Approved')?'Pending Admin Approval':existing.status||'Pending Admin Approval'):'Pending Admin Approval',date:new Date().toISOString().slice(0,10),time:new Date().toLocaleString()};addBusinessLocal(rec);let res=await syncBusinessRecordToSupabase(rec);if(res&&res.error){alert('Business profile saved on this device, but Supabase did not receive it yet. Run the V7.8.76 SQL file, then save again so Admin can see it.');return;}await loadBusinessFromSupabase({force:true});
+async function saveBusinessProfile(){if(!requireLogin())return;let name=($('bizName').value||'').trim();let category=$('bizType').value;let about=($('bizAbout').value||'').trim();let phone=($('bizPhone').value||'').trim();if(!name||!category||!about||!phone)return alert('Please enter business name, category, about/what you serve, and phone number.');let existingId=$('bizId').value||'';let existing=existingId?businessRecords().find(x=>x.id===existingId):bmMyProfile();let rec={id:existing?existing.id:'BD'+Date.now().toString().slice(-8),dbId:existing?existing.dbId:undefined,source:existing?existing.source:undefined,recordType:'business_profile',businessName:name,name:name,category:category,type:category,about:about,offers:$('bizOffers').value||'',phone:phone,email:$('bizEmail').value||currentUser.email||'',address:$('bizAddress').value||'',city:$('bizCity').value||'',hours:$('bizHours').value||'',menuUrl:$('bizMenu').value||'',website:$('bizMenu').value||'',facebook:$('bizFacebook').value||'',instagram:$('bizInstagram').value||'',languages:$('bizLanguages').value||'',payments:$('bizPayments').value||'',ownerName:currentUser.name||'',ownerEmail:currentUser.email||'',createdBy:currentUser.email||'',status:existing?((existing.status==='Approved')?'Pending Admin Approval':existing.status||'Pending Admin Approval'):'Pending Admin Approval',date:new Date().toISOString().slice(0,10),time:new Date().toLocaleString()};addBusinessLocal(rec);let res=await syncBusinessRecordToSupabase(rec);if(res&&res.error){alert('Business Directory could not save to Supabase. Please run the V7.8.82 Business Directory SQL file once, then try again. Error: '+(res.error.message||res.error.details||res.error));return;}await loadBusinessFromSupabase({force:true});
 if((rec.status||'Pending Admin Approval')==='Pending Admin Approval'){
   addNote('admin.habeshaconnect@gmail.com','Business Directory profile waiting for approval: '+rec.businessName+' by '+(rec.ownerName||currentUser.name));
   if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Business Directory profile waiting for approval','A business owner submitted or updated a Business Directory profile for admin approval.',{Business:rec.businessName,Owner:rec.ownerName||currentUser.name,OwnerEmail:rec.ownerEmail||currentUser.email,Category:rec.category,City:rec.city||'',Phone:rec.phone,Status:rec.status},'admin');

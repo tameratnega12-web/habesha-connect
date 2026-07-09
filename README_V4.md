@@ -1,3 +1,1 @@
-# V7.8.81 Notes
-
-Targeted fix only: Admin controls for Business Directory and Jobs.
+Clean ZIP. Business Directory focused fix. SQL included because Supabase setup is required.

@@ -1,10 +1,5 @@
-# Habesha Agenagn V7.8.81
+# Habesha Agenagn V7.8.82 — Business Directory Full Fix
 
-Business Directory and Jobs admin controls fix.
+Clean release focused on Business Directory save, admin approval, and customer visibility.
 
-- Admin can approve Business Directory profiles.
-- Admin can delete Business Directory profiles.
-- Admin can approve Jobs.
-- Admin can delete Jobs and matching applications.
-
-No SQL needed.
+Run the SQL file in Supabase SQL Editor one time, then upload `index.html` to GitHub.
