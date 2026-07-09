@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Habesha Connect V7.8.81 Business Directory Jobs Admin Controls Fix</title>
+<title>Habesha Connect V7.8.83 Business Directory Supabase Admin Email Fix</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#162033;--muted:#6b7280;--primary:#0f766e;--dark:#0b1220;--line:#e5e7eb;--warn:#b45309;--good:#15803d;--bad:#b91c1c}*{box-sizing:border-box}html,body{min-height:100%;overflow-y:auto!important}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);pointer-events:auto!important}header{background:linear-gradient(135deg,#0f766e,#111827);color:white;padding:18px 24px;position:sticky;top:0;z-index:2}header .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.tag{font-size:13px;opacity:.9}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.nav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.nav button.active{background:#fde68a}.btn.primary{background:var(--primary);color:#fff}.btn.dark{background:#111827;color:#fff}.btn.warn{background:#d97706;color:#fff}.btn.bad{background:#dc2626;color:#fff}.btn.ghost{background:#eef2ff;color:#3730a3}.container{max-width:1180px;margin:0 auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.hero{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:20px;padding:26px;border:1px solid var(--line)}h1,h2,h3{margin-top:0}.muted{color:var(--muted);font-size:14px}.stat{font-size:28px;font-weight:800;color:var(--primary)}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px;background:white}label{font-weight:700;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hide{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.list{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.item-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc}.footer{text-align:center;color:#6b7280;padding:30px}.service-icon{font-size:34px}.locked{opacity:.65}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}.photoStrip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoThumb{padding:8px 10px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;font-size:12px}.marketPhoto{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f8fafc}.photoPreview{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.photoPreview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.small{font-size:12px;color:var(--muted)}.mobilebar{display:none}.page{min-height:calc(100vh - 120px);overflow:visible!important;touch-action:pan-y}.tableWrap{width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:14px}#admin{overflow:visible!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}html,body{height:auto!important;touch-action:pan-y;-webkit-overflow-scrolling:touch}@media(max-width:720px){.row{grid-template-columns:1fr}.container{padding:14px}.nav{display:none}.mobilebar{display:block;margin-top:12px}.mobilebar select{margin:0}.brand{font-size:20px}}
 </style>
@@ -38,7 +38,7 @@
   <section id="privacy" class="page hide"></section>
   <section id="terms" class="page hide"></section>
 </main>
-<div class="footer">Habesha Connect V7.8.81 Business Directory Jobs Admin Controls Fix — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
+<div class="footer">Habesha Connect V7.8.83 Business Directory Supabase Admin Email Fix — Privacy, Terms, Support, and Beta launch polish.<br><button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('report')">Report Problem</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 
 /* V7.8.69 RENTALS: restore requested flow
@@ -2113,32 +2113,50 @@ function bmPublicProfiles(){return bmProfileRecords().filter(b=>(b.status||'Pend
 function bmCustomerProfiles(){return bmProfileRecords().filter(b=>(b.status||'Pending Admin Approval')==='Approved');}
 function bmPendingProfiles(){return bmProfileRecords().filter(b=>(b.status||'Pending Admin Approval')==='Pending Admin Approval');}
 function bmMyProfile(){if(!currentUser)return null;return bmProfileRecords().find(b=>(b.ownerEmail||b.owner_email||b.createdBy||'').toLowerCase()===(currentUser.email||'').toLowerCase())||null}
-function mapBusinessRecordFromDb(row){let d=row.details||{};let mergedStatus=(d.status&&d.status!=='Pending Admin Approval')?d.status:(row.status||d.status||'Pending Admin Approval');return Object.assign({},d,{id:row.local_ref||row.id,dbId:row.id,recordType:row.record_type||d.recordType||'business_profile',businessName:row.business_name||d.businessName||d.name||'Business',name:row.business_name||d.name||'Business',category:row.business_type||d.category||d.type||'Other',type:row.business_type||d.type||d.category||'Other',ownerEmail:row.owner_email||d.ownerEmail||'',date:row.record_date||d.date||new Date().toISOString().slice(0,10),status:mergedStatus,source:'supabase'});}
+function mapBusinessRecordFromDb(row){
+  row=row||{};
+  let d=row.details||{};
+  let mergedStatus=row.status||d.status||'Pending Admin Approval';
+  return Object.assign({},d,{
+    id:d.id||row.local_ref||String(row.id||('BD'+Date.now())),
+    dbId:row.id||d.dbId,
+    recordType:row.record_type||d.recordType||d.record_type||'business_profile',
+    businessName:row.business_name||d.businessName||d.name||'Business',
+    name:row.business_name||d.name||d.businessName||'Business',
+    category:row.business_type||d.category||d.type||'Other',
+    type:row.business_type||d.type||d.category||'Other',
+    about:row.notes||d.about||d.description||'',
+    ownerEmail:row.owner_email||d.ownerEmail||d.owner_email||d.createdBy||'',
+    ownerName:d.ownerName||d.owner||'',
+    date:row.record_date||d.date||new Date().toISOString().slice(0,10),
+    status:mergedStatus,
+    source:'supabase'
+  });
+}
 let businessDirectoryLoading=false;
 let businessDirectoryLoadedAt=0;
 async function loadBusinessFromSupabase(options){
   options=options||{};
-  if(!authReady())return;
-  if(businessDirectoryLoading)return;
-  if(!options.force && Date.now()-businessDirectoryLoadedAt<30000)return;
+  if(!authReady())return {error:new Error('Supabase is not connected')};
+  if(businessDirectoryLoading)return {error:null};
+  if(!options.force && Date.now()-businessDirectoryLoadedAt<15000)return {error:null};
   businessDirectoryLoading=true;
   try{
-    let q=hcSupabase.from('business_records').select('*').eq('record_type','business_profile').order('created_at',{ascending:false});
-    let res=await q;
+    let res=await hcSupabase.from('business_records').select('*').order('created_at',{ascending:false});
     if(res.error){console.warn('Business Directory Supabase load error',res.error);return res;}
-    let remote=(res.data||[]).map(mapBusinessRecordFromDb);
+    let remote=(res.data||[])
+      .filter(r=>(r.record_type||((r.details||{}).recordType)||((r.details||{}).record_type)||'business_profile')==='business_profile' || r.business_name)
+      .map(mapBusinessRecordFromDb);
     let localOnly=businessRecords().filter(x=>x.source!=='supabase'&&!x.dbId);
     data.businesses=[...remote,...localOnly];
     businessDirectoryLoadedAt=Date.now();
     persistOnly();
-    // Business page: refresh only the public list so phone dropdowns do not close.
     if(currentPage==='business' && $('businessList')){
       filterBusinessDirectory();
       let my=bmMyProfile();
       let holder=$('businessOwnerPanel');
       if(holder)holder.innerHTML=businessOwnerPanel(my);
     }
-    // Admin page: rebuild after pending profiles load so approvals appear.
     if(currentPage==='admin' && !adminBackgroundRefreshing && $('admin')){
       setTimeout(()=>{try{admin();}catch(e){console.warn('Admin business refresh render failed',e);}},0);
     }
@@ -2151,11 +2169,13 @@ async function loadBusinessFromSupabase(options){
   }
 }
 async function syncBusinessRecordToSupabase(rec){
-  if(!authReady()||!currentUser||!rec)return {error:null};
+  if(!authReady())return {error:new Error('Supabase is not connected')};
+  if(!currentUser||!rec)return {error:new Error('No signed-in user or business record')};
   try{
     let ownerEmail=rec.ownerEmail||rec.owner_email||rec.createdBy||currentUser.email||'';
     rec.status=rec.status||'Pending Admin Approval';
-    let details=Object.assign({},rec,{status:rec.status});
+    rec.recordType='business_profile';
+    let details=Object.assign({},rec,{status:rec.status,recordType:'business_profile'});
     let payload={
       local_ref:rec.id,
       business_name:rec.businessName||rec.name||'Business',
@@ -2173,30 +2193,33 @@ async function syncBusinessRecordToSupabase(rec){
       details:details,
       updated_at:new Date().toISOString()
     };
-    let res=null;
-    if(rec.dbId){
-      res=await hcSupabase.from('business_records').update(payload).eq('id',rec.dbId).select().single();
-    }
-    if(!res || res.error){
-      let existing=await hcSupabase.from('business_records').select('id').eq('local_ref',rec.id).maybeSingle();
-      if(existing && existing.data && existing.data.id){
-        res=await hcSupabase.from('business_records').update(payload).eq('id',existing.data.id).select().single();
-      }else{
-        res=await hcSupabase.from('business_records').insert(payload).select().single();
+    let res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().single();
+    if(res.error){
+      console.warn('Business Directory upsert error; trying fallback',res.error);
+      if(rec.dbId){
+        res=await hcSupabase.from('business_records').update(payload).eq('id',rec.dbId).select().single();
+      }
+      if(!rec.dbId || res.error){
+        let existing=await hcSupabase.from('business_records').select('id').eq('local_ref',rec.id).maybeSingle();
+        if(existing && existing.data && existing.data.id){
+          res=await hcSupabase.from('business_records').update(payload).eq('id',existing.data.id).select().single();
+        }else{
+          res=await hcSupabase.from('business_records').insert(payload).select().single();
+        }
       }
     }
     if(!res.error&&res.data){
       rec.dbId=res.data.id;
       rec.source='supabase';
       rec.status=res.data.status||rec.status;
-      rec.details=Object.assign({},rec.details||{},{status:rec.status});
+      rec.details=Object.assign({},rec.details||{},{status:rec.status,recordType:'business_profile'});
       persistOnly();
     }else if(res.error){
       console.warn('Business Directory Supabase save error',res.error);
     }
     return res;
   }catch(e){
-    console.warn('Business Directory background save failed',e);
+    console.warn('Business Directory save failed',e);
     return {error:e};
   }
 }
@@ -2211,12 +2234,43 @@ function scrollToPublicBusiness(id){let el=$('biz_'+id);if(el){el.scrollIntoView
 function business(){let profiles=bmCustomerProfiles();let my=bmMyProfile();let isOwner=currentUser&&(currentUser.role==='business_owner'||(currentUser.roles||[]).includes('business_owner')||currentUser.role==='admin');let rows=profiles.map(b=>businessCard(b,'public')).join('')||'<div class="card"><p class="muted">No approved businesses listed yet.</p></div>';let ownerPanel=isOwner?`<div id="businessOwnerPanel">${businessOwnerPanel(my)}</div>`:`<div class="card"><h3>Own a business?</h3><p>Create a business profile so the community can find what you serve, your hours, phone number, address, menu, and services.</p><button class="btn primary" onclick="show('services')">Add Business Owner Role</button></div>`;$('business').innerHTML=`<h2>🏢 Business Directory</h2><div class="hero"><h1>Find Habesha community businesses</h1><p><b>Restaurants, stores, tax offices, insurance agents, mechanics, salons, home services, trucking, taxi/limo, and more.</b></p><p class="muted">Business owners manage their own listing here. Customers only see approved public profiles.</p></div><div class="grid two">${ownerPanel}<div class="card"><h3>Search Public Businesses</h3><input id="bizSearch" placeholder="Search restaurant, tax, insurance, city, service..." oninput="filterBusinessDirectory()"><select id="bizCategory" onchange="filterBusinessDirectory()"><option>All Categories</option>${businessCategoryOptions('')}</select><p class="muted">Customers can browse approved businesses, call, get directions, and view what each business offers.</p></div></div><h3 style="margin-top:20px">Public Business Directory</h3><div id="businessList" class="grid">${rows}</div>`;fireAndForget(loadBusinessFromSupabase(),'business directory load');}
 function businessProfileForm(b){b=b||{};return `<div class="card"><h3>${b.id?'Update My Business Profile':'Create My Business Profile'}</h3><input id="bizId" type="hidden" value="${bmEsc(b.id||'')}"><label>Business Name</label><input id="bizName" placeholder="Example: Habesha Restaurant" value="${bmEsc(b.businessName||b.name||'')}"><div class="grid two"><div><label>Business Category</label><select id="bizType">${businessCategoryOptions(b.category||b.type)}</select></div><div><label>City / Area</label><input id="bizCity" placeholder="Clarkston, Atlanta, Decatur..." value="${bmEsc(b.city||'')}"></div></div><label>About / What do you serve?</label><textarea id="bizAbout" placeholder="Tell the community what you serve, what you sell, or what services you provide.">${bmEsc(b.about||'')}</textarea><label>What do you offer?  Separate with commas</label><input id="bizOffers" placeholder="Injera, tibs, vegan food, catering, coffee, delivery" value="${bmEsc(b.offers||'')}"><div class="grid two"><div><label>Phone</label><input id="bizPhone" placeholder="Phone number" value="${bmEsc(b.phone||'')}"></div><div><label>Email</label><input id="bizEmail" placeholder="Business email" value="${bmEsc(b.email||currentUser.email||'')}"></div></div><label>Address</label><input id="bizAddress" placeholder="Business address" value="${bmEsc(b.address||'')}"><label>Business Hours</label><input id="bizHours" placeholder="Mon-Sat 10am-9pm, Sunday closed" value="${bmEsc(b.hours||'')}"><label>Menu / Website Link</label><input id="bizMenu" placeholder="Menu, website, or Google listing link" value="${bmEsc(b.menuUrl||b.website||'')}"><div class="grid two"><div><label>Facebook Link</label><input id="bizFacebook" placeholder="optional" value="${bmEsc(b.facebook||'')}"></div><div><label>Instagram Link</label><input id="bizInstagram" placeholder="optional" value="${bmEsc(b.instagram||'')}"></div></div><label>Languages</label><input id="bizLanguages" placeholder="English, Amharic, Afaan Oromo, Tigrinya" value="${bmEsc(b.languages||'')}"><label>Payment Methods</label><input id="bizPayments" placeholder="Cash, card, Zelle, Apple Pay" value="${bmEsc(b.payments||'')}"><button class="btn primary" onclick="saveBusinessProfile()">Save Business Profile</button></div>`}
 function filterBusinessDirectory(){let q=($('bizSearch')&&$('bizSearch').value||'').toLowerCase();let c=($('bizCategory')&&$('bizCategory').value)||'All Categories';let list=bmCustomerProfiles().filter(b=>{let hay=[b.businessName,b.name,b.category,b.type,b.city,b.about,b.offers,b.address].join(' ').toLowerCase();let okQ=!q||hay.includes(q);let okC=c==='All Categories'||(b.category||b.type||'')===c;return okQ&&okC;});$('businessList').innerHTML=list.map(businessCard).join('')||'<div class="card"><p class="muted">No matching businesses found.</p></div>';}
-async function saveBusinessProfile(){if(!requireLogin())return;let name=($('bizName').value||'').trim();let category=$('bizType').value;let about=($('bizAbout').value||'').trim();let phone=($('bizPhone').value||'').trim();if(!name||!category||!about||!phone)return alert('Please enter business name, category, about/what you serve, and phone number.');let existingId=$('bizId').value||'';let existing=existingId?businessRecords().find(x=>x.id===existingId):bmMyProfile();let rec={id:existing?existing.id:'BD'+Date.now().toString().slice(-8),dbId:existing?existing.dbId:undefined,source:existing?existing.source:undefined,recordType:'business_profile',businessName:name,name:name,category:category,type:category,about:about,offers:$('bizOffers').value||'',phone:phone,email:$('bizEmail').value||currentUser.email||'',address:$('bizAddress').value||'',city:$('bizCity').value||'',hours:$('bizHours').value||'',menuUrl:$('bizMenu').value||'',website:$('bizMenu').value||'',facebook:$('bizFacebook').value||'',instagram:$('bizInstagram').value||'',languages:$('bizLanguages').value||'',payments:$('bizPayments').value||'',ownerName:currentUser.name||'',ownerEmail:currentUser.email||'',createdBy:currentUser.email||'',status:existing?((existing.status==='Approved')?'Pending Admin Approval':existing.status||'Pending Admin Approval'):'Pending Admin Approval',date:new Date().toISOString().slice(0,10),time:new Date().toLocaleString()};addBusinessLocal(rec);let res=await syncBusinessRecordToSupabase(rec);if(res&&res.error){alert('Business Directory could not save to Supabase. Please run the V7.8.82 Business Directory SQL file once, then try again. Error: '+(res.error.message||res.error.details||res.error));return;}await loadBusinessFromSupabase({force:true});
-if((rec.status||'Pending Admin Approval')==='Pending Admin Approval'){
-  addNote('admin.habeshaconnect@gmail.com','Business Directory profile waiting for approval: '+rec.businessName+' by '+(rec.ownerName||currentUser.name));
-  if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Business Directory profile waiting for approval','A business owner submitted or updated a Business Directory profile for admin approval.',{Business:rec.businessName,Owner:rec.ownerName||currentUser.name,OwnerEmail:rec.ownerEmail||currentUser.email,Category:rec.category,City:rec.city||'',Phone:rec.phone,Status:rec.status},'admin');
+async function saveBusinessProfile(){
+  if(!requireLogin())return;
+  let name=($('bizName').value||'').trim();
+  let category=$('bizType').value;
+  let about=($('bizAbout').value||'').trim();
+  let phone=($('bizPhone').value||'').trim();
+  if(!name||!category||!about||!phone)return alert('Please enter business name, category, about/what you serve, and phone number.');
+  let existingId=$('bizId').value||'';
+  let existing=existingId?businessRecords().find(x=>x.id===existingId):bmMyProfile();
+  let rec={
+    id:existing?existing.id:'BD'+Date.now().toString().slice(-8),
+    dbId:existing?existing.dbId:undefined,
+    source:existing?existing.source:undefined,
+    recordType:'business_profile',
+    businessName:name,name:name,category:category,type:category,about:about,
+    offers:$('bizOffers').value||'',phone:phone,email:$('bizEmail').value||currentUser.email||'',
+    address:$('bizAddress').value||'',city:$('bizCity').value||'',hours:$('bizHours').value||'',
+    menuUrl:$('bizMenu').value||'',website:$('bizMenu').value||'',facebook:$('bizFacebook').value||'',instagram:$('bizInstagram').value||'',
+    languages:$('bizLanguages').value||'',payments:$('bizPayments').value||'',
+    ownerName:currentUser.name||'',ownerEmail:currentUser.email||'',createdBy:currentUser.email||'',
+    status:'Pending Admin Approval',
+    date:new Date().toISOString().slice(0,10),time:new Date().toLocaleString()
+  };
+  addBusinessLocal(rec);
+  let res=await syncBusinessRecordToSupabase(rec);
+  if(res&&res.error){
+    alert('Business Directory was saved only on this device. Supabase did not save it, so Admin cannot see it yet. Please run the V7.8.83 SQL file, refresh, and save again. Error: '+(res.error.message||res.error.details||res.error));
+    return;
+  }
+  await loadBusinessFromSupabase({force:true});
+  addNote(HC_EMAIL_ADMIN,'Business Directory profile waiting for approval: '+rec.businessName+' by '+(rec.ownerName||currentUser.name));
+  if(typeof sendAdminEmailNotice==='function'){
+    sendAdminEmailNotice('Business Directory profile waiting for approval','A business owner submitted or updated a Business Directory profile for admin approval.',{Business:rec.businessName,Owner:rec.ownerName||currentUser.name,OwnerEmail:rec.ownerEmail||currentUser.email,Category:rec.category,City:rec.city||'',Phone:rec.phone,Status:rec.status},'admin');
+  }
+  alert('Business profile submitted to Admin for approval.');
+  business();
 }
-alert('Business profile saved. It is waiting for admin approval before it becomes public.');}
 function addBusiness(){saveBusinessProfile()}
 
 
@@ -2300,37 +2354,62 @@ async function declineTravelerTrip(id){
 }
 
 
-function businessAdminManagementHtml(){let list=bmProfileRecords().slice().sort((a,b)=>{let rank={'Pending Admin Approval':0,'Approved':1,'Declined':2};return (rank[a.status||'Pending Admin Approval']??9)-(rank[b.status||'Pending Admin Approval']??9);});let rows=list.map(b=>{let st=b.status||'Pending Admin Approval';let approve=st==='Pending Admin Approval'?`<button class="btn primary" onclick="adminApproveBusinessProfile('${b.id}')">Approve</button>`:`<span class="pill ${st==='Approved'?'good':'bad'}">${bmEsc(st)}</span>`;let actions=`${approve} <button class="btn bad" onclick="adminDeleteBusinessProfile('${b.id}')">Delete</button>`;return `<tr><td>${bmEsc(b.businessName||b.name||'Business')}</td><td>${bmEsc(b.category||b.type||'')}</td><td>${bmEsc(b.city||'')}</td><td>${bmEsc(b.ownerEmail||b.owner_email||b.createdBy||'')}</td><td>${bmEsc(b.phone||'')}</td><td>${businessStatusPill(b)}</td><td>${actions}</td></tr>`;}).join('')||'<tr><td colspan="7">No business profiles yet.</td></tr>';return `<h3>Business Directory Approvals</h3><div class="notice"><b>Business Directory:</b> Admin can approve or delete business profiles. Approved businesses stay here as Approved and become visible to customers.</div><table><tr><th>Business</th><th>Category</th><th>City</th><th>Owner</th><th>Phone</th><th>Status</th><th>Actions</th></tr>${rows}</table>`}
-async function adminApproveBusinessProfile(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let b=businessRecords().find(x=>x.id===id||x.dbId===id);if(!b)return alert('Business profile not found.');if((b.status||'Pending Admin Approval')!=='Pending Admin Approval')return alert('This business profile is not waiting for admin approval.');b.status='Approved';b.approvedAt=new Date().toLocaleString();b.details=Object.assign({},b.details||{},{status:'Approved'});persistOnly();admin();let res=await safeAsync(syncBusinessRecordToSupabase(b),9000,'business approve sync');if(res&&res.error){alert('Business approved on this screen, but Supabase did not save the approved status. Please run the V7.8.78 SQL file and approve again.');return;}await loadBusinessFromSupabase({force:true});addNote(b.ownerEmail,'Your Business Directory profile was approved and is now public.');sendEmailNotice({to:b.ownerEmail,name:b.ownerName||b.businessName,subject:'Business profile approved',summary:'Your Business Directory profile was approved and is now visible to customers.',buttonText:'Open Business Directory',page:'business',details:{Business:b.businessName||b.name,Category:b.category||b.type,Status:'Approved'}});adminSuccess('Business profile approved.');}
-async function adminDeclineBusinessProfile(id){if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');let b=businessRecords().find(x=>x.id===id||x.dbId===id);if(!b)return alert('Business profile not found.');if((b.status||'Pending Admin Approval')!=='Pending Admin Approval')return alert('This business profile is not waiting for admin decision.');b.status='Declined';b.declinedAt=new Date().toLocaleString();b.details=Object.assign({},b.details||{},{status:'Declined'});persistOnly();admin();let res=await safeAsync(syncBusinessRecordToSupabase(b),9000,'business decline sync');if(res&&res.error){alert('Business declined on this screen, but Supabase did not save the declined status. Please run the V7.8.78 SQL file and decline again.');return;}await loadBusinessFromSupabase({force:true});addNote(b.ownerEmail,'Your Business Directory profile was declined by admin.');sendEmailNotice({to:b.ownerEmail,name:b.ownerName||b.businessName,subject:'Business profile declined',summary:'Your Business Directory profile was declined by admin.',buttonText:'Open Business Directory',page:'business',details:{Business:b.businessName||b.name,Status:'Declined'}});adminSuccess('Business profile declined.');}
-
-async function adminDeleteBusinessProfile(id){
- if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
- let b=businessRecords().find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
- if(!b)return alert('Business profile not found.');
- if(!confirm('Delete this business profile?'))return;
- if(authReady()){
-  try{
-   if(b.dbId)await hcSupabase.from('business_records').delete().eq('id',b.dbId);
-   await hcSupabase.from('business_records').delete().eq('local_ref',b.id);
-  }catch(e){console.warn('Business Directory delete Supabase warning',e);}
- }
- data.businesses=businessRecords().filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
- addNote(b.ownerEmail||b.owner_email||b.createdBy,'Admin deleted your Business Directory profile: '+(b.businessName||b.name||'Business'));
- persistOnly();
- adminSuccess('Business profile deleted.');
+function businessAdminManagementHtml(){
+  let list=bmProfileRecords().slice().sort((a,b)=>{let rank={'Pending Admin Approval':0,'Approved':1,'Declined':2};return (rank[a.status||'Pending Admin Approval']??9)-(rank[b.status||'Pending Admin Approval']??9);});
+  let rows=list.map(b=>{
+    let st=b.status||'Pending Admin Approval';
+    let approve=st==='Pending Admin Approval'?`<button class="btn primary" onclick="adminApproveBusinessProfile('${b.id}')">Approve</button>`:`<span class="pill ${st==='Approved'?'good':'bad'}">${bmEsc(st)}</span>`;
+    let actions=`${approve} <button class="btn bad" onclick="adminDeleteBusinessProfile('${b.id}')">Delete</button>`;
+    return `<tr><td>${bmEsc(b.businessName||b.name||'Business')}</td><td>${bmEsc(b.category||b.type||'')}</td><td>${bmEsc(b.city||'')}</td><td>${bmEsc(b.ownerEmail||b.owner_email||b.createdBy||'')}</td><td>${bmEsc(b.phone||'')}</td><td>${businessStatusPill(b)}</td><td>${actions}</td></tr>`;
+  }).join('')||'<tr><td colspan="7">No business profiles yet.</td></tr>';
+  return `<h3>Business Directory Approvals</h3><div class="notice"><b>Business Directory:</b> Admin can approve or delete business profiles. Pending and approved records load from Supabase.</div><table><tr><th>Business</th><th>Category</th><th>City</th><th>Owner</th><th>Phone</th><th>Status</th><th>Actions</th></tr>${rows}</table>`;
 }
-
-async function admin(){
- document.documentElement.style.overflowY='auto'; document.documentElement.style.overflow='auto'; document.body.style.overflowY='auto'; document.body.style.overflow='auto'; document.body.style.position='static'; document.body.style.touchAction='pan-y';
- if(!currentUser||currentUser.role!=='admin'){$('admin').innerHTML='<div class="card"><h2>Admin Access Required</h2><p>Please login as admin or switch to the Admin role.</p></div>';return}
- adminLoading=true;
- try{
-   // V7.8.46 Admin fast-load fix: open Admin immediately from current/local data.
-   // Supabase refresh runs in the background and re-renders Admin when finished.
-   if(authReady()&&!adminDataLoaded&&!adminBackgroundRefreshing){
-     adminBackgroundRefreshing=true;
-     (async()=>{
+async function adminApproveBusinessProfile(id){
+  if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+  let b=businessRecords().find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!b)return alert('Business profile not found.');
+  b.status='Approved';
+  b.approvedAt=new Date().toLocaleString();
+  b.details=Object.assign({},b.details||{},{status:'Approved',recordType:'business_profile'});
+  persistOnly();
+  admin();
+  let res=await syncBusinessRecordToSupabase(b);
+  if(res&&res.error){alert('Business approved on this screen, but Supabase did not save the approved status. Please run the V7.8.83 SQL file and approve again. Error: '+(res.error.message||res.error));return;}
+  await loadBusinessFromSupabase({force:true});
+  addNote(b.ownerEmail||b.owner_email||b.createdBy,'Your Business Directory profile was approved and is now public.');
+  sendEmailNotice({to:b.ownerEmail||b.owner_email||b.createdBy,name:b.ownerName||b.businessName,subject:'Business profile approved',summary:'Your Business Directory profile was approved and is now visible to customers.',buttonText:'Open Business Directory',page:'business',details:{Business:b.businessName||b.name,Category:b.category||b.type,Status:'Approved'}});
+  adminSuccess('Business profile approved.');
+}
+async function adminDeclineBusinessProfile(id){
+  if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+  let b=businessRecords().find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!b)return alert('Business profile not found.');
+  b.status='Declined';
+  b.declinedAt=new Date().toLocaleString();
+  b.details=Object.assign({},b.details||{},{status:'Declined',recordType:'business_profile'});
+  persistOnly();admin();
+  let res=await syncBusinessRecordToSupabase(b);
+  if(res&&res.error){alert('Business declined on this screen, but Supabase did not save the declined status. Please run the V7.8.83 SQL file and decline again.');return;}
+  await loadBusinessFromSupabase({force:true});
+  addNote(b.ownerEmail||b.owner_email||b.createdBy,'Your Business Directory profile was declined by admin.');
+  adminSuccess('Business profile declined.');
+}
+async function adminDeleteBusinessProfile(id){
+  if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+  let b=businessRecords().find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!b)return alert('Business profile not found.');
+  if(!confirm('Delete this business profile?'))return;
+  try{
+    if(authReady()){
+      if(b.dbId)await hcSupabase.from('business_records').delete().eq('id',b.dbId);
+      await hcSupabase.from('business_records').delete().eq('local_ref',b.id);
+    }
+  }catch(e){console.warn('Business Directory delete Supabase warning',e);}
+  data.businesses=businessRecords().filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));
+  addNote(b.ownerEmail||b.owner_email||b.createdBy,'Admin deleted your Business Directory profile: '+(b.businessName||b.name||'Business'));
+  persistOnly();
+  adminSuccess('Business profile deleted.');
+}
        const adminSafeLoad=async(fn,label)=>{
          try{ if(typeof fn==='function') await safeAsync(fn(),3500,label); }
          catch(e){ console.warn((label||'Admin data load')+' failed; Admin stayed open with available local data.',e); }
