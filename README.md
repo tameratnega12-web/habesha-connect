@@ -1,8 +1,10 @@
-Habesha Agenagn V7.8.80
+# Habesha Agenagn V7.8.81
 
-Fix: Business Directory and Jobs admin approval emails.
+Business Directory and Jobs admin controls fix.
 
-Changes:
-- Business owner profile submission now sends admin approval email.
-- Job post admin approval email opens Admin dashboard.
-- No database changes required.
+- Admin can approve Business Directory profiles.
+- Admin can delete Business Directory profiles.
+- Admin can approve Jobs.
+- Admin can delete Jobs and matching applications.
+
+No SQL needed.

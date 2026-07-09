@@ -1,1 +1,3 @@
-V7.8.80 clean release. No SQL needed.
+# V7.8.81 Notes
+
+Targeted fix only: Admin controls for Business Directory and Jobs.
