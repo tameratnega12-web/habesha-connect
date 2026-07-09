@@ -1,3 +1,1 @@
-# V7.8.78 Notes
-
-Targeted fix only: Business Directory Admin approval status persistence.
+Clean release package. Use index.html and run the SQL file if needed.

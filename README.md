@@ -1,10 +1,9 @@
-# Habesha Agenagn V7.8.78
+# Habesha Connect V7.8.79 Jobs Feature
 
-Business Directory approval status fix.
+Adds the Jobs module:
+- Employer role can post general community jobs.
+- Admin approves job postings once.
+- Job Seeker/Customer can browse approved jobs and apply.
+- Employer can accept or decline applications.
 
-Fixes:
-- Admin approval row stays visible after approval.
-- Approved business shows as Approved instead of returning with active Approve button.
-- Customer Business Directory still shows approved businesses.
-
-Run the SQL file in Supabase SQL Editor.
+Run the SQL file in Supabase SQL Editor before testing Jobs.
