@@ -362,9 +362,11 @@ function rolePages(){
  return allSignedIn;
 }
 function roleNavPages(){
- // V7.8.97: keep the signed-in top navigation simple on every category.
- // Users switch services from Home, so the header only needs Home and Profile.
- return currentUser?['home','profile']:ROLE_NAV_PAGES.guest;
+ // V7.8.106: administrators must always have direct access to the Admin Dashboard,
+ // including from the phone navigation dropdown. Other signed-in users keep the simple menu.
+ if(!currentUser)return ROLE_NAV_PAGES.guest;
+ if(currentUser.role==='admin')return ['home','admin','profile'];
+ return ['home','profile'];
 }
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
