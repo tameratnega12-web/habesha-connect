@@ -240,27 +240,33 @@ const PROPERTY_TYPES=['Home','Apartment','Basement','Roommate','Town House','Bus
 const DEFAULT_SETTINGS={ownerListingFee:25,seekerViewingFee:0,shippingRatePerLb:9,appCommissionPerLb:2,travelerCommissionPerLb:2,travelerTripListingFee:10,airlineChargeMin:200,airlineChargeMax:300,registrationOpen:true,maintenanceMode:false};
 function settings(){data.settings=Object.assign({},DEFAULT_SETTINGS,data.settings||{});return data.settings}
 function setMoneySetting(key,val){let v=Number(val);if(!isNaN(v)&&v>=0){settings()[key]=v;save()}}
-// V7.8.94: Shipping routes now support U.S. ⇄ Ethiopia. Users can type any city, with major-city suggestions.
+// V7.8.95: Shipping routes use main U.S. international-flight cities, not every U.S. city.
 const US_CITIES=[
-'Atlanta, GA','Clarkston, GA','Decatur, GA','Stone Mountain, GA','Tucker, GA','Marietta, GA','Lawrenceville, GA','Duluth, GA','Norcross, GA','Sandy Springs, GA','Roswell, GA','Alpharetta, GA','Savannah, GA','Augusta, GA','Columbus, GA','Macon, GA',
-'Washington, DC','Silver Spring, MD','Rockville, MD','Baltimore, MD','Alexandria, VA','Arlington, VA','Falls Church, VA','Richmond, VA','Virginia Beach, VA',
-'New York, NY','Brooklyn, NY','Queens, NY','Bronx, NY','Staten Island, NY','Long Island, NY','Albany, NY','Buffalo, NY','Rochester, NY','Syracuse, NY','Newark, NJ','Jersey City, NJ','Paterson, NJ','Elizabeth, NJ','Edison, NJ',
-'Philadelphia, PA','Pittsburgh, PA','Allentown, PA','Harrisburg, PA','Boston, MA','Cambridge, MA','Worcester, MA','Springfield, MA','Providence, RI','Hartford, CT','New Haven, CT','Bridgeport, CT',
-'Charlotte, NC','Raleigh, NC','Durham, NC','Greensboro, NC','Winston-Salem, NC','Columbia, SC','Charleston, SC','Greenville, SC','Nashville, TN','Memphis, TN','Knoxville, TN','Chattanooga, TN',
-'Jacksonville, FL','Miami, FL','Fort Lauderdale, FL','Tampa, FL','Orlando, FL','St. Petersburg, FL','Tallahassee, FL','West Palm Beach, FL',
-'Dallas, TX','Fort Worth, TX','Houston, TX','Austin, TX','San Antonio, TX','Plano, TX','Irving, TX','Arlington, TX','El Paso, TX',
-'Chicago, IL','Aurora, IL','Naperville, IL','Rockford, IL','Milwaukee, WI','Madison, WI','Minneapolis, MN','St. Paul, MN','Detroit, MI','Ann Arbor, MI','Grand Rapids, MI','Indianapolis, IN','Columbus, OH','Cleveland, OH','Cincinnati, OH','Dayton, OH',
-'St. Louis, MO','Kansas City, MO','Omaha, NE','Des Moines, IA','Wichita, KS','Oklahoma City, OK','Tulsa, OK','Little Rock, AR','New Orleans, LA','Baton Rouge, LA','Birmingham, AL','Montgomery, AL','Huntsville, AL','Jackson, MS','Louisville, KY','Lexington, KY',
-'Denver, CO','Colorado Springs, CO','Aurora, CO','Salt Lake City, UT','Las Vegas, NV','Phoenix, AZ','Mesa, AZ','Tucson, AZ','Albuquerque, NM','Boise, ID','Billings, MT','Cheyenne, WY','Fargo, ND','Sioux Falls, SD',
-'Los Angeles, CA','San Diego, CA','San Jose, CA','San Francisco, CA','Oakland, CA','Sacramento, CA','Fresno, CA','Long Beach, CA','Anaheim, CA','Riverside, CA','Irvine, CA','Bakersfield, CA','Stockton, CA',
-'Seattle, WA','Bellevue, WA','Tacoma, WA','Spokane, WA','Portland, OR','Salem, OR','Eugene, OR','Anchorage, AK','Honolulu, HI'
+'Atlanta, GA (ATL)',
+'Washington, DC / Dulles, VA (IAD)','Baltimore, MD (BWI)',
+'New York, NY (JFK/LGA)','Newark, NJ (EWR)',
+'Boston, MA (BOS)','Philadelphia, PA (PHL)',
+'Charlotte, NC (CLT)','Raleigh-Durham, NC (RDU)',
+'Miami, FL (MIA)','Fort Lauderdale, FL (FLL)','Orlando, FL (MCO)','Tampa, FL (TPA)',
+'Chicago, IL (ORD)','Detroit, MI (DTW)','Minneapolis, MN (MSP)',
+'Dallas-Fort Worth, TX (DFW)','Houston, TX (IAH)','Austin, TX (AUS)',
+'Denver, CO (DEN)','Salt Lake City, UT (SLC)','Las Vegas, NV (LAS)','Phoenix, AZ (PHX)',
+'Los Angeles, CA (LAX)','San Francisco, CA (SFO)','San Jose, CA (SJC)','San Diego, CA (SAN)',
+'Seattle, WA (SEA)','Portland, OR (PDX)',
+'Honolulu, HI (HNL)'
 ];
-const ETHIOPIA_CITIES=['Addis Ababa','Adama (Nazret)','Bahir Dar','Gondar','Hawassa','Dire Dawa','Mekelle','Jimma','Dessie','Bishoftu (Debre Zeit)','Harar','Arba Minch','Shashemene','Debre Berhan','Debre Markos','Nekemte','Wolaita Sodo','Jijiga','Dilla','Hosaena','Woldiya','Asella','Axum'];
+const ETHIOPIA_CITIES=['Addis Ababa (ADD)','Dire Dawa','Bahir Dar','Gondar','Hawassa','Mekelle','Jimma','Adama (Nazret)'];
+function citySelectOptions(arr,selected=''){
+ const cleanSelected=(selected||'').trim();
+ let opts=arr.slice();
+ if(cleanSelected && !opts.includes(cleanSelected)) opts.unshift(cleanSelected);
+ return opts.map(x=>`<option value="${x}" ${x===cleanSelected?'selected':''}>${x}</option>`).join('')
+}
 function options(arr,selected=''){return arr.map(x=>`<option ${x===selected?'selected':''}>${x}</option>`).join('')}
 function cityDatalist(id,arr){return `<datalist id="${id}">${arr.map(x=>`<option value="${x}"></option>`).join('')}</datalist>`}
-function routeSelects(prefix='ship',fromDefault='Atlanta, GA',toDefault='Addis Ababa'){
+function routeSelects(prefix='ship',fromDefault='Atlanta, GA (ATL)',toDefault='Addis Ababa (ADD)'){
  const allCities=[...US_CITIES,...ETHIOPIA_CITIES];
- return `<div class="grid two"><div><label>From City</label><input id="${prefix}From" list="${prefix}CityList" value="${fromDefault}" placeholder="Type any U.S. or Ethiopia city"></div><div><label>To City</label><input id="${prefix}To" list="${prefix}CityList" value="${toDefault}" placeholder="Type any U.S. or Ethiopia city"></div></div>${cityDatalist(prefix+'CityList',allCities)}<p class="small">You can type any city. Common U.S. and Ethiopia cities are suggested, including Addis Ababa to U.S. cities.</p>`}
+ return `<div class="grid two"><div><label>From City</label><select id="${prefix}From">${citySelectOptions(allCities,fromDefault)}</select></div><div><label>To City</label><select id="${prefix}To">${citySelectOptions(allCities,toDefault)}</select></div></div><p class="small">Choose from main U.S. international-flight cities and major Ethiopia cities.</p>`}
 
 let data=safeLoadData();
 // V7.3.4  cleanup: do not show old old browser records from browser storage.
