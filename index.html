@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.133">
+<meta name="app-version" content="V7.8.134">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -2284,13 +2284,13 @@ function homeServices(){
  let sortedCustomerJobs=[...myCustomerJobs].sort((a,b)=>{let d=homeServiceJobPriority(a)-homeServiceJobPriority(b);if(d)return d;return new Date(b.providerCompletedAt||b.providerAcceptedAt||b.createdAt||0)-new Date(a.providerCompletedAt||a.providerAcceptedAt||a.createdAt||0);});
  let topCustomerJobs=sortedCustomerJobs.filter(j=>homeServiceJobPriority(j)<=1);
  let historyCustomerJobs=sortedCustomerJobs.filter(j=>homeServiceJobPriority(j)>1);
- let homeServiceJobRow=j=>{let customerCanAgree=currentUser&&j.customerEmail===currentUser.email&&['Provider Accepted','Provider Accepted - Waiting Customer Agreement'].includes(j.status);let providerCanComplete=currentUser&&j.providerEmail===currentUser.email&&j.status==='Customer Agreed';let customerCanConfirm=currentUser&&j.customerEmail===currentUser.email&&j.status==='Work Completed - Customer Confirmation';let action=customerCanAgree?`<b>Provider accepted your request.</b><br><button class="btn primary" onclick="customerAgreeCustomerHomeServiceJob('${j.id}')">Agree</button> <button class="btn bad" onclick="customerDeclineCustomerHomeServiceJob('${j.id}')">Decline</button>`:providerCanComplete?`<button class="btn primary" onclick="providerCompleteCustomerHomeServiceJob('${j.id}')">Mark Work Complete</button>`:customerCanConfirm?`<button class="btn primary" onclick="customerConfirmHomeServiceJob('${j.id}')">Confirm Completed</button>`:j.status==='Customer Agreed'?'<b>Customer Agreed</b>':'-';return `<tr><td>${j.title}<br><span class="small">${j.category}</span></td><td>${j.customerName||''}</td><td>${j.providerName||'Not selected yet'}</td><td>${j.city||''}</td><td>${j.preferredDate||''} ${j.preferredTime||''}</td><td>${homeServiceStatusBadge(j.status)}</td><td>${action}</td></tr>`};
+ let homeServiceJobRow=j=>{let customerCanAgree=currentUser&&j.customerEmail===currentUser.email&&['Provider Accepted','Provider Accepted - Waiting Customer Agreement'].includes(j.status);let providerCanComplete=currentUser&&j.providerEmail===currentUser.email&&j.status==='Customer Agreed';let customerCanConfirm=currentUser&&j.customerEmail===currentUser.email&&j.status==='Work Completed - Customer Confirmation';let action=customerCanAgree?`<b>Provider accepted your request.</b><br><button type="button" class="btn primary hs-mobile-action" data-hs-action="agree-customer-job" data-hs-id="${j.id}">Agree</button> <button type="button" class="btn bad hs-mobile-action" data-hs-action="decline-customer-job" data-hs-id="${j.id}">Decline</button>`:providerCanComplete?`<button class="btn primary" onclick="providerCompleteCustomerHomeServiceJob('${j.id}')">Mark Work Complete</button>`:customerCanConfirm?`<button class="btn primary" onclick="customerConfirmHomeServiceJob('${j.id}')">Confirm Completed</button>`:j.status==='Customer Agreed'?'<b>Customer Agreed</b>':'-';return `<tr><td>${j.title}<br><span class="small">${j.category}</span></td><td>${j.customerName||''}</td><td>${j.providerName||'Not selected yet'}</td><td>${j.city||''}</td><td>${j.preferredDate||''} ${j.preferredTime||''}</td><td>${homeServiceStatusBadge(j.status)}</td><td>${action}</td></tr>`};
  let topCustomerJobRows=topCustomerJobs.map(homeServiceJobRow).join('');
  let myCustomerJobRows=historyCustomerJobs.map(homeServiceJobRow).join('')||'<tr><td colspan="7">No other customer-posted service jobs yet.</td></tr>';
  let topCustomerJobSection=topCustomerJobs.length?`<div class="card" id="homeServiceActionTop" style="border:2px solid #2563eb"><h3>⚡ Current Home Service Activity</h3><p class="muted">Accepted jobs and the next required action appear here first.</p><table><tr><th>Job</th><th>Customer</th><th>Provider</th><th>City</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${topCustomerJobRows}</table></div>`:'';
  let directPriority=r=>r.status==='Provider Accepted - Waiting Customer Agreement'?0:r.status==='Customer Agreed'?0:r.status==='Provider Accepted'?0:r.status==='Pending Provider Review'?1:r.status==='Pending Admin Approval'?2:9;
  let directTopReqs=currentUser?[...myReqs].filter(r=>r.customerEmail===currentUser.email&&directPriority(r)<9).sort((a,b)=>directPriority(a)-directPriority(b)||new Date(b.providerRespondedAt||b.adminApprovedAt||b.createdAt||0)-new Date(a.providerRespondedAt||a.adminApprovedAt||a.createdAt||0)):[];
- let directTopRows=directTopReqs.map(r=>{let nextStep=r.status==='Provider Accepted - Waiting Customer Agreement'?`<b>Provider accepted. Please agree before the service is confirmed.</b><br><button class="btn primary" onclick="customerAgreeHomeServiceRequest('${r.id}')">Agree</button> <button class="btn bad" onclick="customerDeclineHomeServiceRequest('${r.id}')">Decline</button>`:r.status==='Customer Agreed'?'<b>You agreed. The provider and admin were notified. Contact the provider to confirm the appointment.</b>':r.status==='Provider Accepted'?'<b>Provider agreed. Contact the provider to confirm the appointment.</b>':r.status==='Pending Provider Review'?'Provider has been notified and is reviewing your request.':'Admin approval is pending.';let showPhone=['Provider Accepted','Provider Accepted - Waiting Customer Agreement','Customer Agreed'].includes(r.status);return `<tr><td>${r.serviceTitle}</td><td>${r.providerName||''}<br><span class="small">${r.providerEmail||''}${showPhone&&r.providerPhone?'<br>'+r.providerPhone:''}</span></td><td>${r.city||''}</td><td>${r.preferredDate||''} ${r.preferredTime||''}</td><td>${homeServiceStatusBadge(r.status)}</td><td>${nextStep}</td></tr>`}).join('');
+ let directTopRows=directTopReqs.map(r=>{let nextStep=r.status==='Provider Accepted - Waiting Customer Agreement'?`<b>Provider accepted. Please agree before the service is confirmed.</b><br><button type="button" class="btn primary hs-mobile-action" data-hs-action="agree-direct-request" data-hs-id="${r.id}">Agree</button> <button type="button" class="btn bad hs-mobile-action" data-hs-action="decline-direct-request" data-hs-id="${r.id}">Decline</button>`:r.status==='Customer Agreed'?'<b>You agreed. The provider and admin were notified. Contact the provider to confirm the appointment.</b>':r.status==='Provider Accepted'?'<b>Provider agreed. Contact the provider to confirm the appointment.</b>':r.status==='Pending Provider Review'?'Provider has been notified and is reviewing your request.':'Admin approval is pending.';let showPhone=['Provider Accepted','Provider Accepted - Waiting Customer Agreement','Customer Agreed'].includes(r.status);return `<tr><td>${r.serviceTitle}</td><td>${r.providerName||''}<br><span class="small">${r.providerEmail||''}${showPhone&&r.providerPhone?'<br>'+r.providerPhone:''}</span></td><td>${r.city||''}</td><td>${r.preferredDate||''} ${r.preferredTime||''}</td><td>${homeServiceStatusBadge(r.status)}</td><td>${nextStep}</td></tr>`}).join('');
  let directTopSection=directTopReqs.length?`<div class="card" id="homeServiceDirectActivityTop" style="border:2px solid #2563eb"><h3>✅ My Current Service Request</h3><p class="muted">Your submitted request and provider agreement appear here first.</p><table><tr><th>Service</th><th>Provider</th><th>City</th><th>Date / Time</th><th>Status</th><th>Next Step</th></tr>${directTopRows}</table></div>`:'';
  let homeServiceActions=[];
  if(role!=='customer')homeServiceActions.push(categoryButton('🔍 Browse Services','homeServicesList',true));
@@ -4188,6 +4188,46 @@ async function adminApproveTrailerPayment(id){
 /* V7.8.118 Home Services approval reliability fix */
 (function(){
   window.__hcVersion='V7.8.124';
+})();
+</script>
+
+<style id="v78134-home-service-phone-actions">
+.hs-mobile-action{touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,.08);position:relative;z-index:5}
+@media(max-width:760px){.hs-mobile-action{display:block!important;width:100%!important;min-height:50px!important;margin:8px 0!important;font-size:17px!important}}
+</style>
+<script id="v78134-home-service-phone-actions-script">
+(function(){
+  let lastTouchAt=0;
+  function runHomeServiceAction(button){
+    if(!button || button.disabled)return;
+    const id=button.getAttribute('data-hs-id');
+    const action=button.getAttribute('data-hs-action');
+    if(!id||!action)return;
+    button.disabled=true;
+    Promise.resolve().then(function(){
+      if(action==='agree-customer-job')return customerAgreeCustomerHomeServiceJob(id);
+      if(action==='decline-customer-job')return customerDeclineCustomerHomeServiceJob(id);
+      if(action==='agree-direct-request')return customerAgreeHomeServiceRequest(id);
+      if(action==='decline-direct-request')return customerDeclineHomeServiceRequest(id);
+    }).catch(function(err){console.error(err);alert('Could not complete this action. Please try again.');})
+      .finally(function(){if(document.body.contains(button))button.disabled=false;});
+  }
+  document.addEventListener('touchend',function(e){
+    const button=e.target.closest&&e.target.closest('.hs-mobile-action');
+    if(!button)return;
+    lastTouchAt=Date.now();
+    e.preventDefault();
+    e.stopPropagation();
+    runHomeServiceAction(button);
+  },{passive:false});
+  document.addEventListener('click',function(e){
+    const button=e.target.closest&&e.target.closest('.hs-mobile-action');
+    if(!button)return;
+    if(Date.now()-lastTouchAt<700){e.preventDefault();return;}
+    e.preventDefault();
+    e.stopPropagation();
+    runHomeServiceAction(button);
+  });
 })();
 </script>
 </body>
