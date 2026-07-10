@@ -647,7 +647,7 @@ async function renderPage(p){
  if(p==='report')report();
  if(p==='privacy')privacy();
  if(p==='terms')terms();
- // V7.8.114: place user-visible transactions directly below the How It Works note.
+ // V7.8.115: place every user-visible and action-required transaction directly below the How It Works note.
  if(['customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'].includes(p)){
    requestAnimationFrame(()=>placeCategoryTransactionsAtTop(p));
  }
@@ -668,7 +668,7 @@ function placeCategoryTransactionsAtTop(page){
   if(!intro)return;
   const ids={
     shipping:['shippingAvailableTrips','shippingItemRequests','travelerShipRequests','travelerOpenTrips'],
-    rentals:['availableRentals','rentalList','seekerRentalRequests'],
+    rentals:['ownerRentalRequests','seekerRentalRequests','availableRentals','rentalList'],
     marketplace:['marketList'],
     jobs:['jobsList'],
     truck:['availableTruckJobs','truckApplicationsTable','trailerRentalsTable','driverProfilesTable','guestTruckJobs','guestTrailerRentals'],
@@ -685,6 +685,18 @@ function placeCategoryTransactionsAtTop(page){
     const prev=el.previousElementSibling;
     if(prev&&/^H[234]$/.test(prev.tagName)&&!nodes.includes(prev))nodes.push(prev);
     nodes.push(el);
+  });
+  // V7.8.115: also lift any later-stage user action section (Accept, Decline, Pay, Confirm, Respond)
+  // that may not have a fixed ID. This keeps the user's next required transaction under How It Works.
+  const actionWords=/\b(accept|decline|pay|confirm|respond|review request|view request|complete|deliver|pick up|hire|approve)\b/i;
+  [...root.querySelectorAll('h3,h4')].forEach(h=>{
+    if(!actionWords.test(h.textContent||''))return;
+    let section=h.nextElementSibling;
+    if(!section)return;
+    // Move only rendered transaction lists/tables, never input forms.
+    if(!(section.matches('table,.grid,.card,[id*="Request"],[id*="request"],[id*="Application"],[id*="application"],[id*="Activity"],[id*="activity"]')))return;
+    if(!nodes.includes(h))nodes.push(h);
+    if(!nodes.includes(section))nodes.push(section);
   });
   if(!nodes.length)return;
   const holder=document.createElement('div');

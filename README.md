@@ -11,3 +11,8 @@ Applied across Shipping, Rentals, Marketplace, Jobs, Trucking & Trailer, Home Se
 - Admin behavior is unchanged.
 - Desktop and phone layouts are preserved.
 - No SQL is required.
+
+## V7.8.115 - All User Transactions Under How It Works
+- Owner rental requests requiring Accept/Decline now appear directly below How It Works.
+- Later-stage action transactions are lifted to the top across categories.
+- No SQL changes.
