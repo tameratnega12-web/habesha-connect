@@ -1487,13 +1487,13 @@ function scrollToRentalRequests(){let el=document.getElementById('ownerRentalReq
 
 async function rentals(){
  let role=currentUser?currentUser.role:'guest';
- let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin'));
- let seekerReqs=data.rentalRequests.filter(q=>currentUser&&q.seekerEmail===currentUser.email);
- let visibleRentals=data.rentals.filter(r=>role==='admin'||(role==='owner'&&currentUser&&r.ownerEmail===currentUser.email)||((role!=='owner')&&['Approved','Available'].includes(r.status)&&r.ownerPaid));
- let myRentals=data.rentals.filter(r=>currentUser&&r.ownerEmail===currentUser.email);
+ let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin')).slice().reverse();
+ let seekerReqs=data.rentalRequests.filter(q=>currentUser&&q.seekerEmail===currentUser.email).slice().reverse();
+ let visibleRentals=data.rentals.filter(r=>role==='admin'||(role==='owner'&&currentUser&&r.ownerEmail===currentUser.email)||((role!=='owner')&&['Approved','Available'].includes(r.status)&&r.ownerPaid)).slice().reverse();
+ let myRentals=data.rentals.filter(r=>currentUser&&r.ownerEmail===currentUser.email).slice().reverse();
  let canPost=currentUser&&(role==='owner'||role==='admin');
  let ownerStats=rentalStatsFor(myRentals,ownerReqs);
- let availableForSeeker=data.rentals.filter(r=>['Approved','Available'].includes(r.status)&&r.ownerPaid);
+ let availableForSeeker=data.rentals.filter(r=>['Approved','Available'].includes(r.status)&&r.ownerPaid).slice().reverse();
  let seekerStats=rentalStatsFor(availableForSeeker,seekerReqs);
  let adminStats=rentalStatsFor(data.rentals,data.rentalRequests);
  let addPropertyCard=`<div class="card" id="rentAddPropertyCard"><h3>Add Property</h3><label>Property Photos</label><input id="rentPhotos" type="file" multiple accept="image/*"><label>Property Type</label><select id="rentType">${options(PROPERTY_TYPES)}</select><label>Title</label><input id="rentTitle" placeholder="3 Bedroom House"><label>City</label><input id="rentCity" placeholder="Clarkston, GA"><div class="row"><div><label>Monthly Rent</label><input id="rentPrice" type="number" value="1500"></div><div><label>Security Deposit</label><input id="rentDeposit" type="number" value="1500"></div></div><div class="row"><div><label>Bedrooms</label><input id="rentBed" type="number" value="2"></div><div><label>Bathrooms</label><input id="rentBath" type="number" value="1"></div></div><label>Available Move-in Date</label><input id="rentMoveDate" type="date" min="${addDaysIso(0)}"><label>Lease Term</label><select id="rentLease"><option>Month-to-Month</option><option selected>12 Months</option><option>6 Months</option><option>Negotiable</option></select><div class="row"><div><label>Pets Allowed</label><select id="rentPets"><option>No</option><option>Yes</option><option>Ask Owner</option></select></div><div><label>Parking</label><select id="rentParking"><option>Yes</option><option>No</option><option>Street Parking</option></select></div></div><div class="row"><div><label>Furnished</label><select id="rentFurnished"><option>No</option><option>Yes</option><option>Partly</option></select></div><div><label>Utilities Included</label><input id="rentUtilities" placeholder="Water, trash, internet..."></div></div><button class="btn primary" onclick="addRental()">Post Property</button></div>`;
@@ -1522,7 +1522,7 @@ async function rentals(){
  }
 }
 function rentalCards(list,role){return list.map((r,i)=>{let displayId=friendlyRentalId(r,i);let isOwner=currentUser&&r.ownerEmail===currentUser.email;let existing=currentUser?data.rentalRequests.find(q=>q.rentalId===r.id&&q.seekerEmail===currentUser.email):null;let fav=currentUser&&data.favorites.some(f=>f.user===currentUser.email&&f.rentalId===r.id);let rating=avgOwnerRating(r.ownerEmail)||r.ownerRating||'New';let photos=(r.photos||[]).map(x=>`<span class="photoThumb">📷 ${x}</span>`).join('')||'<span class="small">No photos uploaded</span>';let seekerBtns=(role==='rent_seeker'||role==='customer'||!currentUser)?(existing?`<button class="btn ghost" disabled>✅ Request Sent</button><span class="pill warn">${existing.status}</span><button class="btn" onclick="toggleFavorite('${r.id}')">${fav?'★ Saved':'☆ Save'}</button><button class="btn ghost" onclick="messageOwner('${r.ownerEmail}')">Message Owner</button><button class="btn ghost" onclick="reviewUser('${r.ownerEmail}','owner')">Rate Owner</button>`:`<button class="btn primary" onclick="requestViewing('${r.id}')">Request Viewing</button><button class="btn" onclick="toggleFavorite('${r.id}')">${fav?'★ Saved':'☆ Save'}</button><button class="btn ghost" onclick="messageOwner('${r.ownerEmail}')">Message Owner</button>`):'';let ownerBtns=isOwner?`<button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button> ${r.ownerPaid?`<button class="btn ghost" disabled>✅ Published</button>`:`<button class="btn primary" onclick="payPublishRental('${r.id}')">Publish Listing</button>`}`:'';let adminBtns=role==='admin'?`<button class="btn primary" onclick="approveRental('${r.id}')">Approve</button> <button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button>`:'';return `<div class="card"><h3>${r.title}</h3><p class="small"><b>Property ID:</b> ${displayId}</p><div class="photoStrip">${photos}</div><p>${r.city}</p><p><b>${money(r.price)}/month</b> • Deposit ${money(r.deposit)} • ${r.propertyType||'Property'} • ${r.bed||''} bed • ${r.bath||''} bath</p><p><b>Move-in:</b> ${r.moveDate||'Ask owner'} • <b>Lease:</b> ${r.leaseTerm||'Ask owner'}</p><p><b>Pets:</b> ${r.pets} • <b>Parking:</b> ${r.parking} • <b>Furnished:</b> ${r.furnished}</p><p><b>Utilities:</b> ${r.utilities}</p><p><b>Owner Rating:</b> ⭐ ${rating}</p>${role==='admin'||isOwner?contactLine('Owner',r.owner,r.ownerPhone,r.ownerEmail):`<p>Owner: ${r.owner}</p>`}${rentalStatusBadge(r.status)}${role==='admin'?(r.ownerPaid?'<span class="pill good">Owner Fee Paid</span>':'<span class="pill warn">Owner Fee Pending</span>'):''}<div class="actions">${seekerBtns}${ownerBtns}${adminBtns}</div></div>`}).join('')||'<div class="card"><p>No rental listings to show yet.</p></div>'}
-function filterRentals(){let role=currentUser?currentUser.role:'guest';let type=$('filterType').value,city=($('filterCity').value||'').toLowerCase(),max=+$('filterPrice').value||Infinity;let list=data.rentals.filter(r=>role==='admin'||(role==='owner'&&currentUser&&r.ownerEmail===currentUser.email)||((role!=='owner')&&['Approved','Available'].includes(r.status)&&r.ownerPaid));list=list.filter(r=>(type==='All'||(r.propertyType||'').toLowerCase()===type.toLowerCase())&&(!city||(r.city||'').toLowerCase().includes(city))&&(+r.price||0)<=max);$('rentalList').innerHTML=rentalCards(list,role)}
+function filterRentals(){let role=currentUser?currentUser.role:'guest';let type=$('filterType').value,city=($('filterCity').value||'').toLowerCase(),max=+$('filterPrice').value||Infinity;let list=data.rentals.filter(r=>role==='admin'||(role==='owner'&&currentUser&&r.ownerEmail===currentUser.email)||((role!=='owner')&&['Approved','Available'].includes(r.status)&&r.ownerPaid)).slice().reverse();list=list.filter(r=>(type==='All'||(r.propertyType||'').toLowerCase()===type.toLowerCase())&&(!city||(r.city||'').toLowerCase().includes(city))&&(+r.price||0)<=max);$('rentalList').innerHTML=rentalCards(list,role)}
 async function addRental(){
   if(!requireLogin())return;
   if(!['owner','admin'].includes(currentUser.role))return alert('Only property owners can add property listings.');
@@ -3699,8 +3699,8 @@ async function adminApproveTrailerPayment(id){
 </script>
 
 
-<style id="v78109-user-mobile-cards">
-/* V7.8.109 — phone-first cards for every non-admin user dashboard */
+<style id="v78110-user-mobile-cards">
+/* V7.8.110 — newest user actions first, including rental cards and requests */
 @media (max-width: 760px){
   body:not(.admin-mobile-view) section table.v78109-user-table,
   body:not(.admin-mobile-view) .page table.v78109-user-table{
@@ -3770,7 +3770,7 @@ async function adminApproveTrailerPayment(id){
   .tableWrap{overflow:visible !important;max-width:100% !important;}
 }
 </style>
-<script id="v78109-user-mobile-script">
+<script id="v78110-user-mobile-script">
 (function(){
   const priorityWords=['pending','new','waiting','requested','request sent','action required','payment pending','needs approval','available'];
   const completedWords=['approved','declined','rejected','completed','delivered','paid out','closed','cancelled','rented','hired'];
@@ -3781,8 +3781,12 @@ async function adminApproveTrailerPayment(id){
   }
   function rowPriority(row){
     const text=(row.innerText||'').toLowerCase();
+    const actionText=[...row.querySelectorAll('button,a.btn')].map(x=>(x.innerText||'').toLowerCase()).join(' ');
+    const hasUsefulAction=/(request|apply|accept|approve|pay|confirm|respond|book|contact)/.test(actionText);
+    if(hasUsefulAction) return 3;
+    if(priorityWords.some(w=>text.includes(w))) return 2;
     if(completedWords.some(w=>text.includes(w))) return 0;
-    return priorityWords.some(w=>text.includes(w)) ? 2 : 1;
+    return 1;
   }
   function prepareTable(table){
     if(!table || table.dataset.v78109Prepared==='1' || isAdminView()) return;
@@ -3826,6 +3830,74 @@ async function adminApproveTrailerPayment(id){
   observer.observe(document.documentElement,{childList:true,subtree:true});
   setTimeout(schedule,200);
   setTimeout(schedule,900);
+})();
+</script>
+
+
+<style id="v78111-global-user-ordering-style">
+@media (max-width:760px){
+  body:not(.admin-mobile-view) .v78111-action-first{border:2px solid #f59e0b!important;box-shadow:0 4px 14px rgba(245,158,11,.18)!important}
+  body:not(.admin-mobile-view) .v78111-action-first::before{content:'NEW / ACTION NEEDED';display:inline-block;margin:0 0 9px;padding:4px 9px;border-radius:999px;background:#fff7ed;color:#9a3412;font-size:11px;font-weight:800;letter-spacing:.03em}
+}
+</style>
+<script id="v78111-global-user-ordering-script">
+(function(){
+  const actionRe=/(request|apply|accept|decline|approve|pay|confirm|respond|book|contact|mark delivered|complete|hire|view details)/i;
+  const urgentRe=/(pending|new|waiting|requested|action required|payment pending|needs approval|available|open request|owner review|admin review)/i;
+  const activeRe=/(accepted|in progress|active|scheduled|processing|approved payment|assigned|confirmed)/i;
+  const doneRe=/(declined|rejected|completed|delivered|paid out|closed|cancelled|rented|hired|sold|expired)/i;
+  function adminView(){try{return window.currentPage==='admin'||(window.currentUser&&window.currentUser.role==='admin')}catch(e){return false}}
+  function score(el){
+    const text=(el.innerText||'').replace(/\s+/g,' ').trim();
+    const actions=[...el.querySelectorAll('button,a.btn')].filter(x=>x.offsetParent!==null||!document.body.contains(x)).map(x=>x.innerText||'').join(' ');
+    if(actionRe.test(actions)) return 400;
+    if(urgentRe.test(text)) return 300;
+    if(activeRe.test(text)) return 200;
+    if(doneRe.test(text)) return 0;
+    return 100;
+  }
+  function timeValue(el,index){
+    const text=el.innerText||'';
+    const iso=text.match(/20\d{2}[-\/]\d{1,2}[-\/]\d{1,2}(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?/g)||[];
+    const us=text.match(/\d{1,2}\/\d{1,2}\/20\d{2}(?:,?\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?/ig)||[];
+    const vals=[...iso,...us].map(x=>Date.parse(x)).filter(Number.isFinite);
+    return vals.length?Math.max(...vals):index;
+  }
+  function reorder(items,parent){
+    const ranked=items.map((el,i)=>({el,i,p:score(el),t:timeValue(el,i)}));
+    ranked.sort((a,b)=>(b.p-a.p)||(b.t-a.t)||(b.i-a.i));
+    ranked.forEach(x=>parent.appendChild(x.el));
+    ranked.forEach(x=>x.el.classList.toggle('v78111-action-first',x.p>=300));
+  }
+  function sortTables(root){
+    root.querySelectorAll('table').forEach(table=>{
+      const body=table.tBodies[0]; if(!body)return;
+      const rows=[...body.rows].filter(r=>!r.querySelector('th'));
+      if(rows.length>1)reorder(rows,body);
+    });
+  }
+  function sortTransactionCards(root){
+    root.querySelectorAll('.grid').forEach(grid=>{
+      const cards=[...grid.children].filter(x=>x.classList&&x.classList.contains('card'));
+      if(cards.length<2)return;
+      const transactionCards=cards.filter(c=>urgentRe.test(c.innerText||'')||activeRe.test(c.innerText||'')||doneRe.test(c.innerText||'')||actionRe.test([...c.querySelectorAll('button,a.btn')].map(x=>x.innerText||'').join(' ')));
+      if(transactionCards.length<2)return;
+      // Avoid reordering category/navigation menus unless most cards are actual records.
+      if(transactionCards.length/cards.length<0.6)return;
+      reorder(cards,grid);
+    });
+  }
+  function apply(){
+    document.body.classList.toggle('admin-mobile-view',adminView());
+    if(adminView()||window.innerWidth>760)return;
+    const page=document.querySelector('section:not(.hide)')||document.body;
+    sortTables(page); sortTransactionCards(page);
+  }
+  let busy=false;
+  function schedule(){if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;apply()})}
+  document.addEventListener('DOMContentLoaded',schedule);window.addEventListener('resize',schedule);
+  new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(schedule,250);setTimeout(schedule,1000);
 })();
 </script>
 
