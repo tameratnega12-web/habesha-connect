@@ -2280,7 +2280,7 @@ function homeServices(){
  let homeServiceActions=[];
  if(role!=='customer')homeServiceActions.push(categoryButton('🔍 Browse Services','homeServicesList',true));
  if(canPostCustomerJob)homeServiceActions.push(categoryButton('📣 Request Home Service','homeServiceCustomerPostPanel',role==='customer'));
- homeServiceActions.push(canPost?categoryButton('➕ Post Service','homeServicePostPanel',false):(!currentUser?signInButton('Sign In to Post / Request'):categoryButton('➕ Continue as Provider',"chooseServiceRole('home_services','service_provider')",false)));
+ if(canPost)homeServiceActions.push(categoryButton('➕ Post Service','homeServicePostPanel',false));else if(!currentUser)homeServiceActions.push(signInButton('Sign In to Post / Request'));else if(role!=='customer')homeServiceActions.push(categoryButton('➕ Continue as Provider',"chooseServiceRole('home_services','service_provider')",false));
  if(currentUser)homeServiceActions.push(categoryButton('📋 My Requests','myHomeServiceRequests',false));
  let homeServiceDash=categoryDashboard('Home Services Dashboard','Choose what you want to do in Home Services.',homeServiceActions);
  let availableServicesSection=`${customerBox}<h3 id="homeServicesList">Available Services</h3><table><tr><th>Category</th><th>Service</th><th>City</th><th>Price</th><th>Provider</th><th>Status</th><th>Action</th></tr>${serviceRows}</table>`;
