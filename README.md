@@ -13,3 +13,10 @@ Run this once in Supabase SQL Editor before testing:
 `supabase/v7_8_117_home_service_customer_jobs.sql`
 
 The existing direct workflow where customers choose a listed provider is preserved.
+
+## V7.8.118 Home Services Approval Reliability Fix
+- Admin refresh now loads provider posts, direct customer requests, and customer-posted service jobs.
+- Direct customer requests again require Admin approval before the provider receives them.
+- Admin email notification restored for direct customer requests.
+- Home Services records are included in the unified pending count/queue.
+- Admin action lookup accepts both local and Supabase IDs.
