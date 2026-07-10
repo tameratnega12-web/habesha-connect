@@ -1,1 +1,1 @@
-V7.8.93 Email notification cleanup - No SQL needed.
+V7.8.98 service role choice from each category; no SQL required.
