@@ -31,3 +31,7 @@ The existing direct workflow where customers choose a listed provider is preserv
 
 ## V7.8.120 Home Service Admin Dashboard Fix
 Run `supabase/v7_8_120_home_service_admin_dashboard_fix.sql` once in Supabase SQL Editor. This allows the signed-in Admin Dashboard to load and approve pending provider service posts and direct Home Service requests.
+
+
+## V7.8.121 Rebuilt from V7.8.120
+This version uses V7.8.120 as the stable base and changes only Home Services action ordering: accepted customer jobs, provider Mark Work Complete, and customer Confirm Completed appear at the top. No new SQL is required.
