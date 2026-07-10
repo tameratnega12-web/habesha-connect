@@ -20,3 +20,11 @@ The existing direct workflow where customers choose a listed provider is preserv
 - Admin email notification restored for direct customer requests.
 - Home Services records are included in the unified pending count/queue.
 - Admin action lookup accepts both local and Supabase IDs.
+
+
+## V7.8.119 — All Providers See Customer Service Requests
+- After admin approval, every Home Service provider can see the customer-posted job at the top under How It Works.
+- Providers can Accept or Decline / Remove.
+- Accept is allowed only when the job category matches one of the provider’s approved service categories.
+- Decline removes the job only from that provider’s page; other providers can still see it.
+- Run `supabase/v7_8_119_home_service_provider_declines.sql` once in Supabase.
