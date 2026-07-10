@@ -2247,7 +2247,7 @@ function homeServices(){
  let providerForm=canPost?`<div class="card" id="homeServicePostPanel"><h3>Post Home Service</h3><label>Service Type</label><select id="hsCategory">${HOME_SERVICE_CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select><label>Service Title</label><input id="hsTitle" placeholder="Example: Deep house cleaning, appliance repair"><label>City / Area You Serve</label><input id="hsCity" placeholder="Enter any city or area you serve"><label>Price</label><input id="hsPrice" placeholder="Example: $80, hourly, estimate"><label>Description</label><textarea id="hsDescription" rows="4" placeholder="Describe your service, availability, experience, and what the customer should know"></textarea><button class="btn primary" onclick="postHomeService()">Submit Service</button></div>`:'';
  let customerBox=`<div class="card" id="homeServiceBrowsePanel"><h3>Available Home Services</h3><p class="muted">Choose a listed provider below and request service.</p>${currentUser?'':`<button class="btn primary" onclick="show('account')">Sign In to Request Service</button>`}</div>`;
  let activeService=(data.homeServicePosts||[]).find(p=>p.id===activeHomeServiceRequestId);
- let requestForm=(canRequest&&activeService)?`<div class="card" id="homeServiceRequestForm"><h3>Request Home Service</h3><p class="muted"><b>Service:</b> ${activeService.title} • ${activeService.category}</p><div class="grid two"><div><label>Phone Number</label><input id="hsReqPhone" value="${currentUser.phone||''}" placeholder="404-555-1234"></div><div><label>City / Address Area</label><input id="hsReqCity" placeholder="Enter any city or address area"></div><div><label>Preferred Date</label><input id="hsReqDate" type="date"></div><div><label>Preferred Time</label><input id="hsReqTime" type="time"></div></div><label>Describe what you need</label><textarea id="hsReqDetails" rows="4" placeholder="Tell the provider what work you need done"></textarea><button class="btn primary" onclick="submitHomeServiceRequest()">Review Request</button> <button class="btn ghost" onclick="cancelHomeServiceRequest()">Cancel</button></div>`:'';
+ let requestForm=(canRequest&&activeService)?`<div class="card" id="homeServiceRequestForm"><h3>Request Home Service</h3><p class="muted"><b>Service:</b> ${activeService.title} • ${activeService.category}</p><div class="grid two"><div><label>Phone Number</label><input id="hsReqPhone" value="${currentUser.phone||''}" placeholder="404-555-1234"></div><div><label>City / Address Area</label><input id="hsReqCity" placeholder="Enter any city or address area"></div><div><label>Preferred Date</label><input id="hsReqDate" type="date"></div><div><label>Preferred Time</label><input id="hsReqTime" type="time"></div></div><label>Describe what you need</label><textarea id="hsReqDetails" rows="4" placeholder="Tell the provider what work you need done"></textarea><button type="button" class="btn primary" id="hsReviewRequestBtn" data-service-ref="${activeService.id||activeService.dbId||''}" onclick="return submitHomeServiceRequest(this.dataset.serviceRef)">Review Request</button> <button type="button" class="btn ghost" id="hsCancelRequestBtn" onclick="cancelHomeServiceRequest();return false;">Cancel</button></div>`:'';
  let serviceRows=approved.map(p=>`<tr><td>${p.category}</td><td>${p.title}<br><span class="small">${p.description||''}</span></td><td>${p.city||''}</td><td>${p.price||''}</td><td>${p.providerName||''}<br><span class="small">${p.providerEmail||''}</span></td><td>${homeServiceStatusBadge(p.status)}</td><td>${currentUser?(canRequest&&p.status==='Approved'&&p.providerEmail!==currentUser.email?`<button class="btn primary" onclick="requestHomeService('${p.id}')">Request Service</button>`:'-'):`<button class="btn primary" onclick="show('account')">Sign In</button>`}</td></tr>`).join('')||'<tr><td colspan="7">No approved home services yet.</td></tr>';
  let postRows=myPosts.map(p=>`<tr><td>${p.title}</td><td>${p.category}</td><td>${p.city||''}</td><td>${p.price||''}</td><td>${homeServiceStatusBadge(p.status)}</td><td>${p.createdAt||''}</td></tr>`).join('')||'<tr><td colspan="6">No service posts yet.</td></tr>';
  let reqRows=myReqs.map(r=>{let canProviderAnswer=(currentUser&&r.providerEmail===currentUser.email&&r.status==='Pending Provider Review');return `<tr><td>${r.serviceTitle}</td><td>${r.customerName}<br><span class="small">${r.customerEmail}</span></td><td>${r.customerPhone||''}</td><td>${r.city||''}</td><td>${r.preferredDate||''} ${r.preferredTime||''}</td><td>${r.details||''}</td><td>${homeServiceStatusBadge(r.status)}</td><td>${canProviderAnswer?`<button class="btn primary" onclick="providerAcceptHomeServiceRequest('${r.id}')">Accept</button> <button class="btn bad" onclick="providerDeclineHomeServiceRequest('${r.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No home service requests yet.</td></tr>';
@@ -3658,6 +3658,30 @@ submitHomeServiceRequest=async function(id){
  alert('Request sent directly to the service provider.');
  homeServices();
 };
+
+
+/* V7.8.116 Home Services mobile-safe request buttons. */
+(function(){
+ if(window.__hcHomeServiceButtonFix)return;
+ window.__hcHomeServiceButtonFix=true;
+ document.addEventListener('click',function(ev){
+   const review=ev.target&&ev.target.closest?ev.target.closest('#hsReviewRequestBtn'):null;
+   if(review){
+     ev.preventDefault();
+     ev.stopPropagation();
+     if(review.dataset.hcBusy==='1')return;
+     review.dataset.hcBusy='1';
+     const oldText=review.textContent;
+     review.textContent='Opening Review...';
+     Promise.resolve(submitHomeServiceRequest(review.dataset.serviceRef||activeHomeServiceRequestId))
+       .catch(err=>{console.error('Home service request error',err);alert('The request could not continue. Please refresh Home Services and try again.');})
+       .finally(()=>{review.dataset.hcBusy='0';review.textContent=oldText;});
+     return;
+   }
+   const cancel=ev.target&&ev.target.closest?ev.target.closest('#hsCancelRequestBtn'):null;
+   if(cancel){ev.preventDefault();ev.stopPropagation();cancelHomeServiceRequest();}
+ },true);
+})();
 
 /* TRUCKING: Driver applications go directly to truck owner after approved job post. Owner acceptance completes hiring. */
 applyTruckJob=async function(id){
