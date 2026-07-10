@@ -9,6 +9,30 @@
 #admin h2{font-size:22px}#admin h3{margin-top:22px}.adminMobileSummary{position:sticky;top:105px;z-index:1;border:2px solid #f59e0b;background:#fffbeb}.adminPendingNumber{font-size:36px;font-weight:900;color:#b45309}.adminQuickFilters{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}.adminQuickFilters .btn{white-space:nowrap;min-height:44px}
 #admin table.adminMobileTable,#admin table.adminMobileTable tbody,#admin table.adminMobileTable tr,#admin table.adminMobileTable td{display:block;width:100%}#admin table.adminMobileTable{background:transparent;border-radius:0}#admin table.adminMobileTable thead,#admin table.adminMobileTable tr:first-child:has(th){display:none}#admin table.adminMobileTable tr{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;margin:0 0 12px;box-shadow:0 5px 14px rgba(15,23,42,.06)}#admin table.adminMobileTable td{border:0;border-bottom:1px solid #eef2f7;padding:9px 4px;text-align:left;overflow-wrap:anywhere;white-space:normal}#admin table.adminMobileTable td:last-child{border-bottom:0}#admin table.adminMobileTable td::before{content:attr(data-label);display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:4px}#admin table.adminMobileTable td[data-label="Actions"],#admin table.adminMobileTable td[data-label="Action"]{padding-top:12px}#admin table.adminMobileTable td .btn,#admin table.adminMobileTable td[data-label="Actions"] button,#admin table.adminMobileTable td[data-label="Action"] button{width:100%;min-height:44px;margin:4px 0;display:block}#admin .tableWrap{overflow-x:visible}.adminDesktopOnly{display:none!important}}
 @media(min-width:721px){.adminMobileSummary{display:none}}
+
+.adminTopActions{position:relative;margin-bottom:14px}
+.adminTopActions h3{margin-top:0}
+.adminTopActionGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.adminTopActionGrid .btn{width:100%;min-height:46px;text-align:left;justify-content:flex-start}
+@media(max-width:700px){
+ .adminTopActions{position:sticky;top:8px;z-index:20;max-height:48vh;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+ .adminTopActionGrid{grid-template-columns:1fr 1fr;gap:8px}
+ .adminTopActionGrid .btn{font-size:13px;padding:10px 8px;min-height:44px}
+}
+
+
+.adminPendingQueue{border:2px solid #f59e0b;background:#fffbeb;margin-bottom:16px}
+.adminPendingQueueHead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.adminPendingQueueCount{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:42px;padding:0 12px;border-radius:999px;background:#b45309;color:#fff;font-size:22px;font-weight:900}
+.adminPendingQueueGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px}
+.adminPendingCard{background:#fff;border:1px solid #fcd34d;border-radius:14px;padding:14px;box-shadow:0 5px 14px rgba(15,23,42,.06)}
+.adminPendingCard h4{margin:0 0 10px;color:#92400e}
+.adminPendingField{padding:7px 0;border-bottom:1px solid #f1f5f9;overflow-wrap:anywhere}
+.adminPendingField:last-of-type{border-bottom:0}
+.adminPendingField b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:3px}
+.adminPendingCard .adminPendingActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.adminPendingCard .adminPendingActions .btn,.adminPendingCard .adminPendingActions button{min-height:42px}
+@media(max-width:720px){.adminPendingQueueGrid{grid-template-columns:1fr}.adminPendingQueue{position:relative;top:auto}.adminPendingCard .adminPendingActions .btn,.adminPendingCard .adminPendingActions button{width:100%;display:block;margin:4px 0}}
 </style>
 </head>
 <body>
@@ -2707,12 +2731,79 @@ async function adminDeleteBusinessProfile(id){
   adminSuccess('Business Directory deleted. Customers will not see it.');
 }
 
+
+function adminJumpToSection(label){
+ const root=$('admin');
+ if(!root)return;
+ const target=[...root.querySelectorAll('h2,h3')].find(el=>el.textContent.trim().toLowerCase().includes(String(label).toLowerCase()));
+ if(target){target.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>window.scrollBy(0,-85),250);}
+ else alert(label+' section is not available yet. Tap Refresh and try again.');
+}
+function adminTopActionsHtml(){
+ return `<div class="card adminTopActions"><h3>⚡ Admin Actions</h3><p class="muted">Open any admin section immediately.</p><div class="adminTopActionGrid">
+ <button class="btn primary" onclick="adminScrollToPending()">🔴 Pending Approvals</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Daily Admin Management')">📋 Daily Management</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Shipping Management')">📦 Shipping</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Rental Listings Management')">🏠 Rental Listings</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Rental Requests Management')">🔑 Rental Requests</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Jobs')">💼 Jobs</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Truck')">🚚 Trucking / Trailer</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Taxi')">🚕 Taxi / Limo</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Marketplace')">🛍️ Marketplace</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Home Service')">🛠️ Home Services</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Business Directory')">🏢 Business Directory</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Events')">🎉 Events</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Verify Users')">✅ Verify Users</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Admin Settings')">⚙️ Settings</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Payment History')">💳 Payments</button>
+ <button class="btn ghost" onclick="adminJumpToSection('Reports')">📊 Reports</button>
+ <button class="btn ghost" onclick="show('notifications')">🔔 Notifications</button>
+ <button class="btn ghost" onclick="admin()">↻ Refresh</button>
+ </div></div>`;
+}
+
 function adminPendingCount(){
  const pendingWords=['pending','waiting','review','payment pending'];
  const groups=[data.trips,data.shipments,data.shippingItems,data.rentals,data.rentalRequests,data.jobs,data.truckJobs,data.truckApplications,data.trailerRentals,data.marketplace,data.homeServices,data.homeServiceRequests,data.businesses,data.events,data.taxiLimoOwners,data.taxiLimoVehicles,data.taxiDriverApps,data.taxiLimoDriverAssignments,data.taxiRideRequests];
  let count=0;
  groups.forEach(list=>(list||[]).forEach(x=>{let st=String(x.status||'').toLowerCase();if(pendingWords.some(w=>st.includes(w)))count++;}));
  return count;
+}
+function adminPendingQueueHtml(){
+ return `<div id="adminPendingQueue" class="card adminPendingQueue"><div class="adminPendingQueueHead"><div><h3 style="margin:0">🔴 Pending Admin Actions</h3><p class="muted" style="margin:5px 0 0">New requests from every category appear here first. After Approve or Decline, they remain in their category summary below.</p></div><span id="adminPendingQueueCount" class="adminPendingQueueCount">0</span></div><div id="adminPendingQueueGrid" class="adminPendingQueueGrid"><p class="muted">Checking pending transactions...</p></div></div>`;
+}
+function buildAdminPendingQueue(){
+ const root=$('admin'), grid=$('adminPendingQueueGrid'), badge=$('adminPendingQueueCount');
+ if(!root||!grid||!badge)return;
+ const pendingRows=[...root.querySelectorAll('table tr.adminPendingRow')].filter(row=>!row.closest('#adminPendingQueue'));
+ const sequence=[...root.querySelectorAll('h3, table')];
+ let lastHeading='Admin';
+ const tableHeadings=new Map();
+ sequence.forEach(el=>{if(el.tagName==='H3')lastHeading=el.textContent.trim();else tableHeadings.set(el,lastHeading)});
+ grid.innerHTML='';
+ pendingRows.forEach((row,index)=>{
+   const table=row.closest('table');
+   const category=tableHeadings.get(table)||'Admin Review';
+   const cells=[...row.querySelectorAll('td')];
+   const card=document.createElement('div');card.className='adminPendingCard';card.dataset.pendingIndex=String(index);
+   const title=document.createElement('h4');title.textContent=category;card.appendChild(title);
+   cells.forEach(cell=>{
+     const label=cell.getAttribute('data-label')||'Detail';
+     if(/actions?/i.test(label)){
+       const actions=document.createElement('div');actions.className='adminPendingActions';
+       [...cell.children].forEach(child=>actions.appendChild(child.cloneNode(true)));
+       if(!actions.children.length){const span=document.createElement('span');span.innerHTML=cell.innerHTML;actions.appendChild(span)}
+       card.appendChild(actions);
+     }else{
+       const field=document.createElement('div');field.className='adminPendingField';
+       const b=document.createElement('b');b.textContent=label;field.appendChild(b);
+       const value=document.createElement('div');value.innerHTML=cell.innerHTML;field.appendChild(value);card.appendChild(field);
+     }
+   });
+   grid.appendChild(card);
+ });
+ badge.textContent=String(pendingRows.length);
+ if(!pendingRows.length)grid.innerHTML='<div class="notice"><b>No pending admin actions.</b> New submissions will appear here automatically after Refresh.</div>';
 }
 function adminMobileSummaryHtml(){
  let n=adminPendingCount();
@@ -2773,7 +2864,7 @@ async function admin(){
  let q=($('userSearch')&&$('userSearch').value||'').toLowerCase();
  let managedUsers=data.users.filter(u=>managedRoles.some(r=>allUserRoles(u).includes(r))).filter(u=>!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||userRoleText(u).toLowerCase().includes(q));
  let monthly=reportRows('month'), quarterly=reportRows('quarter'), yearly=reportRows('year');
- $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2>${adminMobileSummaryHtml()}${adminBackgroundRefreshing?'<div class="notice"><b>Refreshing Admin data from Supabase...</b> You can keep working while this updates in the background.</div>':''}
+ $('admin').innerHTML=`<h2>⚙️ Admin Verification Center</h2>${adminPendingQueueHtml()}${adminTopActionsHtml()}${adminMobileSummaryHtml()}${adminBackgroundRefreshing?'<div class="notice"><b>Refreshing Admin data from Supabase...</b> You can keep working while this updates in the background.</div>':''}
  <h3>Daily Admin Management</h3>
  ${marketplaceAdminManagementHtml()}${taxiAdminHtml()}${homeServicesAdminHtml()}${businessAdminManagementHtml()}${eventsAdminManagementHtml()}${travelerTripAdminHtml()}<h3>Shipping Management</h3><div class="card"><h3>Official Shipping Money Flow</h3><ol><li>Sender requests space from a traveler trip.</li><li>Traveler accepts or declines.</li><li>Sender pays Habesha Connect.</li><li>Admin approves payment, contact details unlock, and remaining space is reduced.</li><li>Package is delivered.</li><li>Admin manually pays traveler commission and marks Traveler Paid.</li></ol><p class="muted">Traveler payouts are recorded for admin reports.</p></div><table><tr><th>ID</th><th>Tracking</th><th>Route</th><th>Sender</th><th>Traveler</th><th>Status</th><th>Traveler Payout</th><th>Actions</th></tr>${data.shipments.map(s=>`<tr><td>${s.id}</td><td>${s.tracking||''}</td><td>${s.route}</td><td>${s.sender} ${verifiedBadge(s.senderVerified)}</td><td>${s.traveler} ${s.travelerEmail?verifiedBadge(s.travelerVerified):''}</td><td>${s.status}</td><td>${s.travelerPaid?'Paid':'Not paid'} ${s.travelerPayoutMethod?('('+s.travelerPayoutMethod+')'):''}</td><td><button class="btn primary" onclick="approveShipment('${s.id}')">Approve Payment</button> <button class="btn ghost" onclick="markDelivered('${s.id}')">Mark Delivered</button> <button class="btn ghost" onclick="payTraveler('${s.id}')">Pay Traveler</button> <button class="btn ghost" onclick="editShipment('${s.id}')">Edit</button> <button class="btn bad" onclick="deleteShipment('${s.id}')">Delete</button></td></tr>`).join('')}</table>${shippingItemsAdminHtml()}
  
@@ -2790,6 +2881,7 @@ async function admin(){
 
  `
  decorateAdminMobileTables();
+ buildAdminPendingQueue();
  } finally { adminLoading=false; }
 }
 function reportRows(field){let rows={};(data.payments||[]).forEach(p=>{let k=p[field]||'Unknown';rows[k]=(rows[k]||0)+(+p.amount||0)});let keys=Object.keys(rows).sort().reverse();return keys.length?`<table><tr><th>Period</th><th>Total</th></tr>${keys.map(k=>`<tr><td>${k}</td><td>${money(rows[k])}</td></tr>`).join('')}</table>`:'<p class="muted">No payments yet.</p>'}

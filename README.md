@@ -1,7 +1,9 @@
-Habesha Agenagn V7.8.103 Taxi Limo Role Dashboard Clean
+Habesha Agenagn V7.8.108 — Unified Pending Admin Actions
 
-## V7.8.106 Admin Navigation Fix
-- Restored the Admin button for administrator accounts on desktop.
-- Added Admin Dashboard to the phone navigation dropdown.
-- Kept the mobile approval-card layout from V7.8.105.
-- No SQL changes are required.
+New admin behavior:
+- Pending transactions from every existing category are collected at the very top of the Admin Dashboard.
+- Each pending transaction keeps its original Approve/Decline/action buttons.
+- After admin acts, the dashboard refresh removes it from the top pending queue.
+- The transaction remains visible in its original category management/summary section below with its updated status.
+- Mobile card layout and desktop dashboard are preserved.
+- No new SQL is required.
