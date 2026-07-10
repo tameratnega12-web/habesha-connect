@@ -3863,10 +3863,22 @@ async function adminApproveTrailerPayment(id){
     const vals=[...iso,...us].map(x=>Date.parse(x)).filter(Number.isFinite);
     return vals.length?Math.max(...vals):index;
   }
+  let stableSeq=0;
+  function stableOrder(el){
+    if(!el.dataset.v78111StableOrder) el.dataset.v78111StableOrder=String(++stableSeq);
+    return Number(el.dataset.v78111StableOrder)||0;
+  }
   function reorder(items,parent){
-    const ranked=items.map((el,i)=>({el,i,p:score(el),t:timeValue(el,i)}));
-    ranked.sort((a,b)=>(b.p-a.p)||(b.t-a.t)||(b.i-a.i));
-    ranked.forEach(x=>parent.appendChild(x.el));
+    const ranked=items.map((el,i)=>({el,i,p:score(el),t:timeValue(el,stableOrder(el)),stable:stableOrder(el)}));
+    ranked.sort((a,b)=>(b.p-a.p)||(b.t-a.t)||(b.stable-a.stable));
+    const desired=ranked.map(x=>x.el);
+    const current=items.slice();
+    const changed=desired.some((el,i)=>current[i]!==el);
+    if(changed){
+      const frag=document.createDocumentFragment();
+      desired.forEach(el=>frag.appendChild(el));
+      parent.appendChild(frag);
+    }
     ranked.forEach(x=>x.el.classList.toggle('v78111-action-first',x.p>=300));
   }
   function sortTables(root){
