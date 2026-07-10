@@ -35,5 +35,3 @@ Run `supabase/v7_8_120_home_service_admin_dashboard_fix.sql` once in Supabase SQ
 
 ## V7.8.121 Rebuilt from V7.8.120
 This version uses V7.8.120 as the stable base and changes only Home Services action ordering: accepted customer jobs, provider Mark Work Complete, and customer Confirm Completed appear at the top. No new SQL is required.
-
-V7.8.124 update: direct listed-provider Home Service requests now show their current status at the top for customer/provider, and the customer listing button changes from Request Service to Waiting for Admin, Waiting for Provider, or Accepted. Duplicate active requests are blocked. No SQL required.
