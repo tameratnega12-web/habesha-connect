@@ -356,7 +356,11 @@ function rolePages(){
  if(currentUser.role==='admin')return ROLE_PAGES.admin;
  return allSignedIn;
 }
-function roleNavPages(){return currentUser?(ROLE_NAV_PAGES[currentUser.role]||ROLE_NAV_PAGES.customer):ROLE_NAV_PAGES.guest}
+function roleNavPages(){
+ // V7.8.97: keep the signed-in top navigation simple on every category.
+ // Users switch services from Home, so the header only needs Home and Profile.
+ return currentUser?['home','profile']:ROLE_NAV_PAGES.guest;
+}
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
 function taxiNavAllowed(){return !currentUser || ['customer','taxi_limo_owner','taxi_limo_driver','taxi_driver','admin'].includes(currentUser.role)}
@@ -479,7 +483,7 @@ async function refreshPageData(p){
  }
 }
 function roleSwitcherHtml(){if(!currentUser)return '';let roles=currentUser.roles||[currentUser.role||'customer'];let opts=roles.map(r=>`<option value="${r}" ${r===currentUser.role?'selected':''}>${(ROLE_INFO[r]?.icon||'')+' '+roleTitle(r)}</option>`).join('');return `<select id="topRoleSwitch" onchange="switchRole(this.value)" style="width:auto;min-width:150px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700">${opts}</select>`}
-function render(){nav();$('userBox').innerHTML=currentUser?`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn ghost" onclick="show('services')">My Services</button> <button class="btn" onclick="logout()">Logout</button>`:`<button class="btn" onclick="show('account')">Login / Register</button>`;let active=pages.find(p=>!$(p).classList.contains('hide'))||'home';if(!isAllowedPage(active))active='home';renderPage(active).catch(err=>{console.error('Render error',err);if($(active))$(active).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Please refresh the app and try again.</p></div>';})}
+function render(){nav();$('userBox').innerHTML=currentUser?`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn" onclick="logout()">Logout</button>`:`<button class="btn" onclick="show('account')">Login / Register</button>`;let active=pages.find(p=>!$(p).classList.contains('hide'))||'home';if(!isAllowedPage(active))active='home';renderPage(active).catch(err=>{console.error('Render error',err);if($(active))$(active).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Please refresh the app and try again.</p></div>';})}
 function requireLogin(){if(!currentUser){show('account');return false}return true}
 async function login(){let e=cleanEmail($('loginEmail')?.value),p=String($('loginPass')?.value||'');if(!e||!p)return alert('Enter your email and password.');if(!e.includes('@'))return alert('Please enter the full email address you used to create the account.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signInWithPassword({email:e,password:p});if(error){let localAdmin=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p&&x.role==='admin');if(localAdmin){currentUser=localAdmin;addNote(localAdmin.email,'You signed in with local admin access.');save();show('home');return;}let msg=String(error.message||'');if(msg.toLowerCase().includes('invalid'))msg='Login failed. Please check the email and password. Make sure there are no spaces and use the same email used during signup.';return alert(msg);}let u=await loadSupabaseProfile(authData.user);if(!u)return alert('Login worked, but profile was not found.');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home');return;}let u=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p);if(!u)return alert('Wrong email or password');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home')}
 async function register(){let name=$('regName').value.trim(),phone=$('regPhone').value.trim(),email=cleanEmail($('regEmail')?.value),pass=$('regPass').value;let selected=['customer'];let role='customer';if(!name||!phone||!email||!pass)return alert('Please complete all fields including phone number');if($('agreeTerms')&&!$('agreeTerms').checked)return alert('Please agree to the Terms and Privacy Policy.');if(!settings().registrationOpen&&(!currentUser||currentUser.role!=='admin'))return alert('Registration is currently closed.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signUp({email,password:pass,options:{data:{name,phone,role,roles:selected,active_role:role}}});if(error)return alert(error.message);let authUser=authData.user;let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:false};if(authUser){let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();if(res.error){console.warn('Profile save error',res.error);alert('Account created, but profile roles were not saved. Please run the V6 SQL migration if you have not run it yet.');}}
@@ -620,18 +624,9 @@ function roleServices(){
 }
 function homeQuickActions(){
  if(!currentUser)return `<button class="btn primary" onclick="show('account')">Create Account</button>`;
- const role=currentUser.role;
- let main='services', label='Open My Services', extra='';
- if(role==='traveler'||role==='sender'){main='shipping';label='Open Shipping';}
- if(role==='owner'||role==='rent_seeker'){main='rentals';label='Open Rentals';}
- if(role==='truck_owner'||role==='driver'){main='truck';label='Open Trucking';}
- if(role==='taxi_limo_owner'||role==='taxi_limo_driver'||role==='taxi_driver'){main='taxi';label='Open Taxi/Limo';}
- if(role==='service_provider'){main='home_services';label='Open Home Services';}
- if(role==='business_owner'){main='business';label='Open Business Directory';}
- if(role==='event_organizer'){main='events';label='Open Events';}
- if(role==='marketplace'){main='marketplace';label='Open Marketplace';}
- if(role==='admin'){main='admin';label='Open Admin Dashboard';}
- return `<button class="btn primary" onclick="show('profile')">Profile</button><button class="btn" onclick="show('services')">My Services</button><button class="btn dark" onclick="show('${main}')">${label}</button>${extra}`;
+ // V7.8.97: no My Services or role-specific shortcut here.
+ // All service/category choices are shown below on the Home page.
+ return `<button class="btn primary" onclick="show('profile')">Profile</button>`;
 }
 function homeInfoSupport(){return `<h2 style="margin-top:22px">Information & Support</h2><div class="grid"><div class="card"><div class="service-icon">ℹ️</div><h3>About</h3><p class="muted">Learn what Habesha Connect does for the community.</p><button class="btn" onclick="show('about')">Open</button></div><div class="card"><div class="service-icon">📞</div><h3>Contact</h3><p class="muted">Contact support or the Habesha Connect team.</p><button class="btn" onclick="show('contact')">Open</button></div><div class="card"><div class="service-icon">❓</div><h3>Help / FAQ</h3><p class="muted">Get answers about accounts, services, and requests.</p><button class="btn" onclick="show('help')">Open</button></div><div class="card"><div class="service-icon">🐞</div><h3>Report Problem</h3><p class="muted">Tell us if something is confusing or broken.</p><button class="btn" onclick="show('report')">Open</button></div><div class="card"><div class="service-icon">🔒</div><h3>Privacy</h3><p class="muted">Review privacy information for the app.</p><button class="btn" onclick="show('privacy')">Open</button></div><div class="card"><div class="service-icon">📄</div><h3>Terms</h3><p class="muted">Review the terms and user responsibilities.</p><button class="btn" onclick="show('terms')">Open</button></div></div>`}
 function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
