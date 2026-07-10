@@ -647,6 +647,51 @@ async function renderPage(p){
  if(p==='report')report();
  if(p==='privacy')privacy();
  if(p==='terms')terms();
+ // V7.8.114: place user-visible transactions directly below the How It Works note.
+ if(['customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'].includes(p)){
+   requestAnimationFrame(()=>placeCategoryTransactionsAtTop(p));
+ }
+}
+function placeCategoryTransactionsAtTop(page){
+  if(!currentUser||currentUser.role==='admin')return;
+  const root=$(page);
+  if(!root)return;
+  let intro=[...root.querySelectorAll('.notice')].find(n=>/how it works/i.test(n.textContent||''));
+  if(!intro){
+    const html=categoryIntro(page);
+    if(html){
+      const box=document.createElement('div');box.innerHTML=html;intro=box.firstElementChild;
+      const h2=root.querySelector('h2');
+      if(h2&&h2.nextSibling)root.insertBefore(intro,h2.nextSibling);else root.insertBefore(intro,root.firstChild);
+    }
+  }
+  if(!intro)return;
+  const ids={
+    shipping:['shippingAvailableTrips','shippingItemRequests','travelerShipRequests','travelerOpenTrips'],
+    rentals:['availableRentals','rentalList','seekerRentalRequests'],
+    marketplace:['marketList'],
+    jobs:['jobsList'],
+    truck:['availableTruckJobs','truckApplicationsTable','trailerRentalsTable','driverProfilesTable','guestTruckJobs','guestTrailerRentals'],
+    home_services:['homeServicesList','myHomeServiceRequests'],
+    taxi:['taxiOpenRides','taxiAvailableJobs','taxiAvailableDrivers','taxiMyRides'],
+    business:['businessList'],
+    events:['upcomingEvents','eventList'],
+    customer:['customerActivity','customerRequests','customerResults']
+  }[page]||[];
+  const nodes=[];
+  ids.forEach(id=>{
+    const el=root.querySelector('#'+id);
+    if(!el||nodes.includes(el))return;
+    const prev=el.previousElementSibling;
+    if(prev&&/^H[234]$/.test(prev.tagName)&&!nodes.includes(prev))nodes.push(prev);
+    nodes.push(el);
+  });
+  if(!nodes.length)return;
+  const holder=document.createElement('div');
+  holder.className='hc-transactions-top';
+  holder.setAttribute('data-page',page);
+  nodes.forEach(n=>holder.appendChild(n));
+  intro.insertAdjacentElement('afterend',holder);
 }
 function roleWelcome(){
  if(!currentUser)return '<p>Create an account or sign in to open your dashboard.</p>';
