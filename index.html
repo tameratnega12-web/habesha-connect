@@ -19,6 +19,7 @@
   <section id="account" class="page hide"></section>
   <section id="profile" class="page hide"></section>
   <section id="services" class="page hide"></section>
+  <section id="customer" class="page hide"></section>
   <section id="shipping" class="page hide"></section>
   <section id="rentals" class="page hide"></section>
   <section id="marketplace" class="page hide"></section>
@@ -166,8 +167,8 @@ async function ownerDeclineRentalReq(id){return alert('Owner accept/decline was 
 
 
 const $=id=>document.getElementById(id);
-const pages=['home','account','profile','services','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications','admin','about','contact','help','report','privacy','terms'];
-const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Job Seekers',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Directory',events:'Events',messages:'Messages',notifications:'Notifications',admin:'Admin',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
+const pages=['home','account','profile','services','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications','admin','about','contact','help','report','privacy','terms'];
+const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',customer:'Customer',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Job Seekers',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Directory',events:'Events',messages:'Messages',notifications:'Notifications',admin:'Admin',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
 const hcSupabase=(window.supabase&&window.SUPABASE_URL&&window.SUPABASE_ANON_KEY)?window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY):null;
 function authReady(){return !!hcSupabase}
 function cleanEmail(v){return String(v||'').trim().toLowerCase();}
@@ -311,7 +312,7 @@ function contactLine(label,name,phone,email){return `<p><b>${label}:</b> ${name|
 ensureArrays();
 const PUBLIC_PAGES=['about','contact','help','report','privacy','terms'];
 const ROLE_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events',...PUBLIC_PAGES],
+ guest:['home','account','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events',...PUBLIC_PAGES],
  traveler:['home','services','profile','shipping','messages','notifications','events',...PUBLIC_PAGES],
  sender:['home','services','profile','shipping','messages','notifications','events',...PUBLIC_PAGES],
  owner:['home','services','profile','rentals','messages','notifications','events',...PUBLIC_PAGES],
@@ -331,7 +332,7 @@ const ROLE_PAGES={
  marketplace:['home','services','profile','marketplace','messages','notifications','events',...PUBLIC_PAGES],
 };
 const ROLE_NAV_PAGES={
- guest:['home','account','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'],
+ guest:['home','account','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'],
  traveler:['home','profile','services','shipping'],
  sender:['home','profile','services','shipping'],
  owner:['home','profile','services','rentals'],
@@ -351,7 +352,7 @@ const ROLE_NAV_PAGES={
  admin:['home','profile','services','admin','taxi','events']
 };
 function rolePages(){
- const allSignedIn=['home','services','profile','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications',...PUBLIC_PAGES];
+ const allSignedIn=['home','services','profile','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications',...PUBLIC_PAGES];
  if(!currentUser)return ROLE_PAGES.guest;
  if(currentUser.role==='admin')return ROLE_PAGES.admin;
  return allSignedIn;
@@ -372,7 +373,7 @@ let adminDataLoaded=false;
 let adminBackgroundRefreshing=false;
 let pageSyncRunning=false;
 let lastPageSyncAt={};
-function isSharedDataPage(p){return ['shipping','rentals','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
+function isSharedDataPage(p){return ['customer','shipping','rentals','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
 async function backgroundPageSync(p,force=false){
  if(!authReady()||!isSharedDataPage(p))return;
  if(pageSyncRunning)return;
@@ -582,6 +583,7 @@ async function renderPage(p){
  if(p==='account')account();
  if(p==='profile')await profile();
  if(p==='services')services();
+ if(p==='customer')customer();
  if(p==='shipping')await shipping();
  if(p==='rentals')await rentals();
  if(p==='marketplace')marketplace();
@@ -619,8 +621,8 @@ function roleServices(){
  const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['🔎','Job Seekers','Approved jobs from Business Directory businesses. Job seekers contact the business directly.'],truck:['🚚','Trucking & Trailer','Truck owners, drivers, and trailer owners can post jobs, find drivers, apply for jobs, and rent trailers.'],home_services:['🛠️','Home Services','Customers can find cleaners, movers, repairs, electricians, plumbers, and helpers.'],taxi:['🚕','Taxi/Limo','Taxi/Limo owners and drivers can manage vehicles, availability, and hiring connections.'],business:['🏢','Business Directory','Create or browse community business profiles, services, hours, phone, menu, and directions.'],events:['📅','Events','Community, church, cultural, business, family, charity, and sports events.']};
  const order=['shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'];
  const cards=order.filter(p=>info[p]&&(!currentUser||isAllowedPage(p))).map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
- const customerOpen=currentUser?"show('profile')":"show('account')";
- const customerCard=`<div class="card"><div class="service-icon">🧭</div><h3>Customer</h3><p class="muted">Create an account, choose a category, browse services, and manage your requests.</p><button class="btn primary" onclick="${customerOpen}">Open</button></div>`;
+ const customerOpen=currentUser?"openService('customer')":"show('account')";
+ const customerCard=`<div class="card"><div class="service-icon">🧭</div><h3>Customer</h3><p class="muted">Request home service, ride, shipping, rentals, marketplace, businesses, and events from one place.</p><button class="btn primary" onclick="${customerOpen}">Open</button></div>`;
  return customerCard+cards;
 }
 function homeQuickActions(){
@@ -631,6 +633,32 @@ function homeQuickActions(){
 }
 function homeInfoSupport(){return `<h2 style="margin-top:22px">Information & Support</h2><div class="grid"><div class="card"><div class="service-icon">ℹ️</div><h3>About</h3><p class="muted">Learn what Habesha Connect does for the community.</p><button class="btn" onclick="show('about')">Open</button></div><div class="card"><div class="service-icon">📞</div><h3>Contact</h3><p class="muted">Contact support or the Habesha Connect team.</p><button class="btn" onclick="show('contact')">Open</button></div><div class="card"><div class="service-icon">❓</div><h3>Help / FAQ</h3><p class="muted">Get answers about accounts, services, and requests.</p><button class="btn" onclick="show('help')">Open</button></div><div class="card"><div class="service-icon">🐞</div><h3>Report Problem</h3><p class="muted">Tell us if something is confusing or broken.</p><button class="btn" onclick="show('report')">Open</button></div><div class="card"><div class="service-icon">🔒</div><h3>Privacy</h3><p class="muted">Review privacy information for the app.</p><button class="btn" onclick="show('privacy')">Open</button></div><div class="card"><div class="service-icon">📄</div><h3>Terms</h3><p class="muted">Review the terms and user responsibilities.</p><button class="btn" onclick="show('terms')">Open</button></div></div>`}
 function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+
+
+function customerAction(page,role,sectionId){
+  if(!requireLogin())return;
+  Promise.resolve(chooseServiceRole(page,role)).then(()=>{
+    if(sectionId){setTimeout(()=>jumpToSection(sectionId),260);}
+  });
+}
+function customer(){
+  if(!currentUser){
+    $('customer').innerHTML=`<div class="card"><h2>🧭 Customer</h2><p>Create an account or sign in to request services from Habesha Connect.</p><button class="btn primary" onclick="show('account')">Sign In / Create Account</button></div>`;
+    return;
+  }
+  $('customer').innerHTML=`<h2>🧭 Customer Dashboard</h2>
+  <div class="card"><h3>What do you need today?</h3><p class="muted">Choose what you need. The app will open the correct category and dashboard for you.</p></div>
+  <div class="grid">
+    <div class="card"><h3>🛠️ Request Home Service</h3><p class="muted">Find cleaners, movers, repair helpers, plumbers, electricians, and other service providers.</p><button class="btn primary" onclick="customerAction('home_services','customer','homeServicesList')">Open</button></div>
+    <div class="card"><h3>🏠 Find Rental Home</h3><p class="muted">Browse approved rental homes and request viewing.</p><button class="btn primary" onclick="customerAction('rentals','rent_seeker','availableRentals')">Open</button></div>
+    <div class="card"><h3>🚕 Request Taxi/Limo Ride</h3><p class="muted">Submit a ride request for pickup, drop-off, date, and time.</p><button class="btn primary" onclick="customerAction('taxi','customer','taxiRequestRide')">Open</button></div>
+    <div class="card"><h3>🛒 Browse Marketplace</h3><p class="muted">See approved community items for sale and send requests.</p><button class="btn primary" onclick="customerAction('marketplace','customer','marketAvailableTitle')">Open</button></div>
+    <div class="card"><h3>🏢 Find Businesses</h3><p class="muted">Search restaurants, tax offices, insurance, shops, services, and community businesses.</p><button class="btn primary" onclick="customerAction('business','customer','publicBusinessDirectory')">Open</button></div>
+    <div class="card"><h3>📅 Find Events</h3><p class="muted">Browse community, church, cultural, business, family, charity, and sports events.</p><button class="btn primary" onclick="customerAction('events','customer','upcomingEvents')">Open</button></div>
+    <div class="card"><h3>📦 Request Shipping Help</h3><p class="muted">Post an item to ship or find available traveler trips.</p><button class="btn primary" onclick="customerAction('shipping','sender','senderPostItem')">Open</button></div>
+    <div class="card"><h3>📋 My Requests / Activity</h3><p class="muted">Check your profile, messages, notifications, and activity.</p><button class="btn ghost" onclick="show('profile')">Open</button></div>
+  </div>`;
+}
 
 function jumpToSection(id){let el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';el.style.borderRadius='12px';setTimeout(()=>{el.style.outline='';},1400);}}
 const SERVICE_ROLE_CHOICES={
