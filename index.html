@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.134">
+<meta name="app-version" content="V7.8.133">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -2284,13 +2284,13 @@ function homeServices(){
  let sortedCustomerJobs=[...myCustomerJobs].sort((a,b)=>{let d=homeServiceJobPriority(a)-homeServiceJobPriority(b);if(d)return d;return new Date(b.providerCompletedAt||b.providerAcceptedAt||b.createdAt||0)-new Date(a.providerCompletedAt||a.providerAcceptedAt||a.createdAt||0);});
  let topCustomerJobs=sortedCustomerJobs.filter(j=>homeServiceJobPriority(j)<=1);
  let historyCustomerJobs=sortedCustomerJobs.filter(j=>homeServiceJobPriority(j)>1);
- let homeServiceJobRow=j=>{let customerCanAgree=currentUser&&j.customerEmail===currentUser.email&&['Provider Accepted','Provider Accepted - Waiting Customer Agreement'].includes(j.status);let providerCanComplete=currentUser&&j.providerEmail===currentUser.email&&j.status==='Customer Agreed';let customerCanConfirm=currentUser&&j.customerEmail===currentUser.email&&j.status==='Work Completed - Customer Confirmation';let action=customerCanAgree?`<b>Provider accepted your request.</b><br><button type="button" class="btn primary hs-mobile-action" data-hs-action="agree-customer-job" data-hs-id="${j.id}">Agree</button> <button type="button" class="btn bad hs-mobile-action" data-hs-action="decline-customer-job" data-hs-id="${j.id}">Decline</button>`:providerCanComplete?`<button class="btn primary" onclick="providerCompleteCustomerHomeServiceJob('${j.id}')">Mark Work Complete</button>`:customerCanConfirm?`<button class="btn primary" onclick="customerConfirmHomeServiceJob('${j.id}')">Confirm Completed</button>`:j.status==='Customer Agreed'?'<b>Customer Agreed</b>':'-';return `<tr><td>${j.title}<br><span class="small">${j.category}</span></td><td>${j.customerName||''}</td><td>${j.providerName||'Not selected yet'}</td><td>${j.city||''}</td><td>${j.preferredDate||''} ${j.preferredTime||''}</td><td>${homeServiceStatusBadge(j.status)}</td><td>${action}</td></tr>`};
+ let homeServiceJobRow=j=>{let customerCanAgree=currentUser&&j.customerEmail===currentUser.email&&['Provider Accepted','Provider Accepted - Waiting Customer Agreement'].includes(j.status);let providerCanComplete=currentUser&&j.providerEmail===currentUser.email&&j.status==='Customer Agreed';let customerCanConfirm=currentUser&&j.customerEmail===currentUser.email&&j.status==='Work Completed - Customer Confirmation';let action=customerCanAgree?`<b>Provider accepted your request.</b><br><button class="btn primary" onclick="customerAgreeCustomerHomeServiceJob('${j.id}')">Agree</button> <button class="btn bad" onclick="customerDeclineCustomerHomeServiceJob('${j.id}')">Decline</button>`:providerCanComplete?`<button class="btn primary" onclick="providerCompleteCustomerHomeServiceJob('${j.id}')">Mark Work Complete</button>`:customerCanConfirm?`<button class="btn primary" onclick="customerConfirmHomeServiceJob('${j.id}')">Confirm Completed</button>`:j.status==='Customer Agreed'?'<b>Customer Agreed</b>':'-';return `<tr><td>${j.title}<br><span class="small">${j.category}</span></td><td>${j.customerName||''}</td><td>${j.providerName||'Not selected yet'}</td><td>${j.city||''}</td><td>${j.preferredDate||''} ${j.preferredTime||''}</td><td>${homeServiceStatusBadge(j.status)}</td><td>${action}</td></tr>`};
  let topCustomerJobRows=topCustomerJobs.map(homeServiceJobRow).join('');
  let myCustomerJobRows=historyCustomerJobs.map(homeServiceJobRow).join('')||'<tr><td colspan="7">No other customer-posted service jobs yet.</td></tr>';
  let topCustomerJobSection=topCustomerJobs.length?`<div class="card" id="homeServiceActionTop" style="border:2px solid #2563eb"><h3>⚡ Current Home Service Activity</h3><p class="muted">Accepted jobs and the next required action appear here first.</p><table><tr><th>Job</th><th>Customer</th><th>Provider</th><th>City</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${topCustomerJobRows}</table></div>`:'';
  let directPriority=r=>r.status==='Provider Accepted - Waiting Customer Agreement'?0:r.status==='Customer Agreed'?0:r.status==='Provider Accepted'?0:r.status==='Pending Provider Review'?1:r.status==='Pending Admin Approval'?2:9;
  let directTopReqs=currentUser?[...myReqs].filter(r=>r.customerEmail===currentUser.email&&directPriority(r)<9).sort((a,b)=>directPriority(a)-directPriority(b)||new Date(b.providerRespondedAt||b.adminApprovedAt||b.createdAt||0)-new Date(a.providerRespondedAt||a.adminApprovedAt||a.createdAt||0)):[];
- let directTopRows=directTopReqs.map(r=>{let nextStep=r.status==='Provider Accepted - Waiting Customer Agreement'?`<b>Provider accepted. Please agree before the service is confirmed.</b><br><button type="button" class="btn primary hs-mobile-action" data-hs-action="agree-direct-request" data-hs-id="${r.id}">Agree</button> <button type="button" class="btn bad hs-mobile-action" data-hs-action="decline-direct-request" data-hs-id="${r.id}">Decline</button>`:r.status==='Customer Agreed'?'<b>You agreed. The provider and admin were notified. Contact the provider to confirm the appointment.</b>':r.status==='Provider Accepted'?'<b>Provider agreed. Contact the provider to confirm the appointment.</b>':r.status==='Pending Provider Review'?'Provider has been notified and is reviewing your request.':'Admin approval is pending.';let showPhone=['Provider Accepted','Provider Accepted - Waiting Customer Agreement','Customer Agreed'].includes(r.status);return `<tr><td>${r.serviceTitle}</td><td>${r.providerName||''}<br><span class="small">${r.providerEmail||''}${showPhone&&r.providerPhone?'<br>'+r.providerPhone:''}</span></td><td>${r.city||''}</td><td>${r.preferredDate||''} ${r.preferredTime||''}</td><td>${homeServiceStatusBadge(r.status)}</td><td>${nextStep}</td></tr>`}).join('');
+ let directTopRows=directTopReqs.map(r=>{let nextStep=r.status==='Provider Accepted - Waiting Customer Agreement'?`<b>Provider accepted. Please agree before the service is confirmed.</b><br><button class="btn primary" onclick="customerAgreeHomeServiceRequest('${r.id}')">Agree</button> <button class="btn bad" onclick="customerDeclineHomeServiceRequest('${r.id}')">Decline</button>`:r.status==='Customer Agreed'?'<b>You agreed. The provider and admin were notified. Contact the provider to confirm the appointment.</b>':r.status==='Provider Accepted'?'<b>Provider agreed. Contact the provider to confirm the appointment.</b>':r.status==='Pending Provider Review'?'Provider has been notified and is reviewing your request.':'Admin approval is pending.';let showPhone=['Provider Accepted','Provider Accepted - Waiting Customer Agreement','Customer Agreed'].includes(r.status);return `<tr><td>${r.serviceTitle}</td><td>${r.providerName||''}<br><span class="small">${r.providerEmail||''}${showPhone&&r.providerPhone?'<br>'+r.providerPhone:''}</span></td><td>${r.city||''}</td><td>${r.preferredDate||''} ${r.preferredTime||''}</td><td>${homeServiceStatusBadge(r.status)}</td><td>${nextStep}</td></tr>`}).join('');
  let directTopSection=directTopReqs.length?`<div class="card" id="homeServiceDirectActivityTop" style="border:2px solid #2563eb"><h3>✅ My Current Service Request</h3><p class="muted">Your submitted request and provider agreement appear here first.</p><table><tr><th>Service</th><th>Provider</th><th>City</th><th>Date / Time</th><th>Status</th><th>Next Step</th></tr>${directTopRows}</table></div>`:'';
  let homeServiceActions=[];
  if(role!=='customer')homeServiceActions.push(categoryButton('🔍 Browse Services','homeServicesList',true));
@@ -4191,44 +4191,132 @@ async function adminApproveTrailerPayment(id){
 })();
 </script>
 
-<style id="v78134-home-service-phone-actions">
-.hs-mobile-action{touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,.08);position:relative;z-index:5}
-@media(max-width:760px){.hs-mobile-action{display:block!important;width:100%!important;min-height:50px!important;margin:8px 0!important;font-size:17px!important}}
-</style>
-<script id="v78134-home-service-phone-actions-script">
+<script id="v78135-marketplace-flow-fix">
+/* V7.8.135 Marketplace complete approval flow + phone reliability
+   Seller post -> Admin approval -> Customer request -> Admin approval -> Seller accept -> Customer sees seller contact.
+   Uses only marketplace status values already supported by the current Supabase check constraint. */
 (function(){
-  let lastTouchAt=0;
-  function runHomeServiceAction(button){
-    if(!button || button.disabled)return;
-    const id=button.getAttribute('data-hs-id');
-    const action=button.getAttribute('data-hs-action');
-    if(!id||!action)return;
-    button.disabled=true;
-    Promise.resolve().then(function(){
-      if(action==='agree-customer-job')return customerAgreeCustomerHomeServiceJob(id);
-      if(action==='decline-customer-job')return customerDeclineCustomerHomeServiceJob(id);
-      if(action==='agree-direct-request')return customerAgreeHomeServiceRequest(id);
-      if(action==='decline-direct-request')return customerDeclineHomeServiceRequest(id);
-    }).catch(function(err){console.error(err);alert('Could not complete this action. Please try again.');})
-      .finally(function(){if(document.body.contains(button))button.disabled=false;});
+  function findItem(id){return (data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));}
+  function findReq(id){return (data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));}
+  async function refreshMarket(){
+    persistOnly();
+    try{if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();}catch(e){console.warn('Marketplace refresh skipped',e);}
+    if(currentPage==='admin')adminSuccess();else marketplace();
   }
-  document.addEventListener('touchend',function(e){
-    const button=e.target.closest&&e.target.closest('.hs-mobile-action');
-    if(!button)return;
-    lastTouchAt=Date.now();
-    e.preventDefault();
-    e.stopPropagation();
-    runHomeServiceAction(button);
-  },{passive:false});
-  document.addEventListener('click',function(e){
-    const button=e.target.closest&&e.target.closest('.hs-mobile-action');
-    if(!button)return;
-    if(Date.now()-lastTouchAt<700){e.preventDefault();return;}
-    e.preventDefault();
-    e.stopPropagation();
-    runHomeServiceAction(button);
-  });
+
+  // Keep pending seller listings visible immediately and notify admin reliably on desktop and phone.
+  window.addMarket=async function(){
+    if(!requireLogin())return;
+    const title=($('mTitle')?.value||'').trim();
+    const price=Number($('mPrice')?.value||0);
+    const city=($('mCity')?.value||'').trim();
+    if(!title||!price||!city)return alert('Please enter item title, price, and city.');
+    const linkPhotos=($('mPhotos')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+    let uploadedPhotos=[];
+    try{uploadedPhotos=await getMarketUploadedPhotos();}catch(e){console.warn('Marketplace photo processing skipped',e);}
+    const photos=[...uploadedPhotos,...linkPhotos].slice(0,10);
+    const item={id:'M'+Date.now().toString().slice(-7),title,category:$('mCategory')?.value||'Other',condition:$('mCondition')?.value||'Good',price,city,description:$('mDesc')?.value||'',photos,seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+    const res=await insertMarketListingDb(item);
+    if(res.error)return alert('Marketplace item was not saved: '+res.error.message);
+    if(res.data)Object.assign(item,mapSupabaseMarketListing(res.data));
+    data.market=(data.market||[]).filter(x=>String(x.id)!==String(item.id));
+    data.market.unshift(item);
+    persistOnly();
+    addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a marketplace item and admin approval is required before customers can see it.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(photos.length),Status:item.status},'marketplace'));}catch(e){console.warn('Admin marketplace email failed',e);}
+    marketplace();
+    alert(currentUser.role==='admin'?'Item posted and approved.':'Item submitted. It will stay in My Listings while waiting for admin approval.');
+  };
+
+  // Customer request first goes to admin. Use pending_admin, which is accepted by the existing DB constraint.
+  window.marketRequestBuy=async function(id){
+    if(!requireLogin())return;
+    const m=findItem(id);if(!m)return alert('Marketplace item was not found. Please refresh and try again.');
+    if(!['Approved','Available'].includes(m.status))return alert('This item is not available for requests.');
+    if(m.sellerEmail===currentUser.email)return alert('You cannot request your own item.');
+    const exists=(data.marketRequests||[]).find(r=>String(r.itemId)===String(m.dbId||m.id)&&r.buyerEmail===currentUser.email&&!['Cancelled','Admin Declined','Seller Declined','Connection Declined','Completed'].includes(r.status));
+    if(exists)return alert('You already requested this item.');
+    const r={id:'MR'+Date.now().toString().slice(-7),itemId:m.dbId||m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Buyer Request Pending Admin',createdAt:new Date().toLocaleString()};
+    const res=await insertMarketRequestDb(r);
+    if(res.error)return alert('Marketplace request was not saved: '+res.error.message);
+    if(res.data){r.id=res.data.id;r.dbId=res.data.id;}
+    data.marketRequests.unshift(r);
+    addNote('admin.habeshaconnect@gmail.com','Marketplace buyer request waiting for approval: '+currentUser.name+' wants '+m.title);
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace buyer request waiting for approval','A customer requested a marketplace item. Admin approval is required before the seller can respond.',{Buyer:r.buyerName,BuyerEmail:r.buyerEmail,Item:r.itemTitle,Seller:r.sellerName,Status:r.status},'marketplace'));}catch(e){console.warn('Admin buyer-request email failed',e);}
+    persistOnly();marketplace();alert('Request sent to admin for approval.');
+  };
+
+  window.marketAdminApproveBuyerReq=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const r=findReq(id);if(!r)return alert('Marketplace request not found.');
+    if(r.status!=='Buyer Request Pending Admin')return alert('This request is not waiting for admin approval.');
+    r.status='Admin Approved - Waiting Seller';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not approve request: '+res.error.message);
+    addNote(r.sellerEmail,'Admin approved a buyer request for '+r.itemTitle+'. Please accept or decline.');
+    addNote(r.buyerEmail,'Admin approved your marketplace request. Waiting for seller response.');
+    try{await Promise.resolve(sendEmailNotice({to:r.sellerEmail,name:r.sellerName,subject:'Marketplace request approved — your response is needed',summary:'Admin approved the buyer request. Please accept or decline it.',buttonText:'Open Marketplace',page:'marketplace',details:{Buyer:r.buyerName,Item:r.itemTitle,Status:r.status}}));}catch(e){}
+    await refreshMarket();
+  };
+
+  window.marketAdminDeclineBuyerReq=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const r=findReq(id);if(!r)return;
+    r.status='Admin Declined';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not decline request: '+res.error.message);
+    addNote(r.buyerEmail,'Your marketplace request was declined by admin: '+r.itemTitle);
+    await refreshMarket();
+  };
+
+  // Seller acceptance completes the approval chain and immediately unlocks seller contact for the customer.
+  window.marketSellerAcceptReq=async function(id){
+    const r=findReq(id);if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('Admin must approve this customer request before you can accept it.');
+    r.status='Connection Approved';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not accept Marketplace request: '+res.error.message);
+    addNote(r.buyerEmail,'Seller accepted your marketplace request. Seller contact is now available for '+r.itemTitle);
+    addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted the approved buyer request: '+r.itemTitle);
+    try{await Promise.resolve(sendEmailNotice({to:r.buyerEmail,name:r.buyerName,subject:'Marketplace seller accepted your request',summary:'The seller accepted your request. Seller contact information is now available in your Marketplace dashboard.',buttonText:'View Seller Contact',page:'marketplace',details:{Item:r.itemTitle,Seller:r.sellerName,SellerPhone:r.sellerPhone||'Not provided',SellerEmail:r.sellerEmail,Status:r.status}}));}catch(e){}
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace seller accepted customer request','The seller accepted an admin-approved marketplace request. Contact information is now available to the customer.',{Seller:r.sellerName,Buyer:r.buyerName,Item:r.itemTitle,Status:r.status},'marketplace'));}catch(e){}
+    await refreshMarket();
+  };
+
+  window.marketSellerDeclineReq=async function(id){
+    const r=findReq(id);if(!r||!currentUser||cleanEmail(r.sellerEmail)!==cleanEmail(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('This request is not ready for seller response.');
+    r.status='Seller Declined';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not decline request: '+res.error.message);
+    addNote(r.buyerEmail,'Seller declined your marketplace request: '+r.itemTitle);
+    await refreshMarket();
+  };
+
+  // Final active card renderer: admin approval buttons, seller response, and customer contact.
+  window.marketRequestCard=function(r){
+    const isSeller=currentUser&&cleanEmail(r.sellerEmail)===cleanEmail(currentUser.email);
+    const isBuyer=currentUser&&cleanEmail(r.buyerEmail)===cleanEmail(currentUser.email);
+    const isAdmin=currentUser&&currentUser.role==='admin';
+    const cls=String(r.status||'').includes('Approved')?'good':String(r.status||'').includes('Declined')?'bad':'warn';
+    const contact=`Seller: ${String(r.sellerName||'Seller').replace(/'/g,"\\'")}\\nPhone: ${String(r.sellerPhone||'Not provided').replace(/'/g,"\\'")}\\nEmail: ${String(r.sellerEmail||'').replace(/'/g,"\\'")}`;
+    return `<div class="item"><b>${r.itemTitle}</b><p>${r.buyerName} wants to buy from ${r.sellerName}</p><span class="pill ${cls}">${r.status}</span><div class="actions">${isAdmin&&r.status==='Buyer Request Pending Admin'?`<button class="btn primary" onclick="marketAdminApproveBuyerReq('${r.id}')">Approve Request</button><button class="btn danger" onclick="marketAdminDeclineBuyerReq('${r.id}')">Decline</button>`:''}${isSeller&&r.status==='Admin Approved - Waiting Seller'?`<button class="btn primary" onclick="marketSellerAcceptReq('${r.id}')">Accept</button><button class="btn danger" onclick="marketSellerDeclineReq('${r.id}')">Decline</button>`:''}${isBuyer&&r.status==='Connection Approved'?`<button class="btn primary" onclick="alert('${contact}')">View Seller Information</button>`:''}${isSeller&&r.status==='Connection Approved'?`<button class="btn ghost" onclick="alert('Buyer: ${String(r.buyerName||'Buyer').replace(/'/g,"\\'")}\\nPhone: ${String(r.buyerPhone||'Not provided').replace(/'/g,"\\'")}\\nEmail: ${String(r.buyerEmail||'').replace(/'/g,"\\'")}')">View Buyer Information</button>`:''}</div></div>`;
+  };
+
+  window.marketAdminCards=function(){
+    const pendListings=(data.market||[]).filter(m=>m.status==='Pending Admin Approval');
+    const pendReqs=(data.marketRequests||[]).filter(r=>r.status==='Buyer Request Pending Admin');
+    const sold=(data.market||[]).filter(m=>m.status==='Sold Waiting Admin Verification');
+    return `<div class="card"><h3>⏳ Pending Listings</h3>${pendListings.map(marketCard).join('')||'<p class="muted">No pending listings.</p>'}</div><div class="card"><h3>⏳ Pending Customer Requests</h3>${pendReqs.map(marketRequestCard).join('')||'<p class="muted">No pending customer requests.</p>'}</div><div class="card"><h3>✅ Sold Verification</h3>${sold.map(marketCard).join('')||'<p class="muted">No sold items waiting.</p>'}</div>`;
+  };
+
+  // Prevent the obsolete phone-only direct-to-seller status from ever being sent to Supabase.
+  const oldMap=window.marketUiStatusToDb;
+  window.marketUiStatusToDb=function(status,type){
+    if(type==='request'&&status==='Waiting Seller Review')status='Buyer Request Pending Admin';
+    if(type==='request'&&status==='Payment Pending Admin Approval')status='Seller Accepted - Waiting Admin';
+    return oldMap(status,type);
+  };
+
+  window.__hcVersion='V7.8.135';
 })();
 </script>
+
 </body>
 </html>
