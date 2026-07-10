@@ -403,7 +403,7 @@ let adminDataLoaded=false;
 let adminBackgroundRefreshing=false;
 let pageSyncRunning=false;
 let lastPageSyncAt={};
-function isSharedDataPage(p){return ['customer','shipping','rentals','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
+function isSharedDataPage(p){return ['home','customer','shipping','rentals','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
 async function backgroundPageSync(p,force=false){
  if(!authReady()||!isSharedDataPage(p))return;
  if(pageSyncRunning)return;
@@ -475,6 +475,20 @@ async function openTruckSection(sectionId){
 }
 async function refreshPageData(p){
  if(!authReady())return;
+ if(p==='home'){
+   await Promise.allSettled([
+     loadSupabaseTrips(), loadSupabaseShipments(),
+     (typeof loadSupabaseShippingItems==='function'?loadSupabaseShippingItems():Promise.resolve()),
+     loadSupabaseRentals(),
+     (typeof loadSupabaseRentalRequests==='function'?loadSupabaseRentalRequests():Promise.resolve()),
+     (typeof loadSupabaseMarketplace==='function'?loadSupabaseMarketplace():Promise.resolve()),
+     loadSupabaseTrucking(), loadSupabaseHomeServices(), loadSupabaseTaxiLimo(),
+     (typeof loadJobsFromSupabase==='function'?loadJobsFromSupabase():Promise.resolve()),
+     (typeof loadBusinessFromSupabase==='function'?loadBusinessFromSupabase({force:true}):Promise.resolve()),
+     (typeof loadEventsFromSupabase==='function'?loadEventsFromSupabase({force:true}):Promise.resolve())
+   ]);
+   recalcTripSpacesFromShipments();
+ }
  if(p==='profile'||p==='shipping'||p==='admin'){
    await loadSupabaseTrips();
    await loadSupabaseShipments();
@@ -663,7 +677,94 @@ function homeQuickActions(){
  return `<button class="btn primary" onclick="show('profile')">Profile</button><button class="btn ghost" onclick="show('how')">How It Works</button>`;
 }
 function homeInfoSupport(){return `<h2 style="margin-top:22px">Information & Support</h2><div class="grid"><div class="card"><div class="service-icon">ℹ️</div><h3>About</h3><p class="muted">Learn what Habesha Connect does for the community.</p><button class="btn" onclick="show('about')">Open</button></div><div class="card"><div class="service-icon">📞</div><h3>Contact</h3><p class="muted">Contact support or the Habesha Connect team.</p><button class="btn" onclick="show('contact')">Open</button></div><div class="card"><div class="service-icon">❓</div><h3>Help / FAQ</h3><p class="muted">Get answers about accounts, services, and requests.</p><button class="btn" onclick="show('help')">Open</button></div><div class="card"><div class="service-icon">🐞</div><h3>Report Problem</h3><p class="muted">Tell us if something is confusing or broken.</p><button class="btn" onclick="show('report')">Open</button></div><div class="card"><div class="service-icon">🔒</div><h3>Privacy</h3><p class="muted">Review privacy information for the app.</p><button class="btn" onclick="show('privacy')">Open</button></div><div class="card"><div class="service-icon">📄</div><h3>Terms</h3><p class="muted">Review the terms and user responsibilities.</p><button class="btn" onclick="show('terms')">Open</button></div></div>`}
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div><h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+
+function hcHomeEsc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function hcHomeTime(x){let v=x?.updatedAt||x?.updated_at||x?.createdAt||x?.created_at||x?.date||'';let t=Date.parse(v);return Number.isFinite(t)?t:0;}
+function hcHomeItem(title,detail,status,page,icon,time,priority=2){return {title,detail,status,page,icon,time,priority};}
+function personalizedHomeItems(){
+ if(!currentUser)return [];
+ const email=cleanEmail(currentUser.email), role=currentUser.role, out=[];
+ const add=(x)=>{if(x)out.push(x)};
+ const available=s=>['approved','available','open','published','active'].includes(String(s||'').toLowerCase());
+ const pending=s=>/pending|waiting|review|requested|new/i.test(String(s||''));
+ // Rentals: newly approved homes for seekers; new viewing requests for owners.
+ if(role==='rent_seeker'||role==='customer'){
+   (data.rentals||[]).filter(r=>available(r.status)).forEach(r=>add(hcHomeItem('New Rental Available',`${r.propertyType||'Property'} • ${r.city||r.location||''} • ${r.rent?money(r.rent):''}`,r.status,'rentals','🏠',hcHomeTime(r),1)));
+ }
+ if(role==='owner'){
+   (data.rentalRequests||[]).filter(r=>cleanEmail(r.ownerEmail)===email&&pending(r.status)).forEach(r=>add(hcHomeItem('New Rental Viewing Request',`${r.seekerName||r.renterName||'Rental seeker'} requested ${r.propertyName||r.address||'your property'}`,r.status,'rentals','🔑',hcHomeTime(r),0)));
+   (data.rentals||[]).filter(r=>cleanEmail(r.ownerEmail)===email).forEach(r=>add(hcHomeItem('My Rental Listing',`${r.propertyType||'Property'} • ${r.city||r.location||''}`,r.status,'rentals','🏠',hcHomeTime(r),pending(r.status)?0:2)));
+ }
+ // Trucking and trailer.
+ if(role==='driver'){
+   (data.truckJobs||[]).filter(j=>available(j.status)).forEach(j=>add(hcHomeItem('Available Truck Job',`${j.title||'Driver job'} • ${j.route||j.city||''} • ${j.pay||''}`,j.status,'truck','🚛',hcHomeTime(j),1)));
+   (data.trailerRentals||[]).filter(t=>available(t.status)&&cleanEmail(t.ownerEmail)!==email).forEach(t=>add(hcHomeItem('Trailer Available for Rent',`${t.trailerType||'Trailer'} • ${t.location||''} • ${t.price||''}`,t.status,'truck','🔎',hcHomeTime(t),1)));
+   (data.truckApplications||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('Truck Job Application',`${a.jobTitle||'Driver job'} • ${a.ownerName||''}`,a.status,'truck','📋',hcHomeTime(a),pending(a.status)?0:2)));
+ }
+ if(role==='truck_owner'){
+   (data.truckApplications||[]).filter(a=>cleanEmail(a.ownerEmail)===email&&pending(a.status)).forEach(a=>add(hcHomeItem('New Driver Application',`${a.driverName||'Driver'} applied for ${a.jobTitle||'your job'}`,a.status,'truck','🚚',hcHomeTime(a),0)));
+   (data.trailerRentals||[]).filter(t=>cleanEmail(t.ownerEmail)===email&&t.renterEmail&&pending(t.status)).forEach(t=>add(hcHomeItem('New Trailer Rental Request',`${t.renterName||'Requester'} requested ${t.trailerType||'your trailer'}`,t.status,'truck','🔔',hcHomeTime(t),0)));
+   (data.truckJobs||[]).filter(j=>cleanEmail(j.ownerEmail)===email).forEach(j=>add(hcHomeItem('My Truck Job',`${j.title||'Driver job'} • ${j.route||''}`,j.status,'truck','🚛',hcHomeTime(j),pending(j.status)?0:2)));
+ }
+ // Shipping.
+ if(role==='traveler'){
+   (data.shipments||[]).filter(x=>cleanEmail(x.travelerEmail)===email).forEach(x=>add(hcHomeItem('Shipping Request',`${x.senderName||'Sender'} • ${x.from||x.origin||''} to ${x.to||x.destination||''}`,x.status,'shipping','📦',hcHomeTime(x),pending(x.status)?0:2)));
+ }
+ if(role==='sender'){
+   (data.trips||[]).filter(t=>available(t.status)).forEach(t=>add(hcHomeItem('Traveler Trip Available',`${t.from||t.origin||''} to ${t.to||t.destination||''} • ${t.date||''}`,t.status,'shipping','✈️',hcHomeTime(t),1)));
+   (data.shipments||[]).filter(x=>cleanEmail(x.senderEmail)===email).forEach(x=>add(hcHomeItem('My Shipping Transaction',`${x.tracking||x.item||'Shipment'} • ${x.from||''} to ${x.to||''}`,x.status,'shipping','📦',hcHomeTime(x),pending(x.status)?0:2)));
+ }
+ // Jobs.
+ if(role==='job_seeker'||role==='customer'){
+   (data.jobs||[]).filter(j=>available(j.status)).forEach(j=>add(hcHomeItem('New Job Available',`${j.title||'Job'} • ${j.company||''} • ${j.city||''}`,j.status,'jobs','💼',hcHomeTime(j),1)));
+ }
+ if(role==='business_owner'||role==='employer'){
+   (data.jobs||[]).filter(j=>cleanEmail(j.employerEmail)===email).forEach(j=>add(hcHomeItem('My Job Post',`${j.title||'Job'} • ${j.company||''}`,j.status,'jobs','💼',hcHomeTime(j),pending(j.status)?0:2)));
+ }
+ // Home services.
+ if(role==='service_provider'){
+   (data.homeServiceRequests||[]).filter(r=>cleanEmail(r.providerEmail)===email&&pending(r.status)).forEach(r=>add(hcHomeItem('New Home Service Request',`${r.customerName||'Customer'} • ${r.service||r.category||'Service request'}`,r.status,'home_services','🛠️',hcHomeTime(r),0)));
+ }
+ if(role==='customer'){
+   (data.homeServicePosts||[]).filter(x=>available(x.status)).forEach(x=>add(hcHomeItem('Home Service Available',`${x.service||x.category||'Service'} • ${x.city||''}`,x.status,'home_services','🛠️',hcHomeTime(x),1)));
+   (data.homeServiceRequests||[]).filter(r=>cleanEmail(r.customerEmail)===email).forEach(r=>add(hcHomeItem('My Home Service Request',`${r.service||r.category||'Service'} • ${r.providerName||''}`,r.status,'home_services','📋',hcHomeTime(r),pending(r.status)?0:2)));
+ }
+ // Taxi/Limo.
+ if(role==='taxi_limo_owner'){
+   (data.taxiDriverApps||[]).filter(a=>cleanEmail(a.ownerEmail)===email&&pending(a.status)).forEach(a=>add(hcHomeItem('New Taxi/Limo Driver Application',`${a.driverName||'Driver'} applied`,a.status,'taxi','🚕',hcHomeTime(a),0)));
+ }
+ if(role==='taxi_limo_driver'||role==='taxi_driver'){
+   (data.taxiRideRequests||[]).filter(r=>available(r.status)||pending(r.status)).forEach(r=>add(hcHomeItem('Open Customer Ride',`${r.pickup||''} to ${r.dropoff||''} • ${r.rideDate||r.date||''}`,r.status,'taxi','🚕',hcHomeTime(r),1)));
+   (data.taxiDriverApps||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('My Taxi/Limo Application',`${a.ownerName||'Taxi/Limo owner'}`,a.status,'taxi','📋',hcHomeTime(a),pending(a.status)?0:2)));
+ }
+ // Marketplace.
+ if(role==='customer'||role==='marketplace'){
+   (data.market||[]).filter(m=>available(m.status)).forEach(m=>add(hcHomeItem('Marketplace Item Available',`${m.title||m.name||'Item'} • ${m.price?money(m.price):''}`,m.status,'marketplace','🛒',hcHomeTime(m),1)));
+ }
+ if(role==='marketplace'){
+   (data.marketRequests||[]).filter(r=>cleanEmail(r.sellerEmail)===email&&pending(r.status)).forEach(r=>add(hcHomeItem('New Marketplace Request',`${r.buyerName||'Buyer'} requested ${r.itemTitle||'your item'}`,r.status,'marketplace','🔔',hcHomeTime(r),0)));
+ }
+ // Business and events: approved public activity and own status.
+ if(role==='customer'){
+   (data.businesses||[]).filter(b=>available(b.status)).forEach(b=>add(hcHomeItem('Business Available',`${b.businessName||b.name||'Business'} • ${b.category||''}`,b.status,'business','🏢',hcHomeTime(b),1)));
+   (data.events||[]).filter(e=>available(e.status)).forEach(e=>add(hcHomeItem('Upcoming Event',`${e.title||'Event'} • ${e.city||e.location||''}`,e.status,'events','📅',hcHomeTime(e),1)));
+ }
+ if(role==='business_owner'){
+   (data.businesses||[]).filter(b=>cleanEmail(b.ownerEmail||b.email)===email).forEach(b=>add(hcHomeItem('My Business Listing',`${b.businessName||b.name||'Business'} • ${b.category||''}`,b.status,'business','🏢',hcHomeTime(b),pending(b.status)?0:2)));
+ }
+ if(role==='event_organizer'){
+   (data.events||[]).filter(e=>cleanEmail(e.organizerEmail||e.ownerEmail)===email).forEach(e=>add(hcHomeItem('My Event',`${e.title||'Event'} • ${e.city||e.location||''}`,e.status,'events','📅',hcHomeTime(e),pending(e.status)?0:2)));
+ }
+ return out.sort((a,b)=>a.priority-b.priority||b.time-a.time).slice(0,24);
+}
+function personalizedHomeFeed(){
+ if(!currentUser||currentUser.role==='admin')return '';
+ const items=personalizedHomeItems();
+ const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="show('${x.page}')">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
+ return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${items.length?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
+}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+
 
 
 function customerAction(page,role,sectionId){
