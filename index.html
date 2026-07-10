@@ -350,7 +350,12 @@ const ROLE_NAV_PAGES={
  customer:['home','profile','services','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'],
  admin:['home','profile','services','admin','taxi','events']
 };
-function rolePages(){return currentUser?(ROLE_PAGES[currentUser.role]||ROLE_PAGES.customer):ROLE_PAGES.guest}
+function rolePages(){
+ const allSignedIn=['home','services','profile','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications',...PUBLIC_PAGES];
+ if(!currentUser)return ROLE_PAGES.guest;
+ if(currentUser.role==='admin')return ROLE_PAGES.admin;
+ return allSignedIn;
+}
 function roleNavPages(){return currentUser?(ROLE_NAV_PAGES[currentUser.role]||ROLE_NAV_PAGES.customer):ROLE_NAV_PAGES.guest}
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
@@ -385,9 +390,18 @@ async function backgroundPageSync(p,force=false){
 function refreshCurrentPage(){backgroundPageSync(currentPage,true);}
 window.addEventListener('focus',()=>refreshCurrentPage());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshCurrentPage();});
-async function show(p){
+async function show(p,pushHistory=true){
  if(!pages.includes(p))p='home';
- if(!isAllowedPage(p)){p=currentUser?'services':'account'}
+ if(!isAllowedPage(p)){p=currentUser?'home':'account'}
+ // V7.8.96: keep category navigation simple. A signed-in user sees all categories,
+ // and browser/phone Back returns to the previous page, normally Home.
+ if(pushHistory && !renderingPage){
+   try{
+     const hash='#'+p;
+     if(location.hash!==hash){history.pushState({page:p},'',hash)}
+     else {history.replaceState({page:p},'',hash)}
+   }catch(e){}
+ }
  // V7.8.41: switch visible page immediately. Do not show a Supabase loading screen for normal button clicks.
  const oldScroll=window.scrollY||document.documentElement.scrollTop||0;
  pages.forEach(x=>{let el=$(x); if(el)el.classList.add('hide')});
@@ -411,6 +425,13 @@ async function show(p){
    if(p==='admin')setTimeout(()=>window.scrollTo(0,oldScroll),0);
  }
 }
+
+window.addEventListener('popstate',(ev)=>{
+  let p=(ev.state&&ev.state.page)||String(location.hash||'').replace('#','')||'home';
+  if(!pages.includes(p))p='home';
+  show(p,false);
+});
+
 async function openTruckSection(sectionId){
  if(!requireLogin())return;
  await show('truck');
@@ -592,7 +613,7 @@ function roleWelcome(){
 function roleServices(){
  const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Listings, favorites, viewing requests, owner tools, and approvals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['🔎','Job Seekers','Approved jobs from Business Directory businesses. Job seekers contact the business directly.'],truck:['🚚','Trucking & Trailer','Truck owners, drivers, and trailer owners can post jobs, find drivers, apply for jobs, and rent trailers.'],home_services:['🛠️','Home Services','Customers can find cleaners, movers, repairs, electricians, plumbers, and helpers.'],taxi:['🚕','Taxi/Limo','Taxi/Limo owners and drivers can manage vehicles, availability, and hiring connections.'],business:['🏢','Business Directory','Create or browse community business profiles, services, hours, phone, menu, and directions.'],events:['📅','Events','Community, church, cultural, business, family, charity, and sports events.']};
  const order=['shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'];
- const cards=order.filter(p=>info[p]&&isAllowedPage(p)).map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
+ const cards=order.filter(p=>info[p]&&(!currentUser||isAllowedPage(p))).map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
  const customerOpen=currentUser?"show('profile')":"show('account')";
  const customerCard=`<div class="card"><div class="service-icon">🧭</div><h3>Customer</h3><p class="muted">Create an account, choose a category, browse services, and manage your requests.</p><button class="btn primary" onclick="${customerOpen}">Open</button></div>`;
  return customerCard+cards;
@@ -619,7 +640,18 @@ function jumpToSection(id){let el=document.getElementById(id);if(el){el.scrollIn
 function categoryDashboard(title,subtitle,buttons){return `<div class="card"><h3>${title}</h3>${subtitle?`<p class="muted">${subtitle}</p>`:''}<div class="actions">${buttons.join('')}</div></div>`;}
 function categoryButton(label,target,primary){return `<button class="btn ${primary?'primary':'ghost'}" onclick="${target.startsWith('show(')?target:`jumpToSection('${target}')`}">${label}</button>`;}
 function signInButton(label){return `<button class="btn primary" onclick="show('account')">${label||'Sign In / Create Account'}</button>`;}
-function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="show('${page}')">Open</button></div>`}
+function openService(page){
+ if(!pages.includes(page))page='home';
+ if(currentUser){
+   currentUser.active_service=page;
+   localStorage.setItem('hc_active_service_'+currentUser.email,page);
+   let u=(data.users||[]).find(x=>cleanEmail(x.email)===cleanEmail(currentUser.email));
+   if(u)u.active_service=page;
+   persistOnly();
+ }
+ show(page);
+}
+function service(icon,title,text,page){return `<div class="card"><div class="service-icon">${icon}</div><h3>${title}</h3><p class="muted">${text}</p><button class="btn primary" onclick="openService('${page}')">Open</button></div>`}
 function account(){$('account').innerHTML=`<div class="grid"><div class="card"><h2>Login</h2><label>Email</label><input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"><label>Password</label>${passwordField('loginPass','Enter password','current-password')}<button class="btn primary" onclick="login()">Login</button><button class="btn ghost" onclick="forgotPass()">Forgot Password</button></div><div class="card"><h2>Create Account</h2><p class="muted">Create your account first. After signup, choose Shipping, Rentals, Trucking, Marketplace, or any service from the home page.</p><label>Full Name</label><input id="regName"><label>Phone Number</label><input id="regPhone" placeholder="404-555-1234"><label>Email</label><input id="regEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"><label>Password</label>${passwordField('regPass','Create password','new-password')}<label><input type="checkbox" id="agreeTerms" style="width:auto;margin-right:8px">I agree to the Terms and Privacy Policy</label><button class="btn primary" onclick="register()">Create Account</button></div></div>`;showAuthStatus()}
 
 async function forgotPass(){let defaultEmail=cleanEmail($('loginEmail')?.value||'');let e=prompt('Enter the email address for password reset',defaultEmail);if(!e)return;e=cleanEmail(e);if(!e.includes('@'))return alert('Please enter a valid full email address.');if(authReady()){let redirect=location.origin+location.pathname;let {error}=await hcSupabase.auth.resetPasswordForEmail(e,{redirectTo:redirect});if(error)return alert('Password reset could not be sent: '+error.message);alert('Password reset email sent. Open the email and click the reset link. It will show New Password and Confirm Password boxes.');return;}addNote(e,'Password reset requested. In the real app, an email reset link will be sent.');save();alert('Password reset notification created.');}
@@ -3368,7 +3400,8 @@ adminApproveRentalReq=function(id){return alert('Rental request approval is done
 adminDeclineRentalReq=function(id){return alert('Rental request decline is done by the property owner. Admin only approves property listings.');};
 adminFinalApproveRentalReq=function(id){return alert('Final admin approval is not used in this rental flow. Owner Accept marks the property Rented.');};
 
-render();(async()=>{if(!(await handlePasswordRecovery())){show('home');await initAuth();}})();
+try{history.replaceState({page:'home'},'',location.hash||'#home')}catch(e){}
+render();(async()=>{if(!(await handlePasswordRecovery())){show('home',false);await initAuth();}})();
 
 
 
