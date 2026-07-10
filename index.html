@@ -427,6 +427,7 @@ async function show(p,pushHistory=true){
  }finally{
    renderingPage=false;
    if(p==='admin')setTimeout(()=>window.scrollTo(0,oldScroll),0);
+   else setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);
  }
 }
 
@@ -681,21 +682,29 @@ async function chooseServiceRole(page,role){
     let query=hcSupabase.from('profiles').update({roles:currentUser.roles,active_role:role,role:role});
     fireAndForget(currentUser.id?query.eq('id',currentUser.id):query.eq('email',currentUser.email),'service role sync');
   }
-  show(page);
+  await show(page);
+  setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),80);
 }
 function categoryDashboard(title,subtitle,buttons){
   if(needsServiceChoice(currentPage))return serviceRolePanel(currentPage);
   return `<div class="card"><h3>${title}</h3>${subtitle?`<p class="muted">${subtitle}</p>`:''}<div class="actions">${buttons.join('')}</div></div>`;
 }
-function categoryButton(label,target,primary){return `<button class="btn ${primary?'primary':'ghost'}" onclick="${target.startsWith('show(')?target:`jumpToSection('${target}')`}">${label}</button>`;}
+function categoryButton(label,target,primary){
+  let action=(target.includes('(')||target.startsWith('show('))?target:`jumpToSection('${target}')`;
+  return `<button class="btn ${primary?'primary':'ghost'}" onclick="${action}">${label}</button>`;
+}
 function signInButton(label){return `<button class="btn primary" onclick="show('account')">${label||'Sign In / Create Account'}</button>`;}
 function openService(page){
  if(!pages.includes(page))page='home';
  if(currentUser){
-   currentUser.active_service=page;
-   localStorage.setItem('hc_active_service_'+currentUser.email,page);
+   // When a user opens a category from Home, always show the My Service choice box first.
+   // After they choose Traveler/Sender/Owner/Driver/etc., chooseServiceRole() sets active_service to the page.
+   currentUser.active_service='';
+   currentUser.pending_service=page;
+   localStorage.setItem('hc_pending_service_'+currentUser.email,page);
+   localStorage.removeItem('hc_active_service_'+currentUser.email);
    let u=(data.users||[]).find(x=>cleanEmail(x.email)===cleanEmail(currentUser.email));
-   if(u)u.active_service=page;
+   if(u){u.active_service='';u.pending_service=page;}
    persistOnly();
  }
  show(page);
