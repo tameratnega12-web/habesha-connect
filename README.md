@@ -1,18 +1,15 @@
-# Habesha Agenagn V7.8.114 — Category Transactions Below How It Works
+# Habesha Agenagn V7.8.117 — Customer-Posted Home Service Jobs
 
-This version is based on V7.8.113.
+New Home Services workflow:
+1. Customer posts the service they need.
+2. Admin approves or declines it.
+3. Providers with an approved matching service category see the job.
+4. The first matching provider can accept it.
+5. Provider marks the work complete.
+6. Customer confirms completion.
 
-## Change
-For signed-in users, visible transactions and opportunities are placed directly below the category's **How It Works** note instead of appearing near the bottom.
+## Required SQL
+Run this once in Supabase SQL Editor before testing:
+`supabase/v7_8_117_home_service_customer_jobs.sql`
 
-Applied across Shipping, Rentals, Marketplace, Jobs, Trucking & Trailer, Home Services, Taxi/Limo, Business Directory, Events, and Customer pages.
-
-- Existing workflows are unchanged.
-- Admin behavior is unchanged.
-- Desktop and phone layouts are preserved.
-- No SQL is required.
-
-## V7.8.115 - All User Transactions Under How It Works
-- Owner rental requests requiring Accept/Decline now appear directly below How It Works.
-- Later-stage action transactions are lifted to the top across categories.
-- No SQL changes.
+The existing direct workflow where customers choose a listed provider is preserved.

@@ -1,3 +1,1 @@
-V7.8.114 moves user-visible transactions and approved opportunities directly below each category's How It Works note. No SQL required.
-
-V7.8.115 keeps all user action transactions directly below the How It Works note, including owner rental Accept/Decline requests.
+V7.8.117 adds customer-posted Home Service jobs with admin approval, category matching, provider acceptance, provider completion, and customer confirmation. Run the included V7.8.117 SQL once.
