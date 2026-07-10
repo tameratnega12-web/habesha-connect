@@ -3697,5 +3697,137 @@ async function adminApproveTrailerPayment(id){
   alert('Trailer rental payment approved. Status changed to Rented.');
 }
 </script>
+
+
+<style id="v78109-user-mobile-cards">
+/* V7.8.109 — phone-first cards for every non-admin user dashboard */
+@media (max-width: 760px){
+  body:not(.admin-mobile-view) section table.v78109-user-table,
+  body:not(.admin-mobile-view) .page table.v78109-user-table{
+    display:block !important;
+    width:100% !important;
+    border:0 !important;
+    background:transparent !important;
+  }
+  table.v78109-user-table thead,
+  table.v78109-user-table > tbody > tr:first-child:has(th){display:none !important;}
+  table.v78109-user-table tbody{display:block !important;width:100% !important;}
+  table.v78109-user-table tr.v78109-user-row{
+    display:block !important;
+    width:100% !important;
+    margin:0 0 14px !important;
+    padding:14px !important;
+    border:1px solid #d9e2ec !important;
+    border-radius:14px !important;
+    background:#fff !important;
+    box-shadow:0 3px 12px rgba(15,23,42,.08) !important;
+    overflow:hidden !important;
+  }
+  table.v78109-user-table tr.v78109-priority-row{
+    border:2px solid #f59e0b !important;
+    box-shadow:0 4px 14px rgba(245,158,11,.18) !important;
+  }
+  table.v78109-user-table tr.v78109-priority-row::before{
+    content:'NEW / ACTION NEEDED';
+    display:inline-block;
+    margin:0 0 9px;
+    padding:4px 9px;
+    border-radius:999px;
+    background:#fff7ed;
+    color:#9a3412;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.03em;
+  }
+  table.v78109-user-table td{
+    display:grid !important;
+    grid-template-columns:minmax(105px,38%) 1fr !important;
+    gap:9px !important;
+    width:100% !important;
+    padding:8px 0 !important;
+    border:0 !important;
+    border-bottom:1px solid #edf2f7 !important;
+    text-align:left !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+  }
+  table.v78109-user-table td:last-child{border-bottom:0 !important;}
+  table.v78109-user-table td::before{
+    content:attr(data-label);
+    font-weight:800;
+    color:#334155;
+  }
+  table.v78109-user-table td[colspan]{display:block !important;text-align:center !important;}
+  table.v78109-user-table td[colspan]::before{content:'' !important;}
+  table.v78109-user-table td .btn,
+  table.v78109-user-table td button,
+  table.v78109-user-table td a.btn{
+    width:100% !important;
+    min-height:44px !important;
+    margin:4px 0 !important;
+    white-space:normal !important;
+  }
+  .tableWrap{overflow:visible !important;max-width:100% !important;}
+}
+</style>
+<script id="v78109-user-mobile-script">
+(function(){
+  const priorityWords=['pending','new','waiting','requested','request sent','action required','payment pending','needs approval','available'];
+  const completedWords=['approved','declined','rejected','completed','delivered','paid out','closed','cancelled','rented','hired'];
+
+  function isAdminView(){
+    try{return (window.currentPage==='admin') || (window.currentUser && window.currentUser.role==='admin');}
+    catch(e){return false;}
+  }
+  function rowPriority(row){
+    const text=(row.innerText||'').toLowerCase();
+    if(completedWords.some(w=>text.includes(w))) return 0;
+    return priorityWords.some(w=>text.includes(w)) ? 2 : 1;
+  }
+  function prepareTable(table){
+    if(!table || table.dataset.v78109Prepared==='1' || isAdminView()) return;
+    const rows=[...table.rows];
+    if(rows.length<1) return;
+    let header=rows.find(r=>r.querySelector('th'));
+    const labels=header?[...header.cells].map(c=>(c.innerText||'Details').trim()):[];
+    const body=table.tBodies[0]||table;
+    let dataRows=[...body.rows].filter(r=>!r.querySelector('th'));
+    if(!dataRows.length) return;
+
+    table.classList.add('v78109-user-table');
+    dataRows.forEach((row,index)=>{
+      row.classList.add('v78109-user-row');
+      row.dataset.v78109Original=String(index);
+      [...row.cells].forEach((cell,i)=>cell.setAttribute('data-label',labels[i]||('Details '+(i+1))));
+      if(rowPriority(row)===2) row.classList.add('v78109-priority-row');
+    });
+
+    // Pending/action-needed records first. Within each group, newest appended record first.
+    dataRows.sort((a,b)=>{
+      const pd=rowPriority(b)-rowPriority(a);
+      if(pd) return pd;
+      return Number(b.dataset.v78109Original)-Number(a.dataset.v78109Original);
+    }).forEach(r=>body.appendChild(r));
+    table.dataset.v78109Prepared='1';
+  }
+  function applyUserMobileLayout(){
+    document.body.classList.toggle('admin-mobile-view',isAdminView());
+    if(isAdminView()) return;
+    document.querySelectorAll('section:not(#admin) table, .page:not(#admin) table').forEach(prepareTable);
+  }
+  let scheduled=false;
+  function schedule(){
+    if(scheduled)return; scheduled=true;
+    requestAnimationFrame(()=>{scheduled=false;applyUserMobileLayout();});
+  }
+  document.addEventListener('DOMContentLoaded',schedule);
+  window.addEventListener('resize',schedule);
+  const observer=new MutationObserver(schedule);
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(schedule,200);
+  setTimeout(schedule,900);
+})();
+</script>
+
 </body>
 </html>
