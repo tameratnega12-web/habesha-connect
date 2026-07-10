@@ -1,5 +1,6 @@
-Habesha Agenagn / Habesha Connect V7.8.91
+Habesha Agenagn V7.8.93 - Shipping and Taxi/Limo Admin Email Notification Fix
 
-Change: Taxi/Limo customer ride requests added.
-
-Run the SQL file in supabase/v7_8_91_taxi_ride_requests.sql before testing customer ride requests.
+Updates:
+- Confirmed Taxi/Limo ride requests send admin email notification when submitted.
+- Updated Shipping Post Item admin email notification to go to Admin Dashboard and include full request details.
+- No SQL changes.
