@@ -28,3 +28,6 @@ The existing direct workflow where customers choose a listed provider is preserv
 - Accept is allowed only when the job category matches one of the provider’s approved service categories.
 - Decline removes the job only from that provider’s page; other providers can still see it.
 - Run `supabase/v7_8_119_home_service_provider_declines.sql` once in Supabase.
+
+## V7.8.120 Home Service Admin Dashboard Fix
+Run `supabase/v7_8_120_home_service_admin_dashboard_fix.sql` once in Supabase SQL Editor. This allows the signed-in Admin Dashboard to load and approve pending provider service posts and direct Home Service requests.
