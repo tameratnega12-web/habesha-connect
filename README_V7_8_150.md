@@ -22,3 +22,9 @@ Business Directory and Job Seeker flow review and correction.
 - Added **Post Item to Ship** to the signed-in Sender home page.
 - Each button opens Shipping and scrolls directly to the correct section.
 - Uses the existing responsive card grid for desktop and phone layouts.
+
+
+## V7.8.154
+- Removed the Post Traveler Trip form from the Traveler View Requests screen.
+- Open Trip still opens the Post Traveler Trip form directly.
+- Verified responsive behavior for desktop and phone layouts.
