@@ -1481,7 +1481,8 @@ async function shipping(){
  if(role==='traveler'){
    $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${tripBox}${statsHtml}${shippingItemsHtml}${shipmentRequestsHtml}<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>${intro}`;
  } else if(role==='sender'||role==='customer'||!currentUser){
-   $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${senderItemBox}${statsHtml}${searchBox}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${intro}`;
+   const senderFormForCurrentView=(currentUser&&(role==='sender'||role==='customer')&&senderShippingView==='post')?senderItemBox:'';
+   $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${senderFormForCurrentView}${statsHtml}${searchBox}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${intro}`;
  } else if(role==='admin'){
    $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${shippingDash}${statsHtml}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}`;
  } else {
