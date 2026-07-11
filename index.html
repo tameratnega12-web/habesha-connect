@@ -1483,17 +1483,18 @@ async function shipping(){
  let senderItemBox = ((role==='sender'||role==='customer')) ? `<section id="senderPostItem" class="card"><h3>Post Item to Ship</h3><p class="muted">Post your item even when no traveler trip is available yet. You can post U.S. to Ethiopia or Ethiopia to U.S.</p>${routeSelects('itemShip')}<label>Needed By Date</label><input id="itemNeededBy" type="date" min="${addDaysIso(0)}"><label>Item Description</label><textarea id="itemDesc" placeholder="Example: clothes, documents, small box"></textarea><label>Weight lb</label><input id="itemWeight" type="number" min="1" value="25"><label>Sender Phone</label><input id="itemSenderPhone" inputmode="numeric" placeholder="4045551234" value="${(currentUser&&currentUser.phone)||''}"><label>Receiver Name</label><input id="itemReceiver" placeholder="Receiver full name"><label>Receiver Phone</label><input id="itemReceiverPhone" inputmode="numeric" placeholder="251911123456"><label>Notes</label><textarea id="itemNotes" placeholder="Pickup details or special notes"></textarea><button class="btn primary" onclick="submitShippingItem()">Submit Item to Admin</button></section>` : '';
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();
  let visibleTrips=data.trips.filter(t=>{let openForBooking=role==='admin'||isTripBookable(t);let matches=!shipFilter||String(t.route||'').toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)||String(t.fromCity||'').toLowerCase().includes(shipFilter)||String(t.toCity||'').toLowerCase().includes(shipFilter);return openForBooking&&matches;}).sort(activeTripSort);
- let terminalStatuses=['Completed'];
+ let terminalStatuses=['Delivered','Completed'];
  let shipments=data.shipments.filter(s=>{
    if(role==='admin')return true;
-   if(terminalStatuses.includes(s.status||'') || ((s.status==='Delivered'||s.status==='Completed') && s.travelerPaid))return false;
+   // V7.8.185: once Admin marks a shipment delivered, close it from both Sender and Traveler dashboards.
+   if(terminalStatuses.includes(s.status||''))return false;
    if(!currentUser)return true;
    if(role==='traveler')return (String(s.travelerId||'')===String(currentUser.id||'') || (s.travelerEmail&&s.travelerEmail===currentUser.email));
    if(role==='sender'||role==='customer')return (String(s.senderId||'')===String(currentUser.id||'') || (s.senderEmail&&s.senderEmail===currentUser.email));
    return (s.senderEmail===currentUser.email || s.travelerEmail===currentUser.email);
  });
  let myTrips=data.trips.filter(t=>{let mine=currentUser&&(String(t.travelerId||'')===String(currentUser.id||'')||t.travelerEmail===currentUser.email);let status=String(t.status||'Open');return mine&&!['Closed','Cancelled','Canceled','Completed','Delivered','Flown'].includes(status);}).sort(activeTripSort);
- let shippingItems=(data.shippingItems||[]).filter(it=>{if(role==='admin')return true;if(!currentUser)return ['Open'].includes(it.status||'');if(role==='traveler')return ['Open','Accepted','Payment Pending Admin Review','Approved'].includes(it.status||'')&&(!it.travelerEmail||it.travelerEmail===currentUser.email||String(it.travelerId||'')===String(currentUser.id||''));if(role==='sender'||role==='customer')return it.senderEmail===currentUser.email||String(it.senderId||'')===String(currentUser.id||'');return false;});
+ let shippingItems=(data.shippingItems||[]).filter(it=>{if(role==='admin')return true;let itemStatus=String(it.status||'');if(['Delivered','Completed'].includes(itemStatus))return false;if(!currentUser)return ['Open'].includes(itemStatus);if(role==='traveler')return ['Open','Accepted','Payment Pending Admin Review','Approved'].includes(itemStatus)&&(!it.travelerEmail||it.travelerEmail===currentUser.email||String(it.travelerId||'')===String(currentUser.id||''));if(role==='sender'||role==='customer')return (it.senderEmail===currentUser.email||String(it.senderId||'')===String(currentUser.id||''));return false;});
  let statsHtml='';
  if(role==='admin'){
    statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>`;
@@ -1653,7 +1654,7 @@ async function updateShippingItemDb(it,patch){
  if(!authReady()||!it.dbId)return {error:null};
  if(it.source==='shipments_fallback'||it.fallbackDb){
    const allowed={};
-   ['status','paid','traveler_id'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
+   ['status','paid','traveler_id','traveler_name','traveler_phone'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
    if(allowed.status&&!String(allowed.status).includes('Sender Item')&&allowed.status==='Pending Admin Approval')allowed.status+=' - Sender Item';
    return await hcSupabase.from('shipments').update(allowed).eq('id',it.dbId);
  }
