@@ -3260,7 +3260,7 @@ function adminPendingCount(){
  return count;
 }
 function adminPendingQueueHtml(){
- return `<div id="adminPendingQueue" class="card adminPendingQueue"><div class="adminPendingQueueHead"><div><h3 style="margin:0">🔴 Pending Admin Actions</h3><p class="muted" style="margin:5px 0 0">New requests from every category appear here first. After Approve or Decline, they remain in their category summary below.</p></div><span id="adminPendingQueueCount" class="adminPendingQueueCount">0</span></div><div id="adminPendingQueueGrid" class="adminPendingQueueGrid"><p class="muted">Checking pending transactions...</p></div></div>`;
+ return `<div id="adminPendingQueue" class="card adminPendingQueue"><div class="adminPendingQueueHead"><div><h3 style="margin:0">🔴 Pending Admin Actions</h3><p class="muted" style="margin:5px 0 0">Every transaction needing Admin action appears here first. After Admin acts, it leaves this queue and appears in its appropriate category section below with the updated status.</p></div><span id="adminPendingQueueCount" class="adminPendingQueueCount">0</span></div><div id="adminPendingQueueGrid" class="adminPendingQueueGrid"><p class="muted">Checking pending transactions...</p></div></div>`;
 }
 function buildAdminPendingQueue(){
  const root=$('admin'), grid=$('adminPendingQueueGrid'), badge=$('adminPendingQueueCount');
@@ -3291,6 +3291,11 @@ function buildAdminPendingQueue(){
      }
    });
    grid.appendChild(card);
+   // Pending transactions live only in the top Verification Center queue.
+   // Once Admin acts, the refreshed row loses its pending status and appears
+   // again in the appropriate category section with its new status.
+   row.style.display='none';
+   row.setAttribute('aria-hidden','true');
  });
  badge.textContent=String(pendingRows.length);
  if(!pendingRows.length)grid.innerHTML='<div class="notice"><b>No pending admin actions.</b> New submissions will appear here automatically after Refresh.</div>';
@@ -3309,13 +3314,14 @@ function decorateAdminMobileTables(){
      if(ri===0&&row.querySelector('th'))return;
      [...row.children].forEach((cell,i)=>{if(cell.tagName==='TD')cell.setAttribute('data-label',labels[i]||('Detail '+(i+1)));});
      const text=row.textContent.toLowerCase();
-     if(text.includes('pending')||text.includes('waiting')||text.includes('review'))row.classList.add('adminPendingRow');
+     const needsAdminAction=text.includes('pending')||text.includes('waiting')||text.includes('review')||text.includes('not verified')||text.includes('needs admin')||text.includes('manual payment');
+     if(needsAdminAction)row.classList.add('adminPendingRow');
    });
  });
 }
 function adminScrollToPending(){
- const row=document.querySelector('#admin .adminPendingRow');
- if(row)row.scrollIntoView({behavior:'smooth',block:'start'});else alert('No pending approval is currently visible. Tap Refresh after new submissions arrive.');
+ const queue=document.querySelector('#adminPendingQueue');
+ if(queue)queue.scrollIntoView({behavior:'smooth',block:'start'});else alert('No pending approval is currently visible. Tap Refresh after new submissions arrive.');
 }
 
 async function admin(){
