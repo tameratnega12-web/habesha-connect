@@ -834,13 +834,17 @@ function travelerHomeActions(){
 }
 function senderHomeActions(){
  if(!currentUser||currentUser.role!=='sender')return '';
- return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find a traveler, post an item to ship, or look for a rental immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div><div class="card"><h3>🏠 Find Rentals</h3><p class="muted">Browse approved homes and rooms available for rent.</p><button class="btn primary" onclick="goRentalSection('available')">Find Rentals</button></div></div></section>`;
+ return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find an approved traveler or post an item to ship immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
+}
+function rentSeekerHomeActions(){
+ if(!currentUser||currentUser.role!=='rent_seeker')return '';
+ return `<section id="rentSeekerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🔍 Rent Seeker Quick Action</h2><p class="muted">Browse approved homes and rooms immediately after signing in.</p></div><div class="grid"><div class="card"><h3>🏠 Find Rentals</h3><p class="muted">View approved rental properties and request a viewing.</p><button class="btn primary" onclick="goRentalSection('available')">Find Rentals</button></div></div></section>`;
 }
 function propertyOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='owner')return '';
  return `<section id="propertyOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🏠 Property Owner Quick Actions</h2><p class="muted">Add a property or review rent seekers immediately after signing in.</p></div><div class="grid"><div class="card"><h3>🏠 Add Property</h3><p class="muted">Post a home, apartment, room, or other rental property.</p><button class="btn primary" onclick="goRentalSection('add')">Add Property</button></div><div class="card"><h3>👀 View Rent Seekers</h3><p class="muted">Review people who requested your rental properties.</p><button class="btn primary" onclick="goRentalSection('seekers')">View Rent Seekers</button></div></div></section>`;
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
 
 
@@ -1724,7 +1728,9 @@ async function rentals(){
  let adminRequests=[...ownerReqs,...data.rentalRequests.filter(q=>!ownerReqs.includes(q))];
  if(role==='owner'){
    $('rentals').innerHTML=`${rentalDash}${ownerDashboard}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
- } else if(role==='rent_seeker'||role==='customer'||!currentUser){
+ } else if(role==='rent_seeker'){
+   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
+ } else if(role==='customer'||!currentUser){
    $('rentals').innerHTML=`${rentalDash}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='admin'){
    $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}${rentalDash}${adminSummary}${canPost?`<div class="grid">${addPropertyCard}${searchFilters}</div>`:searchFilters}<h3>All Rental Listings</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${rentalRequestsTable(adminRequests,'admin')}`;
