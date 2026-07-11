@@ -4364,5 +4364,75 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.136';
 })();
 </script>
+
+
+<script id="v78138-marketplace-buyer-agree">
+/* V7.8.138 Marketplace buyer confirmation, desktop + phone.
+   After seller accepts: listing button shows Accepted, request card shows Agree.
+   After buyer agrees: status becomes Completed, admin and seller are emailed, seller contact is shown. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function findReq(id){return (data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));}
+  function buyerReqForItem(m){
+    if(!currentUser)return null;
+    const email=cleanEmail(currentUser.email);
+    return (data.marketRequests||[]).find(r=>cleanEmail(r.buyerEmail)===email&&String(r.itemId)===String(m.dbId||m.id)&&!['Cancelled','Admin Declined','Seller Declined','Connection Declined'].includes(r.status));
+  }
+  async function refresh(){
+    persistOnly();
+    try{if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();}catch(e){console.warn('Marketplace refresh skipped',e);}
+    marketplace();
+  }
+
+  window.marketBuyerAgree=async function(id){
+    const r=findReq(id);
+    if(!r||!currentUser||cleanEmail(r.buyerEmail)!==cleanEmail(currentUser.email))return alert('Buyer only.');
+    if(r.status!=='Connection Approved')return alert('The seller must accept before you can agree.');
+    if(!confirm('Do you agree to buy this item from the seller?'))return;
+    r.status='Completed';
+    const res=await updateMarketRequestDb(r,r.status);
+    if(res.error)return alert('Could not save your agreement: '+res.error.message);
+    addNote(r.sellerEmail,'Buyer agreed to buy your marketplace item: '+r.itemTitle);
+    addNote('admin.habeshaconnect@gmail.com','Marketplace buyer agreed after seller acceptance: '+r.itemTitle);
+    try{await Promise.resolve(sendEmailNotice({to:r.sellerEmail,name:r.sellerName,subject:'Marketplace buyer agreed',summary:'The buyer agreed to buy your marketplace item.',buttonText:'Open Marketplace',page:'marketplace',details:{Buyer:r.buyerName,Item:r.itemTitle,Status:'Buyer Agreed'}}));}catch(e){console.warn('Seller agreement email failed',e);}
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace buyer agreed','The buyer agreed after the seller accepted the marketplace request.',{Buyer:r.buyerName,Seller:r.sellerName,Item:r.itemTitle,Status:'Buyer Agreed'},'marketplace'));}catch(e){console.warn('Admin agreement email failed',e);}
+    await refresh();
+    alert('Agreed. Seller information is now available.');
+  };
+
+  window.marketCard=function(m){
+    const myEmail=currentUser?cleanEmail(currentUser.email):'';
+    const isOwner=currentUser&&cleanEmail(m.sellerEmail)===myEmail;
+    const isAdmin=currentUser&&currentUser.role==='admin';
+    const req=buyerReqForItem(m);
+    const canBuy=currentUser&&!isOwner&&!isAdmin&&(m.status==='Approved'||m.status==='Available')&&!req;
+    const statusClass=(m.status==='Approved'||m.status==='Available')?'good':m.status==='Declined'?'bad':'warn';
+    let buyerButton='';
+    if(req){
+      if(req.status==='Connection Approved')buyerButton=`<button class="btn good" type="button" onclick="marketBuyerAgree('${req.id}')">Accepted — Agree</button>`;
+      else if(req.status==='Completed')buyerButton=`<button class="btn good" type="button" disabled>Agreed</button>`;
+      else buyerButton=`<button class="btn ghost" type="button" disabled>${req.status==='Admin Approved - Waiting Seller'?'Waiting for Seller':req.status==='Buyer Request Pending Admin'?'Request Pending Admin':req.status}</button>`;
+    }
+    return `<div class="card"><h3>${m.title}</h3>${marketPhotosHtml(m)}<p class="muted">${m.category||'Other'} • ${m.condition||'Good'} • ${m.city||''}</p><p><b>${money(m.price)}</b></p><p>${m.description||''}</p><p class="muted">Seller: ${m.seller||'Seller'}</p><span class="pill ${statusClass}">${m.status}</span><div class="actions">${canBuy?`<button class="btn primary" type="button" onclick="marketRequestBuy('${m.id}')">Request to Buy</button><button class="btn ghost" type="button" onclick="marketSaveItem('${m.id}')">Save Item</button>`:''}${buyerButton}${isOwner&&['Approved','Available'].includes(m.status)?`<button class="btn primary" type="button" onclick="marketMarkSold('${m.id}')">Mark Sold</button>`:''}${isAdmin&&m.status==='Pending Admin Approval'?`<button class="btn primary" type="button" onclick="marketAdminApproveListing('${m.id}')">Approve Listing</button><button class="btn danger" type="button" onclick="marketAdminDeclineListing('${m.id}')">Decline</button>`:''}${isAdmin&&m.status==='Sold Waiting Admin Verification'?`<button class="btn primary" type="button" onclick="marketAdminVerifySale('${m.id}')">Verify Sold</button>`:''}</div></div>`;
+  };
+
+  window.marketRequestCard=function(r){
+    const isSeller=currentUser&&cleanEmail(r.sellerEmail)===cleanEmail(currentUser.email);
+    const isBuyer=currentUser&&cleanEmail(r.buyerEmail)===cleanEmail(currentUser.email);
+    const isAdmin=currentUser&&currentUser.role==='admin';
+    const displayStatus=r.status==='Connection Approved'?'Seller Accepted — Waiting for Buyer Agreement':r.status==='Completed'?'Buyer Agreed':r.status;
+    const cls=['Connection Approved','Completed'].includes(r.status)?'good':String(r.status||'').includes('Declined')?'bad':'warn';
+    const sellerContact=`Seller: ${String(r.sellerName||'Seller').replace(/'/g,"\\'")}\\nPhone: ${String(r.sellerPhone||'Not provided').replace(/'/g,"\\'")}\\nEmail: ${String(r.sellerEmail||'').replace(/'/g,"\\'")}`;
+    const buyerContact=`Buyer: ${String(r.buyerName||'Buyer').replace(/'/g,"\\'")}\\nPhone: ${String(r.buyerPhone||'Not provided').replace(/'/g,"\\'")}\\nEmail: ${String(r.buyerEmail||'').replace(/'/g,"\\'")}`;
+    return `<div class="item"><b>${r.itemTitle}</b><p>${r.buyerName} wants to buy from ${r.sellerName}</p><span class="pill ${cls}">${displayStatus}</span><div class="actions">${isAdmin&&r.status==='Buyer Request Pending Admin'?`<button class="btn primary" type="button" onclick="marketAdminApproveBuyerReq('${r.id}')">Approve Request</button><button class="btn danger" type="button" onclick="marketAdminDeclineBuyerReq('${r.id}')">Decline</button>`:''}${isSeller&&r.status==='Admin Approved - Waiting Seller'?`<button class="btn primary" type="button" onclick="marketSellerAcceptReq('${r.id}')">Accept</button><button class="btn danger" type="button" onclick="marketSellerDeclineReq('${r.id}')">Decline</button>`:''}${isBuyer&&r.status==='Connection Approved'?`<button class="btn primary" type="button" onclick="marketBuyerAgree('${r.id}')">Agree</button>`:''}${isBuyer&&r.status==='Completed'?`<button class="btn primary" type="button" onclick="alert('${sellerContact}')">View Seller Information</button>`:''}${isSeller&&r.status==='Completed'?`<button class="btn ghost" type="button" onclick="alert('${buyerContact}')">View Buyer Information</button>`:''}</div></div>`;
+  };
+
+  // Phone-friendly action layout.
+  const style=document.createElement('style');
+  style.textContent='@media(max-width:700px){#marketplace .actions .btn{min-height:48px;width:100%;touch-action:manipulation}#marketplace .actions{display:grid;grid-template-columns:1fr;gap:9px}}';
+  document.head.appendChild(style);
+  window.__hcVersion='V7.8.138';
+})();
+</script>
 </body>
 </html>
