@@ -10,3 +10,9 @@ Business Directory and Job Seeker flow review and correction.
 - Existing admin approval, email, Supabase, and other category workflows are unchanged.
 - Phone and desktop layouts use the same responsive cards and actions.
 - No new SQL is required.
+
+## V7.8.151 Traveler Home Quick Actions
+- Traveler home page now shows **Open Trip** and **View Requests** immediately after sign-in.
+- Open Trip navigates directly to the traveler trip-posting form.
+- View Requests navigates directly to the traveler sender-request section.
+- Uses the existing responsive card grid and includes a delayed mobile fallback for reliable scrolling on phones.
