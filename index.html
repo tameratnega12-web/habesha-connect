@@ -1653,7 +1653,7 @@ async function updateShippingItemDb(it,patch){
  if(!authReady()||!it.dbId)return {error:null};
  if(it.source==='shipments_fallback'||it.fallbackDb){
    const allowed={};
-   ['status','paid','traveler_id','traveler_name','traveler_phone'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
+   ['status','paid','traveler_id'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
    if(allowed.status&&!String(allowed.status).includes('Sender Item')&&allowed.status==='Pending Admin Approval')allowed.status+=' - Sender Item';
    return await hcSupabase.from('shipments').update(allowed).eq('id',it.dbId);
  }
