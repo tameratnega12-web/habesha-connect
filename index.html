@@ -649,7 +649,9 @@ async function renderPage(p){
  if(p==='privacy')privacy();
  if(p==='terms')terms();
  // V7.8.115: place every user-visible and action-required transaction directly below the How It Works note.
- if(['customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'].includes(p)){
+ // V7.8.159: Shipping has its own fixed role order. Do not let the global transaction mover
+ // pull Available Items, Requests, or Trips above the Traveler/Sender posting forms.
+ if(['customer','rentals','marketplace','jobs','truck','home_services','taxi','business','events'].includes(p)){
    requestAnimationFrame(()=>placeCategoryTransactionsAtTop(p));
  }
 }
