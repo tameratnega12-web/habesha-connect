@@ -836,7 +836,16 @@ function senderHomeActions(){
  if(!currentUser||currentUser.role!=='sender')return '';
  return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find an approved traveler or post an item to ship immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function propertyOwnerHomeActions(){
+ if(!currentUser||currentUser.role!=='owner')return '';
+ return `<section id="propertyOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🏠 Property Owner Quick Action</h2><p class="muted">Add a rental property immediately after signing in.</p><button class="btn primary" onclick="goPropertyOwnerAddProperty()">Add Property</button></div></section>`;
+}
+async function goPropertyOwnerAddProperty(){
+ await show('rentals');
+ const top=()=>{window.scrollTo({top:0,behavior:'smooth'});const el=document.getElementById('rentAddPropertyCard');if(el){setTimeout(()=>el.querySelector('input,select,textarea')?.focus(),250);return true;}return false;};
+ if(!top())setTimeout(top,180);
+}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
 
 
@@ -1682,6 +1691,7 @@ function rentalRequestsTable(reqs,role){
 }
 function scrollToRentalRequests(){let el=document.getElementById('ownerRentalRequests');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 
+// V7.8.160: Property owner Rentals uses How It Works, Add Property form, then information boxes with no extra owner navigation buttons.
 async function rentals(){
  let role=currentUser?currentUser.role:'guest';
  let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin')).slice().reverse();
@@ -1709,7 +1719,7 @@ async function rentals(){
  let rentalDash=categoryDashboard('Rentals Dashboard','Choose what you want to do in Rentals.',[categoryButton('🔍 Find Rentals','availableRentals',true), canPost?categoryButton('🏠 Add Property','rentAddPropertyCard',false):'', currentUser?categoryButton('📋 My Requests','seekerRentalRequests',false):signInButton('Sign In for Rentals')]);
  let adminRequests=[...ownerReqs,...data.rentalRequests.filter(q=>!ownerReqs.includes(q))];
  if(role==='owner'){
-   $('rentals').innerHTML=`${rentalDash}${ownerDashboard}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
+   $('rentals').innerHTML=`<h2>🏠 Rental Dashboard</h2>${categoryIntro('rentals')}${addPropertyCard}${ownerSummary}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}`;
  } else if(role==='rent_seeker'||role==='customer'||!currentUser){
    $('rentals').innerHTML=`${rentalDash}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='admin'){
