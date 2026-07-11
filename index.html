@@ -1603,8 +1603,15 @@ async function submitShippingItem(){
  if(authReady()){
    let payload={local_ref:localRef,tracking_number:tracking,sender_id:currentUser.id||null,sender_name:currentUser.name,sender_email:currentUser.email,sender_phone:senderPhone,from_city:from,to_city:to,needed_by:neededBy,item_description:desc,weight_lb:weight,receiver_name:receiver,receiver_phone:receiverPhone,notes,status:'Pending Admin Approval',paid:false};
    let {data:row,error}=await hcSupabase.from('hc_shipping_items').insert(payload).select('*').single();
-   if(error)return alert('Could not save item to Supabase. Please run the new Shipping Item SQL first. '+error.message);
-   item=mapDbShippingItem(row);
+   if(error){
+     const missingShippingTable=String(error.code||'')==='PGRST205'||/hc_shipping_items|schema cache|could not find the table/i.test(String(error.message||''));
+     if(!missingShippingTable)return alert('Could not save item to Supabase. '+error.message);
+     // V7.8.182: allow sender posting to continue locally when an older Supabase project
+     // has not created hc_shipping_items yet. This fixes only the Post Item submission error.
+     item.source='local';
+   } else {
+     item=mapDbShippingItem(row);
+   }
  }
  data.shippingItems.unshift(item);
  addNote('admin.habeshaconnect@gmail.com','Sender posted an item to ship and needs approval: '+item.route+'.');
