@@ -844,7 +844,7 @@ let truckDashboardView='';
 async function goTruckSection(section){
  truckDashboardView=section||'';
  await show('truck');
- const targets={record:'truckOwnerRecordCard',postJob:'jobPostCard',applications:'truckApplicationsTable',postTrailer:'trailerRentCard',trailers:'trailerRentalsTable',jobs:'availableTruckJobs'};
+ const targets={record:'truckOwnerRecordCard',postJob:'jobPostCard',applications:'truckApplicationsTable',postTrailer:'trailerRentCard',trailers:'trailerRentalsTable',jobs:'availableTruckJobs',profile:'driverProfileCard'};
  const targetId=targets[section]||'';
  const openTarget=()=>{const el=$(targetId);if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
  if(targetId&&!openTarget())setTimeout(openTarget,120);
@@ -855,7 +855,7 @@ function truckOwnerHomeActions(){
 }
 function truckDriverHomeActions(){
  if(!currentUser||currentUser.role!=='driver')return '';
- return `<section id="truckDriverHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚚 Truck Driver Quick Actions</h2><p class="muted">Find jobs, find trailers, and track your applications immediately after signing in.</p></div><div class="grid"><div class="card"><h3>🚚 See Available Truck Jobs</h3><p class="muted">Browse approved truck driver jobs and apply.</p><button class="btn primary" onclick="goTruckSection('jobs')">See Available Truck Jobs</button></div><div class="card"><h3>🔎 Available Trailers for Rent</h3><p class="muted">See approved trailers available to request.</p><button class="btn primary" onclick="goTruckSection('trailers')">Available Trailers for Rent</button></div><div class="card"><h3>📋 See My Applications</h3><p class="muted">Track your submitted job applications.</p><button class="btn primary" onclick="goTruckSection('applications')">See My Applications</button></div></div></section>`;
+ return `<section id="truckDriverHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚚 Truck Driver Quick Actions</h2><p class="muted">Create your driver profile, find jobs and trailers, and track applications immediately after signing in.</p></div><div class="grid"><div class="card"><h3>👤 Driver Job Profile</h3><p class="muted">Create or update your CDL, experience, availability, and job preferences.</p><button class="btn primary" onclick="goTruckSection('profile')">Driver Job Profile</button></div><div class="card"><h3>🚚 See Available Truck Jobs</h3><p class="muted">Browse approved truck driver jobs and apply.</p><button class="btn primary" onclick="goTruckSection('jobs')">See Available Truck Jobs</button></div><div class="card"><h3>🔎 Available Trailers for Rent</h3><p class="muted">See approved trailers available to request.</p><button class="btn primary" onclick="goTruckSection('trailers')">Available Trailers for Rent</button></div><div class="card"><h3>📋 See My Applications</h3><p class="muted">Track your submitted job applications.</p><button class="btn primary" onclick="goTruckSection('applications')">See My Applications</button></div></div></section>`;
 }
 function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
@@ -2278,7 +2278,14 @@ function truck(){
   else ownerContent=`${truckOwnerRecordForm}${recordsTable}`;
   $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2>${categoryIntro('truck')}${ownerContent}`;
  } else if(role==='driver'){
-  $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2>${categoryIntro('truck')}${driverPanel}${driverJobApplyTop}${appsTable}${availableTrailerTopTable}${jobsTable}${trailerTable}${recordsTable}`;
+  let driverView=truckDashboardView||'profile';
+  let driverContent='';
+  if(driverView==='profile')driverContent=`${driverPanel}`;
+  else if(driverView==='jobs')driverContent=`${jobsTable}`;
+  else if(driverView==='trailers')driverContent=`${availableTrailerTopTable}`;
+  else if(driverView==='applications')driverContent=`${appsTable}`;
+  else driverContent=`${driverPanel}`;
+  $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2>${categoryIntro('truck')}${driverContent}`;
  } else {
   $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2>${categoryIntro('truck')}${ownerPanel}${driverPanel}${topMatchPanels}${appsTable}${jobsTable}${trailerTable}${driverProfilesTable}${recordsTable}`;
  }
