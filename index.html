@@ -3315,11 +3315,12 @@ function decorateAdminMobileTables(){
      [...row.children].forEach((cell,i)=>{if(cell.tagName==='TD')cell.setAttribute('data-label',labels[i]||('Detail '+(i+1)));});
      const text=row.textContent.toLowerCase();
      const actionText=[...row.querySelectorAll('button')].map(btn=>btn.textContent.trim().toLowerCase()).join(' | ');
-     const pendingStatus=text.includes('pending')||text.includes('waiting')||text.includes('review')||text.includes('not verified')||text.includes('needs admin')||text.includes('manual payment')||text.includes('requested');
-     // V7.8.179: A transaction remains in the top Admin queue while any real
-     // Admin workflow action is still available. Edit/Delete alone do not make
+     const pendingStatus=text.includes('pending')||text.includes('waiting')||text.includes('review')||text.includes('needs admin')||text.includes('manual payment')||text.includes('requested');
+     // V7.8.180: User verification stays in its separate Verify Users section.
+     // Transaction approvals remain in the top queue while a real Admin workflow
+     // action is available. Edit/Delete alone do not make
      // a completed transaction pending.
-     const actionableAdminButton=/(approve|decline|reject|verify|mark delivered|mark complete|complete work|pay traveler|payout|refund|release payment|confirm payment|final approval|activate|deactivate|close transaction)/i.test(actionText);
+     const actionableAdminButton=/(approve|decline|reject|mark delivered|mark complete|complete work|pay traveler|payout|refund|release payment|confirm payment|final approval|activate|deactivate|close transaction)/i.test(actionText);
      const onlyMaintenanceButtons=actionText && !actionableAdminButton && actionText.split('|').every(x=>/^(edit|delete|view|details|open|message|refresh|unverify)?$/.test(x.trim()));
      const needsAdminAction=pendingStatus||actionableAdminButton;
      if(needsAdminAction&&!onlyMaintenanceButtons)row.classList.add('adminPendingRow');
