@@ -4333,11 +4333,14 @@ async function adminApproveTrailerPayment(id){
     const myListings=(data.market||[]).filter(m=>currentUser&&cleanEmail(m.sellerEmail)===myEmail);
     const allMyRequests=(data.marketRequests||[]).filter(r=>currentUser&&(cleanEmail(r.buyerEmail)===myEmail||cleanEmail(r.sellerEmail)===myEmail||isAdmin));
     const sellerActionRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller');
-    const lowerRequests=allMyRequests.filter(r=>!(cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller'));
-    const sellerTop=currentUser&&!isAdmin?`<div id="marketSellerRequestsTop" class="card" style="border:2px solid #2563eb;margin:12px 0 18px"><h3>🔔 Customer Requests — Accept or Decline</h3><p class="muted">Admin-approved customer requests that need your response appear here first.</p>${sellerActionRequests.map(marketRequestCard).join('')||'<p class="muted">No customer requests are waiting for your response.</p>'}</div>`:'';
+    const buyerActionRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.buyerEmail)===myEmail&&r.status==='Connection Approved');
+    const lowerRequests=allMyRequests.filter(r=>!((cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller')||(cleanEmail(r.buyerEmail)===myEmail&&r.status==='Connection Approved')));
+    const sellerTop=currentUser&&!isAdmin&&sellerActionRequests.length?`<div id="marketSellerRequestsTop" class="card" style="border:2px solid #2563eb;margin:12px 0 18px"><h3>🔔 Customer Requests — Accept or Decline</h3><p class="muted">Admin-approved customer requests that need your response appear here first.</p>${sellerActionRequests.map(marketRequestCard).join('')}</div>`:'';
+    const buyerTop=currentUser&&!isAdmin&&buyerActionRequests.length?`<div id="marketBuyerAgreementTop" class="card" style="border:2px solid #16a34a;margin:12px 0 18px"><h3>✅ Seller Accepted — Your Agreement Is Needed</h3><p class="muted">The seller accepted your request. Review it and click Agree to continue.</p>${buyerActionRequests.map(marketRequestCard).join('')}</div>`:'';
     const adminBox=isAdmin?`<h3 style="margin-top:22px">Admin Marketplace Approvals</h3><div class="grid">${marketAdminCards()}</div>`:'';
     $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>${categoryIntro('marketplace')}
     ${sellerTop}
+    ${buyerTop}
     ${serviceRolePanel('marketplace')}
     <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
     <div class="grid two">
@@ -4361,7 +4364,7 @@ async function adminApproveTrailerPayment(id){
     <h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Request History</h3>${lowerRequests.map(marketRequestCard).join('')||'<p class="muted">No other requests yet.</p>'}</div></div>${adminBox}`;
     if(typeof placeCategoryTransactionsAtTop==='function')requestAnimationFrame(()=>placeCategoryTransactionsAtTop('marketplace'));
   };
-  window.__hcVersion='V7.8.136';
+  window.__hcVersion='V7.8.139';
 })();
 </script>
 
@@ -4431,7 +4434,7 @@ async function adminApproveTrailerPayment(id){
   const style=document.createElement('style');
   style.textContent='@media(max-width:700px){#marketplace .actions .btn{min-height:48px;width:100%;touch-action:manipulation}#marketplace .actions{display:grid;grid-template-columns:1fr;gap:9px}}';
   document.head.appendChild(style);
-  window.__hcVersion='V7.8.138';
+  window.__hcVersion='V7.8.139';
 })();
 </script>
 </body>
