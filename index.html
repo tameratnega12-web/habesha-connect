@@ -155,9 +155,9 @@ approveRentalReq=async function(id){
   (data.rentalRequests||[]).forEach(other=>{
     if(other!==q && String(other.rentalId)===propertyKey && !['Approved','Declined','Cancelled'].includes(String(other.status||''))){other.status='Cancelled';}
   });
-  addNote(q.seekerEmail,'Admin approved your rental request. The property is now marked Rented. Owner contact is available.');
+  addNote(q.seekerEmail,'Congratulations! Admin approved your rental request and the property is now marked Rented. Open Rentals and click Request Owner Information to release the owner contact details.');
   addNote(q.ownerEmail,'Admin approved a rental request for your property. The property is now marked Rented.');
-  sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental request approved',summary:'Admin approved your rental request. The property is now marked rented and owner contact is available.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Owner:q.ownerName,OwnerPhone:q.ownerPhone,Status:'Approved / Rented'}});
+  sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Congratulations — your rental was approved',summary:'Congratulations! Admin approved your rental request and the property is now marked rented. Open your Rentals dashboard and click Request Owner Information to release the owner contact details.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Status:'Approved / Rented'}});
   persistOnly();
   if(currentPage==='admin')adminSuccess('Rental request approved. Property marked Rented.'); else await rentals();
 };
@@ -1830,9 +1830,47 @@ function rentalRequestActionButtons(q,role){
   }
   return '-';
 }
+function rentalOwnerInfoReleased(q){
+  return String(q.status||'')==='Approved - Owner Information Released';
+}
 function rentalRequestsTable(reqs,role){
   let wrapId=role==='owner'?' id="ownerRentalRequests"':(role==='rent_seeker'?' id="seekerRentalRequests"':'');
-  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone}</td><td>${q.ownerName}</td><td>${q.status==='Approved'||q.status==='Owner Accepted - Waiting Final Admin Approval'||role==='admin'||role==='owner'?q.ownerPhone:'Shown after approval'}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Contact</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>{
+    const released=rentalOwnerInfoReleased(q);
+    const privileged=role==='admin'||role==='owner';
+    const ownerContact=(released||privileged)?`${q.ownerPhone||'No phone'}<br>${q.ownerEmail||'No email'}`:'Available after you click Request Owner Information';
+    return `<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${ownerContact}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`;
+  }).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+}
+function seekerOwnerInformationPanel(reqs){
+  const approved=(reqs||[]).filter(q=>String(q.status||'')==='Approved'||rentalOwnerInfoReleased(q));
+  if(!approved.length)return '';
+  return `<div class="card" id="seekerOwnerInformation"><h3>🎉 Approved Rental</h3>${approved.map(q=>{
+    if(rentalOwnerInfoReleased(q))return `<div class="notice good"><b>${q.propertyTitle}</b><p>Owner: ${q.ownerName||''}</p><p>Phone: ${q.ownerPhone||'Not provided'}</p><p>Email: ${q.ownerEmail||'Not provided'}</p></div>`;
+    return `<div class="notice"><b>Congratulations! ${q.propertyTitle} was approved.</b><p>Click below to release the property owner's information.</p><button class="btn primary" onclick="requestRentalOwnerInformation('${q.id||q.dbId}')">Request Owner Information</button></div>`;
+  }).join('')}</div>`;
+}
+async function requestRentalOwnerInformation(id){
+  if(!requireLogin())return;
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Approved rental request not found. Please refresh and try again.');
+  const isSeeker=(q.seekerEmail===currentUser.email)||String(q.seekerId||'')===String(currentUser.id||'');
+  if(!isSeeker)return alert('Only the approved rent seeker can request this owner information.');
+  if(rentalOwnerInfoReleased(q)){await rentals();return;}
+  if(String(q.status||'')!=='Approved')return alert('Owner information is available only after admin approves the rented property.');
+  const old=q.status;
+  q.status='Approved - Owner Information Released';
+  persistOnly();
+  if(authReady()&&q.dbId){
+    const {error}=await hcSupabase.from('rental_requests').update({status:q.status}).eq('id',q.dbId);
+    if(error){q.status=old;persistOnly();return alert('Could not release owner information: '+error.message);}
+  }
+  addNote(currentUser.email,'Owner information was released for '+q.propertyTitle+'.');
+  addNote(q.ownerEmail,'The approved rent seeker requested your contact information for '+q.propertyTitle+'.');
+  if(q.ownerEmail)sendEmailNotice({to:q.ownerEmail,name:q.ownerName||'Property Owner',subject:'Approved seeker requested your information',summary:'The approved rent seeker requested your contact information for the rented property.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Seeker:q.seekerName,SeekerPhone:q.seekerPhone||'Not provided',Status:'Owner information released'}});
+  persistOnly();
+  alert('Owner information released successfully.');
+  await rentals();
 }
 function scrollToRentalRequests(){let el=document.getElementById('ownerRentalRequests');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 async function goRentalSection(section){
@@ -1870,18 +1908,19 @@ async function rentals(){
  let ownerDashboard=`<h2>🏠 Rental Dashboard</h2><div class="grid"><div class="card"><h3>🏠 My Properties</h3><p class="muted">Add and manage rental listings.</p><button class="btn primary" onclick="document.getElementById('rentTitle')?.focus()">Add Property</button></div><div class="card"><h3>👀 Rental Requests</h3><p class="muted">See rent seeker requests.</p><button class="btn primary" onclick="scrollToRentalRequests()">See Rental Requests</button></div><div class="card"><h3>⭐ Reviews</h3><p class="muted">Owner ratings and feedback.</p></div></div>`;
  let ownerRequestsHtml=rentalRequestsTable(ownerReqs,'owner');
  let seekerRequestsHtml=rentalRequestsTable(seekerReqs,'rent_seeker');
+ let seekerOwnerInfoHtml=seekerOwnerInformationPanel(seekerReqs);
  let rentalDash=categoryDashboard('Rentals Dashboard','Choose what you want to do in Rentals.',[categoryButton('🔍 Find Rentals','availableRentals',true), canPost?categoryButton('🏠 Add Property','rentAddPropertyCard',false):'', currentUser?categoryButton('📋 My Requests','seekerRentalRequests',false):signInButton('Sign In for Rentals')]);
  let adminRequests=[...ownerReqs,...data.rentalRequests.filter(q=>!ownerReqs.includes(q))];
  if(role==='owner'){
    $('rentals').innerHTML=`<h2>🏠 Rental Dashboard</h2>${categoryIntro('rentals')}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
  } else if(role==='rent_seeker'){
-   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
+   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}${seekerOwnerInfoHtml}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='customer'||!currentUser){
-   $('rentals').innerHTML=`${rentalDash}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
+   $('rentals').innerHTML=`${rentalDash}${seekerOwnerInfoHtml}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='admin'){
    $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}${rentalDash}${adminSummary}${canPost?`<div class="grid">${addPropertyCard}${searchFilters}</div>`:searchFilters}<h3>All Rental Listings</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${rentalRequestsTable(adminRequests,'admin')}`;
  } else {
-   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}${rentalDash}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}`;
+   $('rentals').innerHTML=`<h2>🏠 Rental Connect</h2>${categoryIntro('rentals')}${rentalDash}${seekerOwnerInfoHtml}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}`;
  }
 }
 function rentalCards(list,role){return list.map((r,i)=>{let displayId=friendlyRentalId(r,i);let isOwner=currentUser&&r.ownerEmail===currentUser.email;let existing=currentUser?data.rentalRequests.find(q=>q.rentalId===r.id&&q.seekerEmail===currentUser.email):null;let fav=currentUser&&data.favorites.some(f=>f.user===currentUser.email&&f.rentalId===r.id);let rating=avgOwnerRating(r.ownerEmail)||r.ownerRating||'New';let photos=(r.photos||[]).map(x=>`<span class="photoThumb">📷 ${x}</span>`).join('')||'<span class="small">No photos uploaded</span>';let seekerBtns=(role==='rent_seeker'||role==='customer'||!currentUser)?(existing?`<button class="btn ghost" disabled>✅ Request Sent</button><span class="pill warn">${existing.status}</span><button class="btn" onclick="toggleFavorite('${r.id}')">${fav?'★ Saved':'☆ Save'}</button><button class="btn ghost" onclick="messageOwner('${r.ownerEmail}')">Message Owner</button><button class="btn ghost" onclick="reviewUser('${r.ownerEmail}','owner')">Rate Owner</button>`:`<button class="btn primary" onclick="requestViewing('${r.id}')">Request Viewing</button><button class="btn" onclick="toggleFavorite('${r.id}')">${fav?'★ Saved':'☆ Save'}</button><button class="btn ghost" onclick="messageOwner('${r.ownerEmail}')">Message Owner</button>`):'';let ownerBtns=isOwner?`<button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button> ${r.ownerPaid?`<button class="btn ghost" disabled>✅ Published</button>`:`<button class="btn primary" onclick="payPublishRental('${r.id}')">Publish Listing</button>`}`:'';let adminBtns=role==='admin'?`<button class="btn primary" onclick="approveRental('${r.id}')">Approve</button> <button class="btn ghost" onclick="editRental('${r.id}')">Edit</button> <button class="btn bad" onclick="deleteRental('${r.id}')">Delete</button>`:'';return `<div class="card"><h3>${r.title}</h3><p class="small"><b>Property ID:</b> ${displayId}</p><div class="photoStrip">${photos}</div><p>${r.city}</p><p><b>${money(r.price)}/month</b> • Deposit ${money(r.deposit)} • ${r.propertyType||'Property'} • ${r.bed||''} bed • ${r.bath||''} bath</p><p><b>Move-in:</b> ${r.moveDate||'Ask owner'} • <b>Lease:</b> ${r.leaseTerm||'Ask owner'}</p><p><b>Pets:</b> ${r.pets} • <b>Parking:</b> ${r.parking} • <b>Furnished:</b> ${r.furnished}</p><p><b>Utilities:</b> ${r.utilities}</p><p><b>Owner Rating:</b> ⭐ ${rating}</p>${role==='admin'||isOwner?contactLine('Owner',r.owner,r.ownerPhone,r.ownerEmail):`<p>Owner: ${r.owner}</p>`}${rentalStatusBadge(r.status)}${role==='admin'?(r.ownerPaid?'<span class="pill good">Owner Fee Paid</span>':'<span class="pill warn">Owner Fee Pending</span>'):''}<div class="actions">${seekerBtns}${ownerBtns}${adminBtns}</div></div>`}).join('')||'<div class="card"><p>No rental listings to show yet.</p></div>'}
@@ -4157,13 +4196,19 @@ rentalRequestActionButtons=function(q,role){
 
 rentalRequestsTable=function(reqs,role){
   reqs=reqs||[];
-  let anchor=(role==='owner')?' id="ownerRentalRequests"':'';
-  return `<div${anchor}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle||''}</td><td>${q.seekerName||''}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${(role==='admin'||role==='owner'||q.status==='Approved'||q.status==='Rented')?(q.ownerPhone||''):'Shown after owner approval'}</td><td>${rentalStatusBadge(q.status)}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+  let anchor=(role==='owner')?' id="ownerRentalRequests"':((role==='rent_seeker'||role==='customer')?' id="seekerRentalRequests"':'');
+  return `<div${anchor}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Contact</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>{
+    const released=rentalOwnerInfoReleased(q);
+    const privileged=role==='admin'||role==='owner';
+    const ownerContact=(released||privileged)?`${q.ownerPhone||'No phone'}<br>${q.ownerEmail||'No email'}`:'Click Request Owner Information above after approval';
+    return `<tr><td>${q.propertyTitle||''}</td><td>${q.seekerName||''}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${ownerContact}</td><td>${rentalStatusBadge(q.status)}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`;
+  }).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
 };
 rentalRequestsHtml=function(reqs,role,anchor){
   reqs=reqs||[];
-  let wrapId=anchor?` id="${anchor}"`:(role==='owner'?' id="ownerRentalRequests"':'');
-  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle||''}</td><td>${q.seekerName||''}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${(role==='admin'||role==='owner'||q.status==='Approved'||q.status==='Rented')?(q.ownerPhone||''):'Shown after owner approval'}</td><td>${rentalStatusBadge(q.status)}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+  let html=rentalRequestsTable(reqs,role);
+  if(anchor)html=html.replace(/<div(?: id="[^"]*")?>/,`<div id="${anchor}">`);
+  return html;
 };
 
 requestViewing=async function(id){
@@ -4214,8 +4259,8 @@ ownerAcceptRentalReq=async function(id){
   let rp=r?await __rentalUpdatePropertyV7871(r,{status:'Rented'}):{error:null};
   if(rq.error||rp.error){Object.assign(q,oldQ);if(r&&oldR)Object.assign(r,oldR);persistOnly();return alert('Could not accept rental request: '+(rq.error?.message||rp.error?.message||'unknown error'));}
   (data.rentalRequests||[]).forEach(other=>{if(other!==q&&String(other.rentalId)===String(q.rentalId)&&!['Declined','Cancelled'].includes(String(other.status||'')))other.status='Closed';});
-  addNote(q.seekerEmail,'Property owner accepted your rental request.');
-  if(q.seekerEmail)sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental request accepted',summary:'The property owner accepted your rental request. The property is now marked rented.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Owner:q.ownerName,OwnerPhone:q.ownerPhone,Status:'Rented'}});
+  addNote(q.seekerEmail,'Congratulations! Your rental request was approved and the property is now marked Rented. Open Rentals and click Request Owner Information to release the owner contact details.');
+  if(q.seekerEmail)sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Congratulations — your rental was approved',summary:'Congratulations! Your rental request was approved and the property is now marked rented. Open your Rentals dashboard and click Request Owner Information to release the owner contact details.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Status:'Approved / Rented'}});
   persistOnly();
   alert('Accepted. The property is now marked Rented.');
   if(currentPage==='admin')adminSuccess();else await rentals();
@@ -4812,7 +4857,7 @@ async function adminApproveTrailerPayment(id){
       $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>${categoryIntro('marketplace')}${topSections}${serviceRolePanel('marketplace')}${browsePanel}<h3 id="marketAvailableTitle" style="margin-top:22px">Available Marketplace Items</h3><div id="marketList" class="grid">${approved.map(marketCard).join('')||'<div class="card"><p>No approved marketplace items available yet.</p></div>'}</div>${activityHtml}${adminBox}`;
     }
   };
-  window.__hcVersion='V7.8.170';
+  window.__hcVersion='V7.8.187';
 })();
 </script>
 
