@@ -899,7 +899,20 @@ function businessOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='business_owner')return '';
  return `<section id="businessOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🏢 Business Owner Quick Actions</h2><p class="muted">Manage your business profile, post jobs, and review applicants.</p></div><div class="grid"><div class="card"><h3>🏢 My Business Profile</h3><p class="muted">Create or update your public business listing.</p><button class="btn primary" onclick="goBusinessOwnerSection('profile')">My Business Profile</button></div><div class="card"><h3>💼 Post Jobs</h3><p class="muted">Post a job and manage jobs from your business.</p><button class="btn primary" onclick="goBusinessOwnerSection('jobs')">Post Jobs</button></div><div class="card"><h3>👥 See Applicants</h3><p class="muted">Review applicants for your posted jobs.</p><button class="btn primary" onclick="goBusinessOwnerSection('applicants')">See Applicants</button></div></div></section>`;
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+
+let marketplaceDashboardView='browse';
+async function goMarketplaceSection(section){
+ marketplaceDashboardView=section||'browse';
+ await show('marketplace');
+ const targetId=marketplaceDashboardView==='post'?'marketPostPanel':'marketBrowsePanel';
+ const openTarget=()=>{const el=$(targetId);if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
+ if(!openTarget())setTimeout(openTarget,120);
+}
+function marketplaceHomeActions(){
+ if(!currentUser||currentUser.role!=='marketplace')return '';
+ return `<section id="marketplaceHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🛒 Marketplace Quick Actions</h2><p class="muted">Post an item for sale or browse approved marketplace listings.</p></div><div class="grid"><div class="card"><h3>➕ Post Item</h3><p class="muted">Submit an item for admin approval.</p><button class="btn primary" onclick="goMarketplaceSection('post')">Post Item</button></div><div class="card"><h3>🔍 Browse Marketplace</h3><p class="muted">Browse approved items and send purchase requests.</p><button class="btn primary" onclick="goMarketplaceSection('browse')">Browse Marketplace</button></div></div></section>`;
+}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
 
 
@@ -4660,12 +4673,7 @@ async function adminApproveTrailerPayment(id){
     }
 
     const adminBox=isAdmin?`<h3 style="margin-top:22px">Admin Marketplace Approvals</h3><div class="grid">${marketAdminCards()}</div>`:'';
-    $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>${categoryIntro('marketplace')}
-    ${topSections}
-    ${serviceRolePanel('marketplace')}
-    <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
-    <div class="grid two">
-      <div class="card" id="marketPostPanel"><h3>➕ Post Item</h3>
+    const postPanel=`<div class="card" id="marketPostPanel"><h3>➕ Post Item</h3>
        <label>Item Title</label><input id="mTitle" placeholder="Example: iPhone, sofa, dining table">
        <div class="grid two"><div><label>Category</label><select id="mCategory"><option>Vehicles</option><option>Electronics</option><option>Furniture</option><option>Clothing</option><option>Home & Garden</option><option>Baby Items</option><option>Books</option><option>Tools</option><option>Business Equipment</option><option>Other</option></select></div><div><label>Condition</label><select id="mCondition"><option>New</option><option>Like New</option><option>Good</option><option>Fair</option><option>For Parts</option></select></div></div>
        <div class="grid two"><div><label>Price</label><input id="mPrice" type="number" placeholder="Price"></div><div><label>City</label><input id="mCity" placeholder="City"></div></div>
@@ -4674,18 +4682,24 @@ async function adminApproveTrailerPayment(id){
        <div id="mPhotoPreview" class="photoPreview"></div>
        <label>Photo Links (optional)</label><input id="mPhotos" placeholder="Optional: paste photo links separated by commas">
        <button class="btn primary" onclick="addMarket()">Submit Item</button>
-      </div>
-      <div class="card" id="marketBrowsePanel"><h3>🔍 Browse Marketplace</h3>
+      </div>`;
+    const browsePanel=`<div class="card" id="marketBrowsePanel"><h3>🔍 Browse Marketplace</h3>
        <div class="grid two"><input id="mSearch" placeholder="Search keyword" oninput="filterMarket()"><input id="mFilterCity" placeholder="City" oninput="filterMarket()"></div>
        <div class="grid two"><select id="mFilterCategory" onchange="filterMarket()"><option>All Categories</option><option>Vehicles</option><option>Electronics</option><option>Furniture</option><option>Clothing</option><option>Home & Garden</option><option>Baby Items</option><option>Books</option><option>Tools</option><option>Business Equipment</option><option>Other</option></select><select id="mFilterCondition" onchange="filterMarket()"><option>All Conditions</option><option>New</option><option>Like New</option><option>Good</option><option>Fair</option><option>For Parts</option></select></div>
        <p><b>${approved.length}</b> approved item(s) available.</p>
-      </div>
-    </div>
-    <h3 id="marketAvailableTitle" style="margin-top:22px">Available Marketplace Items</h3><div id="marketList" class="grid">${approved.map(marketCard).join('')||'<div class="card"><p>No approved marketplace items available yet.</p></div>'}</div>
-    <h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Request History</h3>${lowerRequests.map(marketRequestCard).join('')||'<p class="muted">No other requests yet.</p>'}</div></div>${adminBox}`;
-    if(typeof placeCategoryTransactionsAtTop==='function')requestAnimationFrame(()=>placeCategoryTransactionsAtTop('marketplace'));
+      </div>`;
+    const listingsHtml=`<h3 style="margin-top:22px">My Listings</h3><div class="grid">${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<div class="card"><p class="muted">No listings yet.</p></div>'}</div>`;
+    const activityHtml=`${topSections}<h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid"><div class="card"><h3>📦 Request History</h3>${lowerRequests.map(marketRequestCard).join('')||'<p class="muted">No other requests yet.</p>'}</div></div>`;
+    const sellerView=currentUser&&role==='marketplace';
+    if(sellerView&&marketplaceDashboardView==='post'){
+      $('marketplace').innerHTML=`<h2>🛒 Marketplace — Post Item</h2>${categoryIntro('marketplace')}${postPanel}${listingsHtml}`;
+    }else if(sellerView){
+      $('marketplace').innerHTML=`<h2>🛒 Browse Marketplace</h2>${categoryIntro('marketplace')}${activityHtml}${browsePanel}<h3 id="marketAvailableTitle" style="margin-top:22px">Available Marketplace Items</h3><div id="marketList" class="grid">${approved.map(marketCard).join('')||'<div class="card"><p>No approved marketplace items available yet.</p></div>'}</div>`;
+    }else{
+      $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>${categoryIntro('marketplace')}${topSections}${serviceRolePanel('marketplace')}${browsePanel}<h3 id="marketAvailableTitle" style="margin-top:22px">Available Marketplace Items</h3><div id="marketList" class="grid">${approved.map(marketCard).join('')||'<div class="card"><p>No approved marketplace items available yet.</p></div>'}</div>${activityHtml}${adminBox}`;
+    }
   };
-  window.__hcVersion='V7.8.140';
+  window.__hcVersion='V7.8.170';
 })();
 </script>
 
