@@ -1361,6 +1361,27 @@ function mapDbShipment(row){
     source:'supabase'
   };
 }
+function isShippingItemFallbackRow(row){
+  return !!row && !row.trip_id && !!row.package_description;
+}
+function mapShipmentFallbackToShippingItem(row){
+  const sender=row.sender||row.sender_profile||{};
+  const traveler=row.traveler||row.traveler_profile||{};
+  const from=row.from_city||'', to=row.to_city||'';
+  return {
+    id:row.id, dbId:row.id, fallbackDb:true, source:'shipments_fallback',
+    tracking:row.tracking_number||('HC-'+String(row.id||'').slice(0,6)),
+    senderId:row.sender_id||'', sender:sender.name||row.sender_name||'Sender',
+    senderEmail:sender.email||row.sender_email||'', senderPhone:sender.phone||row.sender_phone||'', senderVerified:!!sender.verified,
+    travelerId:row.traveler_id||'', traveler:traveler.name||row.traveler_name||'',
+    travelerEmail:traveler.email||row.traveler_email||'', travelerPhone:traveler.phone||row.traveler_phone||'', travelerVerified:!!traveler.verified,
+    fromCity:from, toCity:to, route:from+' → '+to,
+    neededBy:'', itemDescription:row.package_description||'', weight:Number(row.weight_lb||0),
+    receiver:row.receiver_name||'', receiverPhone:row.receiver_phone||'', notes:'',
+    paid:!!row.paid, status:String(row.status||'Pending Admin Approval').replace(' - Sender Item',''),
+    createdAt:row.created_at||''
+  };
+}
 async function loadSupabaseShipments(){
   if(!authReady())return;
   let {data:rows,error}=await hcSupabase.from('shipments').select('*, sender:sender_id(name,email,phone,verified), traveler:traveler_id(name,email,phone,verified)').order('created_at',{ascending:false});
@@ -1370,9 +1391,14 @@ async function loadSupabaseShipments(){
     rows=retry.data||[]; error=retry.error;
   }
   if(error){console.warn('Shipment load error',error);return;}
-  let dbShips=(rows||[]).map(mapDbShipment);
+  const fallbackRows=(rows||[]).filter(isShippingItemFallbackRow);
+  const normalRows=(rows||[]).filter(row=>!isShippingItemFallbackRow(row));
+  let dbShips=normalRows.map(mapDbShipment);
   let localOnly=(data.shipments||[]).filter(x=>x.source!=='supabase'&&!x.dbId);
   data.shipments=[...dbShips,...localOnly];
+  const fallbackItems=fallbackRows.map(mapShipmentFallbackToShippingItem);
+  const otherItems=(data.shippingItems||[]).filter(x=>x.source!=='shipments_fallback');
+  data.shippingItems=[...fallbackItems,...otherItems];
 }
 
 function mapDbShippingItem(row){
@@ -1381,10 +1407,13 @@ function mapDbShippingItem(row){
 async function loadSupabaseShippingItems(){
   if(!authReady())return;
   let {data:rows,error}=await hcSupabase.from('hc_shipping_items').select('*, sender:sender_id(name,email,phone,verified), traveler:traveler_id(name,email,phone,verified)').order('created_at',{ascending:false});
-  if(error){console.warn('Shipping item load error',error);return;}
+  if(error){
+    console.warn('Shipping item table unavailable; shared shipments fallback remains active',error);
+    return;
+  }
   let remote=(rows||[]).map(mapDbShippingItem);
-  let localOnly=(data.shippingItems||[]).filter(x=>x.source!=='supabase'&&!x.dbId);
-  data.shippingItems=[...remote,...localOnly];
+  let preserved=(data.shippingItems||[]).filter(x=>x.source==='shipments_fallback'||(x.source!=='supabase'&&!x.dbId));
+  data.shippingItems=[...remote,...preserved];
 }
 
 function recalcTripSpacesFromShipments(){
@@ -1604,28 +1633,39 @@ async function submitShippingItem(){
    let payload={local_ref:localRef,tracking_number:tracking,sender_id:currentUser.id||null,sender_name:currentUser.name,sender_email:currentUser.email,sender_phone:senderPhone,from_city:from,to_city:to,needed_by:neededBy,item_description:desc,weight_lb:weight,receiver_name:receiver,receiver_phone:receiverPhone,notes,status:'Pending Admin Approval',paid:false};
    let {data:row,error}=await hcSupabase.from('hc_shipping_items').insert(payload).select('*').single();
    if(error){
-     const missingShippingTable=String(error.code||'')==='PGRST205'||/hc_shipping_items|schema cache|could not find the table/i.test(String(error.message||''));
-     if(!missingShippingTable)return alert('Could not save item to Supabase. '+error.message);
-     // V7.8.182: allow sender posting to continue locally when an older Supabase project
-     // has not created hc_shipping_items yet. This fixes only the Post Item submission error.
-     item.source='local';
-   } else {
-     item=mapDbShippingItem(row);
-   }
+     const msg=String(error.message||'').toLowerCase();
+     if(msg.includes('hc_shipping_items')||msg.includes('schema cache')||msg.includes('could not find the table')){
+       const fallbackPayload={tracking_number:tracking,sender_id:currentUser.id||null,traveler_id:null,trip_id:null,from_city:from,to_city:to,weight_lb:weight,sender_name:currentUser.name,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc+(neededBy?' | Needed by: '+neededBy:'')+(notes?' | Notes: '+notes:''),paid:false,status:'Pending Admin Approval - Sender Item'};
+       let fallback=await hcSupabase.from('shipments').insert(fallbackPayload).select('*').single();
+       if(fallback.error)return alert('Could not save the shipping item to the shared Admin dashboard: '+fallback.error.message);
+       fallback.data.sender={name:currentUser.name,email:currentUser.email,phone:senderPhone,verified:!!currentUser.verified};
+       item=mapShipmentFallbackToShippingItem(fallback.data);
+       item.neededBy=neededBy; item.itemDescription=desc; item.notes=notes;
+     }else return alert('Could not save item to Supabase: '+error.message);
+   }else item=mapDbShippingItem(row);
  }
  data.shippingItems.unshift(item);
  addNote('admin.habeshaconnect@gmail.com','Sender posted an item to ship and needs approval: '+item.route+'.');
  sendAdminEmailNotice('New shipping item needs approval','A sender posted an item to ship without choosing a traveler trip. Admin approval is needed.',{Sender:currentUser.name,Email:currentUser.email,Phone:senderPhone,Route:item.route,Weight:item.weight+' lb',NeededBy:item.neededBy,Item:item.itemDescription,Receiver:item.receiver,ReceiverPhone:item.receiverPhone,Status:item.status},'admin');
  persistOnly();alert('Your item was submitted to admin.');show('shipping');
 }
-async function updateShippingItemDb(it,patch){if(!authReady()||!it.dbId)return {error:null};return await hcSupabase.from('hc_shipping_items').update(Object.assign({},patch,{updated_at:new Date().toISOString()})).eq('id',it.dbId);}
+async function updateShippingItemDb(it,patch){
+ if(!authReady()||!it.dbId)return {error:null};
+ if(it.source==='shipments_fallback'||it.fallbackDb){
+   const allowed={};
+   ['status','paid','traveler_id','traveler_name','traveler_phone'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
+   if(allowed.status&&!String(allowed.status).includes('Sender Item')&&allowed.status==='Pending Admin Approval')allowed.status+=' - Sender Item';
+   return await hcSupabase.from('shipments').update(allowed).eq('id',it.dbId);
+ }
+ return await hcSupabase.from('hc_shipping_items').update(Object.assign({},patch,{updated_at:new Date().toISOString()})).eq('id',it.dbId);
+}
 async function adminApproveShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Open'});if(r.error)return alert('Could not approve item: '+r.error.message);it.status='Open';addNote(it.senderEmail,'Your item to ship was approved. Travelers can now accept it.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Shipping item approved',summary:'Your item to ship was approved. Travelers can now see and accept it.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Route:it.route,Weight:it.weight+' lb',Status:'Open'}});persistOnly();adminSuccess();}
 async function adminDeclineShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Declined'});if(r.error)return alert('Could not decline item: '+r.error.message);it.status='Declined';addNote(it.senderEmail,'Your posted shipping item was declined.');persistOnly();adminSuccess();}
 async function travelerAcceptShippingItem(id){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can accept posted shipping items.');let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.status!=='Open')return alert('This item is not available to accept.');let patch={status:'Accepted',traveler_id:currentUser.id||null,traveler_name:currentUser.name,traveler_email:currentUser.email,traveler_phone:currentUser.phone||''};let r=await updateShippingItemDb(it,patch);if(r.error)return alert('Could not accept item: '+r.error.message);Object.assign(it,{status:'Accepted',travelerId:currentUser.id||'',traveler:currentUser.name,travelerEmail:currentUser.email,travelerPhone:currentUser.phone||'',travelerVerified:!!currentUser.verified});addNote(it.senderEmail,'A traveler accepted your posted shipping item. Please confirm the agreement.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Traveler accepted your posted item',summary:'A traveler accepted your item to ship. Please open Shipping and confirm the agreement so admin can approve.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Traveler:currentUser.name,Route:it.route,Weight:it.weight+' lb',Status:'Accepted'}});persistOnly();shipping();}
 async function payShippingItem(id){if(!requireLogin())return;let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.senderEmail!==currentUser.email&&String(it.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can confirm agreement.');if(it.status!=='Accepted')return alert('Please wait for a traveler to accept.');pay('Shipping',Number(it.weight||0)*settings().shippingRatePerLb,'Posted item '+it.id+' agreement');let r=await updateShippingItemDb(it,{status:'Payment Pending Admin Review',paid:true});if(r.error)return alert('Agreement recorded locally, but Supabase update failed: '+r.error.message);it.status='Payment Pending Admin Review';it.paid=true;addNote('admin.habeshaconnect@gmail.com','Posted shipping item payment needs approval: '+it.tracking);sendAdminEmailNotice('Posted shipping item payment needs approval','A sender confirmed agreement for a posted shipping item.',{Sender:it.sender,Traveler:it.traveler,Tracking:it.tracking,Amount:money(Number(it.weight||0)*settings().shippingRatePerLb)},'shipping');persistOnly();shipping();}
 async function adminApproveShippingItemPayment(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Approved',paid:true});if(r.error)return alert('Could not approve payment: '+r.error.message);it.status='Approved';it.paid=true;addNote(it.senderEmail,'Your posted item payment was approved. Contact is now available.');addNote(it.travelerEmail,'Posted item was approved by admin. Contact is now available.');persistOnly();adminSuccess();}
 async function adminMarkShippingItemDelivered(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Delivered'});if(r.error)return alert('Could not mark delivered: '+r.error.message);it.status='Delivered';addNote(it.senderEmail,'Your posted shipping item was marked delivered.');addNote(it.travelerEmail,'Posted shipping item was marked delivered.');persistOnly();adminSuccess();}
-async function deleteShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');if(!confirm('Delete this posted shipping item?'))return;let backup=[...(data.shippingItems||[])];data.shippingItems=(data.shippingItems||[]).filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));if(authReady()&&it.dbId){let r=await hcSupabase.from('hc_shipping_items').delete().eq('id',it.dbId);if(r.error){data.shippingItems=backup;return alert('Could not delete item: '+r.error.message)}}persistOnly();adminSuccess();}
+async function deleteShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');if(!confirm('Delete this posted shipping item?'))return;let backup=[...(data.shippingItems||[])];data.shippingItems=(data.shippingItems||[]).filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));if(authReady()&&it.dbId){let table=(it.source==='shipments_fallback'||it.fallbackDb)?'shipments':'hc_shipping_items';let r=await hcSupabase.from(table).delete().eq('id',it.dbId);if(r.error){data.shippingItems=backup;return alert('Could not delete item: '+r.error.message)}}persistOnly();adminSuccess();}
 
 
 async function closeTrip(id){let t=data.trips.find(x=>x.id===id);if(!t)return;if(t.source==='supabase'){let ok=await updateSupabaseTripStatus(t,'Closed');if(!ok)return;}t.status='Closed';save();shipping()}
@@ -4700,7 +4740,7 @@ async function adminApproveTrailerPayment(id){
   const style=document.createElement('style');
   style.textContent='@media(max-width:700px){#marketplace .actions .btn{min-height:48px;width:100%;touch-action:manipulation}#marketplace .actions{display:grid;grid-template-columns:1fr;gap:9px}}';
   document.head.appendChild(style);
-  window.__hcVersion='V7.8.138';
+  window.__hcVersion='V7.8.183';
 })();
 </script>
 
