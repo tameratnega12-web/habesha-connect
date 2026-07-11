@@ -16,3 +16,9 @@ Business Directory and Job Seeker flow review and correction.
 - Open Trip navigates directly to the traveler trip-posting form.
 - View Requests navigates directly to the traveler sender-request section.
 - Uses the existing responsive card grid and includes a delayed mobile fallback for reliable scrolling on phones.
+
+## V7.8.152 Sender Home Quick Actions
+- Added **Available Travelers** to the signed-in Sender home page.
+- Added **Post Item to Ship** to the signed-in Sender home page.
+- Each button opens Shipping and scrolls directly to the correct section.
+- Uses the existing responsive card grid for desktop and phone layouts.

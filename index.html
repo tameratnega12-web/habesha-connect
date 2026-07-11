@@ -830,7 +830,11 @@ function travelerHomeActions(){
  if(!currentUser||currentUser.role!=='traveler')return '';
  return `<section id="travelerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">✈️ Traveler Quick Actions</h2><p class="muted">Open a trip or review sender requests immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div></section>`;
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function senderHomeActions(){
+ if(!currentUser||currentUser.role!=='sender')return '';
+ return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find an approved traveler or post an item to ship immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
+}
+function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
 
 
@@ -1312,6 +1316,16 @@ function isTripBookable(t){let remaining=Number(t.availableSpace ?? t.remaining_
 async function goTravelerShipSection(section){
   await show('shipping');
   const targetId=section==='post'?'travelerPostTrip':(section==='requests'?'travelerShipRequests':'travelerOpenTrips');
+  const openTarget=()=>{
+    const el=$(targetId);
+    if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
+    return false;
+  };
+  if(!openTarget())setTimeout(openTarget,180);
+}
+async function goSenderShipSection(section){
+  await show('shipping');
+  const targetId=section==='post'?'senderPostItem':'shippingAvailableTrips';
   const openTarget=()=>{
     const el=$(targetId);
     if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
