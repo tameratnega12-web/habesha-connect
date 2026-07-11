@@ -834,16 +834,11 @@ function travelerHomeActions(){
 }
 function senderHomeActions(){
  if(!currentUser||currentUser.role!=='sender')return '';
- return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find an approved traveler or post an item to ship immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
+ return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find a traveler, post an item to ship, or look for a rental immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div><div class="card"><h3>🏠 Find Rentals</h3><p class="muted">Browse approved homes and rooms available for rent.</p><button class="btn primary" onclick="goRentalSection('available')">Find Rentals</button></div></div></section>`;
 }
 function propertyOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='owner')return '';
- return `<section id="propertyOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🏠 Property Owner Quick Action</h2><p class="muted">Add a rental property immediately after signing in.</p><button class="btn primary" onclick="goPropertyOwnerAddProperty()">Add Property</button></div></section>`;
-}
-async function goPropertyOwnerAddProperty(){
- await show('rentals');
- const top=()=>{window.scrollTo({top:0,behavior:'smooth'});const el=document.getElementById('rentAddPropertyCard');if(el){setTimeout(()=>el.querySelector('input,select,textarea')?.focus(),250);return true;}return false;};
- if(!top())setTimeout(top,180);
+ return `<section id="propertyOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🏠 Property Owner Quick Actions</h2><p class="muted">Add a property or review rent seekers immediately after signing in.</p></div><div class="grid"><div class="card"><h3>🏠 Add Property</h3><p class="muted">Post a home, apartment, room, or other rental property.</p><button class="btn primary" onclick="goRentalSection('add')">Add Property</button></div><div class="card"><h3>👀 View Rent Seekers</h3><p class="muted">Review people who requested your rental properties.</p><button class="btn primary" onclick="goRentalSection('seekers')">View Rent Seekers</button></div></div></section>`;
 }
 function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
@@ -1690,8 +1685,17 @@ function rentalRequestsTable(reqs,role){
   return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone}</td><td>${q.ownerName}</td><td>${q.status==='Approved'||q.status==='Owner Accepted - Waiting Final Admin Approval'||role==='admin'||role==='owner'?q.ownerPhone:'Shown after approval'}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
 }
 function scrollToRentalRequests(){let el=document.getElementById('ownerRentalRequests');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+async function goRentalSection(section){
+ await show('rentals');
+ const targetId=section==='add'?'rentAddPropertyCard':(section==='seekers'?'availableRentSeekers':'availableRentals');
+ const openTarget=()=>{
+   const el=document.getElementById(targetId);
+   if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});if(section==='add')setTimeout(()=>document.getElementById('rentTitle')?.focus(),250);return true;}
+   return false;
+ };
+ if(!openTarget())setTimeout(openTarget,220);
+}
 
-// V7.8.160: Property owner Rentals uses How It Works, Add Property form, then information boxes with no extra owner navigation buttons.
 async function rentals(){
  let role=currentUser?currentUser.role:'guest';
  let ownerReqs=data.rentalRequests.filter(q=>currentUser&&(q.ownerEmail===currentUser.email||role==='admin')).slice().reverse();
@@ -1705,7 +1709,7 @@ async function rentals(){
  let adminStats=rentalStatsFor(data.rentals,data.rentalRequests);
  let addPropertyCard=`<div class="card" id="rentAddPropertyCard"><h3>Add Property</h3><label>Property Photos</label><input id="rentPhotos" type="file" multiple accept="image/*"><label>Property Type</label><select id="rentType">${options(PROPERTY_TYPES)}</select><label>Title</label><input id="rentTitle" placeholder="3 Bedroom House"><label>City</label><input id="rentCity" placeholder="Clarkston, GA"><div class="row"><div><label>Monthly Rent</label><input id="rentPrice" type="number" value="1500"></div><div><label>Security Deposit</label><input id="rentDeposit" type="number" value="1500"></div></div><div class="row"><div><label>Bedrooms</label><input id="rentBed" type="number" value="2"></div><div><label>Bathrooms</label><input id="rentBath" type="number" value="1"></div></div><label>Available Move-in Date</label><input id="rentMoveDate" type="date" min="${addDaysIso(0)}"><label>Lease Term</label><select id="rentLease"><option>Month-to-Month</option><option selected>12 Months</option><option>6 Months</option><option>Negotiable</option></select><div class="row"><div><label>Pets Allowed</label><select id="rentPets"><option>No</option><option>Yes</option><option>Ask Owner</option></select></div><div><label>Parking</label><select id="rentParking"><option>Yes</option><option>No</option><option>Street Parking</option></select></div></div><div class="row"><div><label>Furnished</label><select id="rentFurnished"><option>No</option><option>Yes</option><option>Partly</option></select></div><div><label>Utilities Included</label><input id="rentUtilities" placeholder="Water, trash, internet..."></div></div><button class="btn primary" onclick="addRental()">Post Property</button></div>`;
  let searchFilters=`<div class="card" id="rentalSearchFilters"><h3>Search Filters</h3><label>Property Type</label><select id="filterType"><option>All</option>${options(PROPERTY_TYPES)}</select><label>City</label><input id="filterCity" placeholder="Search city"><label>Max Price</label><input id="filterPrice" type="number" placeholder="2000"><button class="btn" onclick="filterRentals()">Filter</button><button class="btn ghost" onclick="rentals()">Show All</button></div>`;
- let ownerPanel=role==='owner'?`<h3>Available Rent Seekers</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Status</th><th>Action</th></tr>${ownerReqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,'owner')}</td></tr>`).join('')||'<tr><td colspan="5">No rent seeker requests yet.</td></tr>'}</table>`:'';
+ let ownerPanel=role==='owner'?`<section id="availableRentSeekers"><h3>Available Rent Seekers</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Status</th><th>Action</th></tr>${ownerReqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,'owner')}</td></tr>`).join('')||'<tr><td colspan="5">No rent seeker requests yet.</td></tr>'}</table></section>`:'';
  let ownerSummary=rentalStatsCardsCustom('🏠 My Rental Performance',[
    ['Total Properties',ownerStats.total],['Available',ownerStats.active],['Rented',ownerStats.rented],['Viewing Requests',ownerStats.requests],['Owner Fees',money(ownerStats.ownerFees)]
  ]);
@@ -1719,7 +1723,7 @@ async function rentals(){
  let rentalDash=categoryDashboard('Rentals Dashboard','Choose what you want to do in Rentals.',[categoryButton('🔍 Find Rentals','availableRentals',true), canPost?categoryButton('🏠 Add Property','rentAddPropertyCard',false):'', currentUser?categoryButton('📋 My Requests','seekerRentalRequests',false):signInButton('Sign In for Rentals')]);
  let adminRequests=[...ownerReqs,...data.rentalRequests.filter(q=>!ownerReqs.includes(q))];
  if(role==='owner'){
-   $('rentals').innerHTML=`<h2>🏠 Rental Dashboard</h2>${categoryIntro('rentals')}${addPropertyCard}${ownerSummary}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}`;
+   $('rentals').innerHTML=`${rentalDash}${ownerDashboard}${addPropertyCard}${ownerPanel}<h3>My Properties</h3><div id="rentalList" class="grid">${rentalCards(myRentals,role)}</div>${ownerRequestsHtml}${ownerSummary}`;
  } else if(role==='rent_seeker'||role==='customer'||!currentUser){
    $('rentals').innerHTML=`${rentalDash}<h3 id="availableRentals">Available Owners / Rentals</h3><div id="rentalList" class="grid">${rentalCards(visibleRentals,role)}</div>${searchFilters}${seekerRequestsHtml}${seekerSummary}`;
  } else if(role==='admin'){
