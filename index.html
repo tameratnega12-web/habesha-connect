@@ -2411,7 +2411,9 @@ function truck(){
   let jobsRows=openJobs.map(j=>`<tr><td>${j.ownerName||''}</td><td>${j.title||''}</td><td>${j.route||''}</td><td>${j.schedule||''}</td><td>${j.requirements||''}</td><td><button class="btn primary" onclick="show('account')">Sign In to Apply</button></td></tr>`).join('')||'<tr><td colspan="6">No approved truck jobs yet.</td></tr>';
   let trailerRows=publicTrailers.map(t=>`<tr><td>${t.ownerName||''}</td><td>${t.trailerType||''}<br><span class="small">${t.description||''}</span></td><td>${t.location||''}</td><td>${t.price||''}</td><td>${t.availability||''}</td><td><button class="btn primary" onclick="show('account')">Sign In to Request</button></td></tr>`).join('')||'<tr><td colspan="6">No available trailers yet.</td></tr>';
   $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2><div class="grid">${ownerCard}${driverCard}${trailerCard}</div><h3 id="guestTruckJobs">Open Jobs for Drivers</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Schedule</th><th>Requirements</th><th>Action</th></tr>${jobsRows}</table><h3 id="guestTrailerRentals">Available Trailers for Rent</h3><table><tr><th>Owner</th><th>Trailer</th><th>Location</th><th>Price</th><th>Available</th><th>Action</th></tr>${trailerRows}</table>`;return;}
- if(needsServiceChoice('truck')){
+ // Truck owners and truck drivers already chose their role from Home.
+ // Do not show duplicate "Continue as Truck Owner / Truck Driver / Trailer Owner" buttons inside Trucking.
+ if(needsServiceChoice('truck') && !['truck_owner','driver'].includes(currentUser.role)){
   $('truck').innerHTML=`<h2>🚚 Trucking & Trailer</h2>${categoryIntro('truck')}${serviceRolePanel('truck')}`;
   return;
  }
