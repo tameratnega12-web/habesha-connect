@@ -1319,6 +1319,11 @@ async function goTravelerShipSection(section){
   await show('shipping');
   const targetId=section==='post'?'travelerPostTrip':(section==='requests'?'travelerShipRequests':'travelerOpenTrips');
   const openTarget=()=>{
+    // Open Trip must begin at the dashboard top so How It Works stays above the form.
+    if(section==='post'){
+      const page=$('shipping');
+      if(page&&page.scrollIntoView){page.scrollIntoView({behavior:'smooth',block:'start'});return true;}
+    }
     const el=$(targetId);
     if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
     return false;
@@ -1341,7 +1346,7 @@ function travelerShippingDashboardCards(){
  return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
-// V7.8.157: Traveler and Sender forms appear directly below How It Works, and the summary cards appear directly below those forms.
+// V7.8.158: Open Trip shows How It Works first, then the Post Trip form, then traveler information summary boxes.
 async function shipping(){
  let role=currentUser?currentUser.role:null;
  let syncNotice='';
@@ -1365,7 +1370,7 @@ async function shipping(){
  if(role==='admin'){
    statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>`;
  } else if(role==='traveler'){
-   statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>My Trips</p><div class="stat">${myTrips.length}</div></div><div class="card"><p>Shipment Requests</p><div class="stat">${shipments.length}</div></div><div class="card"><p>Approved / Active</p><div class="stat">${shipments.filter(x=>['Approved','Ready for Delivery','In Transit'].includes(x.status||'')).length}</div></div></div>`;
+   statsHtml=`<section id="travelerInformationBoxes"><h3>Traveler Information</h3><div class="grid"><div class="card"><p>My Trips</p><div class="stat">${myTrips.length}</div></div><div class="card"><p>Shipment Requests</p><div class="stat">${shipments.length}</div></div><div class="card"><p>Approved / Active</p><div class="stat">${shipments.filter(x=>['Approved','Ready for Delivery','In Transit'].includes(x.status||'')).length}</div></div></div></section>`;
  } else {
    statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>Total Shipments</p><div class="stat">${shipments.length}</div></div></div>`;
  }
