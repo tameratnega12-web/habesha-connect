@@ -1370,9 +1370,9 @@ async function shipping(){
  let shippingItemsHtml=`<section id="shippingItemRequests"><h3>${role==='traveler'?'Available Items to Ship':(role==='admin'?'Sender Posted Items':'My Posted Items')}</h3><div class="list">${shippingItems.map(it=>shippingItemCard(it,role)).join('')||'<div class="item">No posted shipping items yet.</div>'}</div></section>`;
  let shippingDash=categoryDashboard('Shipping Dashboard','Choose what you want to do in Shipping.',[categoryButton('🔍 Find Traveler Trips','shippingAvailableTrips',true),(role==='sender'||role==='customer')?categoryButton('📦 Post Item to Ship','senderPostItem',false):'',categoryButton('📋 Posted Items','shippingItemRequests',false),categoryButton('📦 Shipment Requests','travelerShipRequests',false), role==='traveler'?categoryButton('✈️ Post Trip','travelerPostTrip',false):(!currentUser?signInButton('Sign In to Ship'):'' )]);
  if(role==='traveler'){
-   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${shippingDash}${travelerShippingDashboardCards()}${tripBox}${shippingItemsHtml}${shipmentRequestsHtml}<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>${statsHtml}${intro}`;
+   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${tripBox}${shippingItemsHtml}${shipmentRequestsHtml}<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>${statsHtml}${intro}`;
  } else if(role==='sender'||role==='customer'||!currentUser){
-   $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${shippingDash}${senderItemBox}${searchBox}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${statsHtml}${intro}`;
+   $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${senderItemBox}${searchBox}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${statsHtml}${intro}`;
  } else if(role==='admin'){
    $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${shippingDash}${statsHtml}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}`;
  } else {
