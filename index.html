@@ -760,6 +760,7 @@ function personalizedHomeItems(){
    (data.truckApplications||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('Truck Job Application',`${a.jobTitle||'Driver job'} • ${a.ownerName||''}`,a.status,'truck','📋',hcHomeTime(a),pending(a.status)?0:2)));
  }
  if(role==='truck_owner'){
+   (data.trailerRentals||[]).filter(t=>available(t.status)&&cleanEmail(t.ownerEmail)!==email).forEach(t=>add(hcHomeItem('Trailer Available for Rent',`${t.trailerType||'Trailer'} • ${t.location||''} • ${t.price||''}`,t.status,'truck','🔎',hcHomeTime(t),1)));
    (data.truckApplications||[]).filter(a=>cleanEmail(a.ownerEmail)===email&&pending(a.status)).forEach(a=>add(hcHomeItem('New Driver Application',`${a.driverName||'Driver'} applied for ${a.jobTitle||'your job'}`,a.status,'truck','🚚',hcHomeTime(a),0)));
    (data.trailerRentals||[]).filter(t=>cleanEmail(t.ownerEmail)===email&&t.renterEmail&&pending(t.status)).forEach(t=>add(hcHomeItem('New Trailer Rental Request',`${t.renterName||'Requester'} requested ${t.trailerType||'your trailer'}`,t.status,'truck','🔔',hcHomeTime(t),0)));
    (data.truckJobs||[]).filter(j=>cleanEmail(j.ownerEmail)===email).forEach(j=>add(hcHomeItem('My Truck Job',`${j.title||'Driver job'} • ${j.route||''}`,j.status,'truck','🚛',hcHomeTime(j),pending(j.status)?0:2)));
