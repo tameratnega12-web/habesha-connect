@@ -4333,14 +4333,11 @@ async function adminApproveTrailerPayment(id){
     const myListings=(data.market||[]).filter(m=>currentUser&&cleanEmail(m.sellerEmail)===myEmail);
     const allMyRequests=(data.marketRequests||[]).filter(r=>currentUser&&(cleanEmail(r.buyerEmail)===myEmail||cleanEmail(r.sellerEmail)===myEmail||isAdmin));
     const sellerActionRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller');
-    const buyerActionRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.buyerEmail)===myEmail&&r.status==='Connection Approved');
-    const lowerRequests=allMyRequests.filter(r=>!((cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller')||(cleanEmail(r.buyerEmail)===myEmail&&r.status==='Connection Approved')));
-    const sellerTop=currentUser&&!isAdmin&&sellerActionRequests.length?`<div id="marketSellerRequestsTop" class="card" style="border:2px solid #2563eb;margin:12px 0 18px"><h3>🔔 Customer Requests — Accept or Decline</h3><p class="muted">Admin-approved customer requests that need your response appear here first.</p>${sellerActionRequests.map(marketRequestCard).join('')}</div>`:'';
-    const buyerTop=currentUser&&!isAdmin&&buyerActionRequests.length?`<div id="marketBuyerAgreementTop" class="card" style="border:2px solid #16a34a;margin:12px 0 18px"><h3>✅ Seller Accepted — Your Agreement Is Needed</h3><p class="muted">The seller accepted your request. Review it and click Agree to continue.</p>${buyerActionRequests.map(marketRequestCard).join('')}</div>`:'';
+    const lowerRequests=allMyRequests.filter(r=>!(cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller'));
+    const sellerTop=currentUser&&!isAdmin?`<div id="marketSellerRequestsTop" class="card" style="border:2px solid #2563eb;margin:12px 0 18px"><h3>🔔 Customer Requests — Accept or Decline</h3><p class="muted">Admin-approved customer requests that need your response appear here first.</p>${sellerActionRequests.map(marketRequestCard).join('')||'<p class="muted">No customer requests are waiting for your response.</p>'}</div>`:'';
     const adminBox=isAdmin?`<h3 style="margin-top:22px">Admin Marketplace Approvals</h3><div class="grid">${marketAdminCards()}</div>`:'';
     $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>${categoryIntro('marketplace')}
     ${sellerTop}
-    ${buyerTop}
     ${serviceRolePanel('marketplace')}
     <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
     <div class="grid two">
@@ -4364,7 +4361,7 @@ async function adminApproveTrailerPayment(id){
     <h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Request History</h3>${lowerRequests.map(marketRequestCard).join('')||'<p class="muted">No other requests yet.</p>'}</div></div>${adminBox}`;
     if(typeof placeCategoryTransactionsAtTop==='function')requestAnimationFrame(()=>placeCategoryTransactionsAtTop('marketplace'));
   };
-  window.__hcVersion='V7.8.139';
+  window.__hcVersion='V7.8.136';
 })();
 </script>
 
@@ -4434,8 +4431,75 @@ async function adminApproveTrailerPayment(id){
   const style=document.createElement('style');
   style.textContent='@media(max-width:700px){#marketplace .actions .btn{min-height:48px;width:100%;touch-action:manipulation}#marketplace .actions{display:grid;grid-template-columns:1fr;gap:9px}}';
   document.head.appendChild(style);
-  window.__hcVersion='V7.8.139';
+  window.__hcVersion='V7.8.138';
 })();
 </script>
+
+
+<script id="v78140-marketplace-view-seller-top">
+/* V7.8.140: Buyer View Seller Information action appears directly below How It Works.
+   Keeps Marketplace actions phone-friendly and prevents duplicate completed requests in history. */
+(function(){
+  window.marketplace=function(){
+    if(!data.marketRequests)data.marketRequests=[];
+    if(!data.savedMarketItems)data.savedMarketItems=[];
+    if(!data.events)data.events=[];
+    const role=currentUser?currentUser.role:'guest';
+    const isAdmin=role==='admin';
+    const myEmail=currentUser?cleanEmail(currentUser.email):'';
+    const approved=(data.market||[]).filter(m=>m.status==='Approved'||m.status==='Available');
+    const myListings=(data.market||[]).filter(m=>currentUser&&cleanEmail(m.sellerEmail)===myEmail);
+    const allMyRequests=(data.marketRequests||[]).filter(r=>currentUser&&(cleanEmail(r.buyerEmail)===myEmail||cleanEmail(r.sellerEmail)===myEmail||isAdmin));
+
+    const sellerActionRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.sellerEmail)===myEmail&&r.status==='Admin Approved - Waiting Seller');
+    const buyerAgreeRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.buyerEmail)===myEmail&&r.status==='Connection Approved');
+    const buyerContactRequests=(data.marketRequests||[]).filter(r=>currentUser&&cleanEmail(r.buyerEmail)===myEmail&&r.status==='Completed');
+
+    const topIds=new Set([...sellerActionRequests,...buyerAgreeRequests,...buyerContactRequests].map(r=>String(r.id||r.dbId)));
+    const lowerRequests=allMyRequests.filter(r=>!topIds.has(String(r.id||r.dbId)));
+
+    let topSections='';
+    if(currentUser&&!isAdmin){
+      if(sellerActionRequests.length){
+        topSections+=`<div id="marketSellerRequestsTop" class="card" style="border:2px solid #2563eb;margin:12px 0 18px"><h3>🔔 Customer Requests — Accept or Decline</h3><p class="muted">Admin-approved customer requests that need your response appear here first.</p>${sellerActionRequests.map(marketRequestCard).join('')}</div>`;
+      }
+      if(buyerAgreeRequests.length){
+        topSections+=`<div id="marketBuyerAgreeTop" class="card" style="border:2px solid #16a34a;margin:12px 0 18px"><h3>✅ Seller Accepted — Your Agreement Is Needed</h3><p class="muted">Review the accepted request and click Agree to continue.</p>${buyerAgreeRequests.map(marketRequestCard).join('')}</div>`;
+      }
+      if(buyerContactRequests.length){
+        topSections+=`<div id="marketBuyerSellerInfoTop" class="card" style="border:2px solid #16a34a;margin:12px 0 18px"><h3>📞 Seller Information Available</h3><p class="muted">Your agreement is complete. Use the button below to view the seller's contact information.</p>${buyerContactRequests.map(marketRequestCard).join('')}</div>`;
+      }
+    }
+
+    const adminBox=isAdmin?`<h3 style="margin-top:22px">Admin Marketplace Approvals</h3><div class="grid">${marketAdminCards()}</div>`:'';
+    $('marketplace').innerHTML=`<h2>🛒 Marketplace</h2>${categoryIntro('marketplace')}
+    ${topSections}
+    ${serviceRolePanel('marketplace')}
+    <div class="card"><h3>Marketplace Dashboard</h3><p class="muted">Choose what you want to do in Marketplace.</p><div class="actions"><button class="btn primary" onclick="marketJump('marketPostPanel')">➕ Post Item</button><button class="btn ghost" onclick="openMarketplaceAvailableItems()">🔍 Browse Marketplace</button></div></div>
+    <div class="grid two">
+      <div class="card" id="marketPostPanel"><h3>➕ Post Item</h3>
+       <label>Item Title</label><input id="mTitle" placeholder="Example: iPhone, sofa, dining table">
+       <div class="grid two"><div><label>Category</label><select id="mCategory"><option>Vehicles</option><option>Electronics</option><option>Furniture</option><option>Clothing</option><option>Home & Garden</option><option>Baby Items</option><option>Books</option><option>Tools</option><option>Business Equipment</option><option>Other</option></select></div><div><label>Condition</label><select id="mCondition"><option>New</option><option>Like New</option><option>Good</option><option>Fair</option><option>For Parts</option></select></div></div>
+       <div class="grid two"><div><label>Price</label><input id="mPrice" type="number" placeholder="Price"></div><div><label>City</label><input id="mCity" placeholder="City"></div></div>
+       <label>Description</label><textarea id="mDesc" rows="3" placeholder="Describe the item, pickup area, and important details"></textarea>
+       <label>Add Pictures / Photos (up to 10)</label><input id="mPhotoFiles" type="file" accept="image/*" multiple onchange="previewMarketPhotos()">
+       <div id="mPhotoPreview" class="photoPreview"></div>
+       <label>Photo Links (optional)</label><input id="mPhotos" placeholder="Optional: paste photo links separated by commas">
+       <button class="btn primary" onclick="addMarket()">Submit Item</button>
+      </div>
+      <div class="card" id="marketBrowsePanel"><h3>🔍 Browse Marketplace</h3>
+       <div class="grid two"><input id="mSearch" placeholder="Search keyword" oninput="filterMarket()"><input id="mFilterCity" placeholder="City" oninput="filterMarket()"></div>
+       <div class="grid two"><select id="mFilterCategory" onchange="filterMarket()"><option>All Categories</option><option>Vehicles</option><option>Electronics</option><option>Furniture</option><option>Clothing</option><option>Home & Garden</option><option>Baby Items</option><option>Books</option><option>Tools</option><option>Business Equipment</option><option>Other</option></select><select id="mFilterCondition" onchange="filterMarket()"><option>All Conditions</option><option>New</option><option>Like New</option><option>Good</option><option>Fair</option><option>For Parts</option></select></div>
+       <p><b>${approved.length}</b> approved item(s) available.</p>
+      </div>
+    </div>
+    <h3 id="marketAvailableTitle" style="margin-top:22px">Available Marketplace Items</h3><div id="marketList" class="grid">${approved.map(marketCard).join('')||'<div class="card"><p>No approved marketplace items available yet.</p></div>'}</div>
+    <h3 style="margin-top:22px">My Marketplace Activity</h3><div class="grid two"><div class="card"><h3>📋 My Listings</h3>${myListings.map(m=>`<div class="item"><b>${m.title}</b><p>${money(m.price)} • ${m.city}</p><span class="pill ${m.status==='Approved'||m.status==='Available'?'good':m.status==='Declined'?'bad':'warn'}">${m.status}</span></div>`).join('')||'<p class="muted">No listings yet.</p>'}</div><div class="card"><h3>📦 Request History</h3>${lowerRequests.map(marketRequestCard).join('')||'<p class="muted">No other requests yet.</p>'}</div></div>${adminBox}`;
+    if(typeof placeCategoryTransactionsAtTop==='function')requestAnimationFrame(()=>placeCategoryTransactionsAtTop('marketplace'));
+  };
+  window.__hcVersion='V7.8.140';
+})();
+</script>
+
 </body>
 </html>
