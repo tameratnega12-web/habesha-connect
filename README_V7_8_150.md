@@ -34,3 +34,10 @@ Business Directory and Job Seeker flow review and correction.
 - Removed the Post Item to Ship form from the Available Travelers view.
 - The form now appears only after the sender selects the separate Post Item to Ship home-page button.
 - Preserved desktop and mobile navigation, available traveler listings, and item submission workflow.
+
+
+## V7.8.156 – Shipping forms below How It Works
+- Traveler Post Trip form is always shown directly below the Shipping How It Works note.
+- Sender Post Item to Ship form is always shown directly below the Shipping How It Works note.
+- Forms remain independent from View Requests and Available Travelers lists.
+- Existing quick-action buttons scroll to the correct form/list on desktop and mobile.
