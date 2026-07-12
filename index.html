@@ -2440,7 +2440,7 @@ function truck(){
  let ownerPanel=`<div class="grid">${truckOwnerRecordForm}${truckJobForm}${trailerRentForm}</div>`;
  let driverPanel=`<div class="card" id="driverProfileCard"><h3>👤 Driver Job Profile</h3><label>Full Name</label><input id="dpName" value="${driverProfile?.name||currentUser.name||''}"><label>Phone</label><input id="dpPhone" value="${driverProfile?.phone||currentUser.phone||''}"><label>City</label><input id="dpCity" value="${driverProfile?.city||currentUser.city||''}"><label>CDL / License Type</label><input id="dpLicense" value="${driverProfile?.license||''}" placeholder="CDL A, CDL B, Box truck"><label>Experience</label><input id="dpExperience" value="${driverProfile?.experience||''}" placeholder="5 years, local, OTR"><label>Looking For</label><select id="dpLooking"><option ${driverProfile?.looking==='Full Time'?'selected':''}>Full Time</option><option ${driverProfile?.looking==='Part Time'?'selected':''}>Part Time</option><option ${driverProfile?.looking==='Owner Operator'?'selected':''}>Owner Operator</option><option ${driverProfile?.looking==='Box Truck'?'selected':''}>Box Truck</option></select><label>Skills / Notes</label><textarea id="dpNotes" placeholder="Routes, languages, availability, safety record">${driverProfile?.notes||''}</textarea><button class="btn primary" onclick="saveDriverProfile()">Save Driver Profile</button></div>`;
  let jobsTable=`<h3 id="availableTruckJobs">🚛 Available Truck Jobs</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Schedule</th><th>Requirements</th><th>Status</th><th>Action</th></tr>${availableJobs.map(j=>{let already=(data.truckApplications||[]).find(a=>a.jobId===j.id&&a.driverEmail===currentUser.email);let action=role==='driver'?(already?`<span class="pill good">Applied</span><br><span class="small">${already.status}</span>`:`<button class="btn primary" onclick="applyTruckJob('${j.id}')">Apply This Job</button>`):(role==='truck_owner'&&j.ownerEmail===currentUser.email?`<span class="pill good">Owner Post</span>`:'-');return `<tr><td>${j.ownerName}<br><span class="small">${j.ownerPhone||''}</span></td><td>${j.title}<br><span class="small">${j.truckDetails||''}</span></td><td>${j.route}</td><td>${j.schedule}</td><td>${j.requirements}</td><td><span class="pill good">Published</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No approved truck owner hiring posts yet.</td></tr>'}</table>`;
- let driverProfilesTable=`<h3 id="driverProfilesTable">👤 Drivers Looking for Truck Driving Jobs</h3><table><tr><th>Driver</th><th>Phone</th><th>City</th><th>License</th><th>Experience</th><th>Looking For</th><th>Skills / Notes</th><th>Updated</th></tr>${driverProfiles.map(p=>`<tr><td>${p.name||p.driverName||'Driver'}<br><span class="small">${p.driverEmail||''}</span></td><td>${p.phone||''}</td><td>${p.city||''}</td><td>${p.license||''}</td><td>${p.experience||''}</td><td>${p.looking||''}</td><td>${p.notes||''}</td><td>${p.updatedAt||''}</td></tr>`).join('')||'<tr><td colspan="8">No driver looking-for-job posts yet.</td></tr>'}</table>`;
+ let driverProfilesTable='';
  let appsTable=`<h3 id="truckApplicationsTable">Driver Applications / Hiring Records</h3><table><tr><th>Job</th><th>Driver</th><th>Phone</th><th>License</th><th>Experience</th><th>Looking For / Notes</th><th>Status</th><th>Action</th></tr>${myApps.map(a=>{let canManage=role==='truck_owner'&&a.ownerEmail===currentUser.email&&a.status==='Pending Owner Review';return `<tr><td>${a.jobTitle}</td><td>${a.driverName}<br><span class="small">${a.driverEmail}</span></td><td>${a.driverPhone}</td><td>${a.license}</td><td>${a.experience}</td><td>${a.looking||''}<br><span class="small">${a.notes||''}</span></td><td><span class="pill ${(a.status==='Approved'||a.status==='Hired')?'good':a.status==='Declined'?'bad':'warn'}">${a.status}</span></td><td>${canManage?`<button class="btn primary" onclick="approveTruckApp('${a.id}')">Accept Driver</button> <button class="btn bad" onclick="declineTruckApp('${a.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No applications yet.</td></tr>'}</table>`;
  let recordsTable=`<h3>Truck Owner / Driver Records</h3><table><tr><th>Truck</th><th>Plate</th><th>Driver</th><th>Status</th><th>Insurance</th><th>Registration</th><th>Income</th><th>Expenses</th><th>Profit</th><th>Mileage</th><th>Maintenance</th></tr>${myTruckRecords.map(t=>`<tr><td>${t.truck}<br><span class="small">VIN: ${t.vin||''}</span></td><td>${t.plate||''}</td><td>${t.driver}<br><span class="small">${t.driverEmail||''}</span></td><td>${t.status||'Available'}</td><td>${t.insurance||''}<br>${expiryBadge(t.insurance,'Insurance')}</td><td>${t.registration||''}<br>${expiryBadge(t.registration,'Registration')}</td><td>${money(t.income)}</td><td>${money(t.expenses)}</td><td>${money((+t.income||0)-(+t.expenses||0))}</td><td>${t.mileage}</td><td>${t.maintenance||''}</td></tr>`).join('')||'<tr><td colspan="11">No truck records yet.</td></tr>'}</table>`;
  let trailerTable=`<h3 id="trailerRentalsTable">🚛 Trailer Rentals</h3><table><tr><th>Owner</th><th>Trailer</th><th>Location</th><th>Price</th><th>Available</th><th>Status</th><th>Action</th></tr>${trailerRentals.map(t=>{let mine=t.ownerEmail===currentUser.email;let requested=t.renterEmail===currentUser.email;let ownerManage=mine&&t.status==='Pending Owner Review';let action=ownerManage?`<span class="pill warn">Action shown at top</span>`:(t.status==='Available'&&!mine&&(role==='driver'||role==='truck_owner')?`<button class="btn primary" onclick="requestTrailerRental('${t.id}')">Request Trailer</button>`:(requested?`<span class="pill warn">${t.status}</span>`:(mine?(t.status==='Pending Admin Approval'?'<span class="pill warn">Waiting Admin Approval</span>':'<span class="pill good">Your Trailer</span>'):'-')));return `<tr><td>${t.ownerName||''}<br><span class="small">${t.ownerEmail||''}</span></td><td>${t.trailerType||''}<br><span class="small">${t.description||''}</span></td><td>${t.location||''}</td><td>${t.price||''}<br><span class="small">Deposit: ${t.deposit||''}</span></td><td>${t.availability||''}</td><td><span class="pill ${t.status==='Available'?'good':t.status==='Rented'?'bad':'warn'}">${t.status||'Available'}</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No trailer rentals posted yet.</td></tr>'}</table>`;
@@ -5168,8 +5168,344 @@ async function adminApproveTrailerPayment(id){
   };
 
   const style=document.createElement('style');style.textContent='@media(max-width:700px){#jobSeekerAgreementHome .btn{width:100%;min-height:48px;margin-top:7px}}';document.head.appendChild(style);
-  window.__hcVersion='V7.8.194';
+  window.__hcVersion='V7.8.197';
 })();
 </script>
+
+<script>
+/* V7.8.196 — Direct truck-driver hiring from approved/saved driver profiles.
+   Uses the existing trucking_applications table; no new SQL is required. */
+(function(){
+  const DIRECT_PREFIX='DIRECT_HIRE:';
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function isDirectHire(a){return !!a && (String(a.jobId||'').startsWith('DIRECT-') || String(a.notes||'').startsWith(DIRECT_PREFIX) || a.jobTitle==='Direct Driver Hire Request');}
+  function directMeta(a){
+    const raw=String((a&&a.notes)||'');
+    if(!raw.startsWith(DIRECT_PREFIX))return {};
+    try{return JSON.parse(raw.slice(DIRECT_PREFIX.length))||{};}catch(e){return {};}
+  }
+  function directNotes(meta){return DIRECT_PREFIX+JSON.stringify(meta||{});}
+  function userByEmail(email){return (data.users||[]).find(u=>norm(u.email)===norm(email))||{};}
+  function profileByEmail(email){return (data.truckDriverProfiles||[]).find(p=>norm(p.driverEmail)===norm(email))||{};}
+  function ownerPhoneFor(a){const m=directMeta(a),u=userByEmail(a.ownerEmail);return m.ownerPhone||u.phone||'';}
+  function ownerNameFor(a){const m=directMeta(a),u=userByEmail(a.ownerEmail);return a.ownerName||m.ownerName||u.name||'Truck Owner';}
+
+  window.requestDirectTruckDriver=async function(driverEmail){
+    if(!requireLogin())return;
+    if(currentUser.role!=='truck_owner')return alert('Only a truck owner can request a driver.');
+    const p=profileByEmail(driverEmail);
+    if(!p.driverEmail)return alert('Driver profile not found.');
+    if(norm(p.driverEmail)===norm(currentUser.email))return alert('You cannot request yourself.');
+    const active=(data.truckApplications||[]).find(a=>isDirectHire(a)&&norm(a.ownerEmail)===norm(currentUser.email)&&norm(a.driverEmail)===norm(driverEmail)&&!['Driver Declined','Direct Hire Closed'].includes(a.status));
+    if(active)return alert('You already have an active hire request for this driver.');
+    const meta={type:'direct_hire',ownerPhone:currentUser.phone||'',ownerName:currentUser.name||'Truck Owner',requestedAt:new Date().toISOString()};
+    const app={
+      id:'TA'+Date.now().toString().slice(-6),jobId:'DIRECT-'+Date.now(),jobDbId:'',jobTitle:'Direct Driver Hire Request',
+      ownerName:currentUser.name||'Truck Owner',ownerEmail:currentUser.email,
+      driverName:p.name||p.driverName||'Driver',driverEmail:p.driverEmail,driverPhone:p.phone||'',city:p.city||'',
+      license:p.license||'',experience:p.experience||'',looking:p.looking||'',notes:directNotes(meta),
+      status:'Pending Driver Review',createdAt:new Date().toLocaleString()
+    };
+    const res=await syncTruckApplicationToSupabase(app,null);
+    if(res.error)return alert('The hire request could not be sent: '+res.error.message);
+    data.truckApplications=data.truckApplications||[];data.truckApplications.unshift(app);
+    addNote(app.driverEmail,app.ownerName+' sent you a direct truck-driving hire request. Open your home page to accept or decline.');
+    try{await Promise.resolve(sendEmailNotice({to:app.driverEmail,name:app.driverName,subject:'New truck driver hire request',summary:'A truck owner reviewed your driver profile and sent you a direct hire request. Open your home page to accept or decline.',buttonText:'Open Home Page',page:'home',details:{TruckOwner:app.ownerName,Position:'Truck Driver',Status:'Waiting for Your Response'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Truck owner requested a driver','A truck owner sent a direct hire request to a truck driver.',{TruckOwner:app.ownerName,OwnerEmail:app.ownerEmail,Driver:app.driverName,DriverEmail:app.driverEmail,Status:app.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly();alert('Hire request sent to the driver.');home();
+  };
+
+  window.driverRespondDirectHire=async function(id,accept){
+    if(!requireLogin())return;
+    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
+    if(!a||!isDirectHire(a))return alert('Hire request not found.');
+    if(currentUser.role!=='driver'||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the requested driver can respond.');
+    if(a.status!=='Pending Driver Review')return alert('This request has already been answered.');
+    const old={...a};
+    a.status=accept?'Waiting Owner Agreement':'Driver Declined';
+    const meta={...directMeta(a),driverRespondedAt:new Date().toISOString(),driverAccepted:!!accept};a.notes=directNotes(meta);
+    const res=await updateTruckApplicationDb(a,{status:a.status,notes:a.notes});
+    if(res.error){Object.assign(a,old);return alert('Could not save your response: '+res.error.message);}
+    if(accept){
+      addNote(a.ownerEmail,a.driverName+' accepted your direct hire request. Open your home page and click Agree to release contact information.');
+      try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver accepted your hire request',summary:'The driver accepted your direct hire request. Open your home page and click Agree to release contact information.',buttonText:'Open Home Page',page:'home',details:{Driver:a.driverName,License:a.license||'',Experience:a.experience||'',Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+      try{await Promise.resolve(sendAdminEmailNotice('Driver accepted direct hire request','A truck driver accepted a truck owner direct hire request. The owner must click Agree before contact information is released.',{TruckOwner:a.ownerName,Driver:a.driverName,Status:a.status},'admin'));}catch(e){console.warn(e);}
+      alert('Accepted. The truck owner must now click Agree.');
+    }else{
+      addNote(a.ownerEmail,a.driverName+' declined your direct hire request.');
+      try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver declined your hire request',summary:'The driver declined your direct truck-driving hire request.',buttonText:'Open Home Page',page:'home',details:{Driver:a.driverName,Status:'Declined'}}));}catch(e){console.warn(e);}
+      alert('Hire request declined.');
+    }
+    persistOnly();home();
+  };
+
+  window.ownerAgreeDirectHire=async function(id){
+    if(!requireLogin())return;
+    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
+    if(!a||!isDirectHire(a))return alert('Hire request not found.');
+    if(currentUser.role!=='truck_owner'||norm(a.ownerEmail)!==norm(currentUser.email))return alert('Only the requesting truck owner can agree.');
+    if(a.status!=='Waiting Owner Agreement')return alert('The driver must accept before you can agree.');
+    const old={...a};a.status='Waiting Driver Agreement';a.hiredAt=new Date().toLocaleString();
+    const meta={...directMeta(a),ownerAgreedAt:new Date().toISOString(),ownerContactReleased:true};a.notes=directNotes(meta);
+    const res=await updateTruckApplicationDb(a,{status:a.status,notes:a.notes,hired_at:new Date().toISOString()});
+    if(res.error){Object.assign(a,old);return alert('Could not save the agreement: '+res.error.message);}
+    addNote(a.driverEmail,a.ownerName+' agreed to the direct hire. Open your home page and click Agree to release the truck owner information.');
+    try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck owner agreed to hire you',summary:'The truck owner clicked Agree. Open your home page and click Agree to release the truck owner information.',buttonText:'Open Home Page',page:'home',details:{TruckOwner:a.ownerName,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Truck owner agreed to direct hire','The truck owner agreed after the driver accepted. The driver must now click Agree.',{TruckOwner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:a.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly();alert('You agreed. Driver information is now available to you. The driver must also click Agree to see your information.');home();
+  };
+
+  window.driverAgreeDirectHire=async function(id){
+    if(!requireLogin())return;
+    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
+    if(!a||!isDirectHire(a))return alert('Hire request not found.');
+    if(currentUser.role!=='driver'||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the requested driver can agree.');
+    if(a.status!=='Waiting Driver Agreement')return alert('The truck owner must agree before you can complete this step.');
+    const old={...a};a.status='Direct Hire Agreed';
+    const meta={...directMeta(a),driverAgreedAt:new Date().toISOString(),driverContactReleased:true};a.notes=directNotes(meta);
+    const res=await updateTruckApplicationDb(a,{status:a.status,notes:a.notes});
+    if(res.error){Object.assign(a,old);return alert('Could not save your agreement: '+res.error.message);}
+    addNote(a.ownerEmail,a.driverName+' also agreed to the direct hire. Both sides completed the agreement.');
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver completed the hire agreement',summary:'The driver also clicked Agree. Both sides have completed the direct hire agreement.',buttonText:'Open Home Page',page:'home',details:{Driver:a.driverName,Status:'Both Sides Agreed'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Direct truck-driver hire fully agreed','Both the truck owner and driver completed their agreement steps.',{TruckOwner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:a.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly();alert('Agreement complete. Truck owner information is now available.');home();
+  };
+
+  window.viewDirectDriverInformation=function(id){
+    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
+    if(!a||!isDirectHire(a)||!['Waiting Driver Agreement','Direct Hire Agreed'].includes(a.status))return alert('Driver information is not available yet.');
+    if(!currentUser||norm(a.ownerEmail)!==norm(currentUser.email))return alert('Only the requesting truck owner can view this information.');
+    const p=profileByEmail(a.driverEmail);
+    contactAlert(a.driverName,p.phone||a.driverPhone,a.driverEmail,'Truck Driver Information');
+  };
+  window.viewDirectOwnerInformation=function(id){
+    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
+    if(!a||!isDirectHire(a)||a.status!=='Direct Hire Agreed')return alert('Truck owner information is not available until you click Agree.');
+    if(!currentUser||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the requested driver can view this information.');
+    contactAlert(ownerNameFor(a),ownerPhoneFor(a),a.ownerEmail,'Truck Owner Information');
+  };
+
+  function ownerDirectHirePanel(){
+    if(!currentUser||currentUser.role!=='truck_owner')return '';
+    const profiles=(data.truckDriverProfiles||[]).filter(p=>p.driverEmail&&norm(p.driverEmail)!==norm(currentUser.email));
+    const reqs=(data.truckApplications||[]).filter(a=>isDirectHire(a)&&norm(a.ownerEmail)===norm(currentUser.email));
+    const profileCards=profiles.map(p=>{
+      const active=reqs.find(a=>norm(a.driverEmail)===norm(p.driverEmail)&&!['Driver Declined','Direct Hire Closed'].includes(a.status));
+      let action=`<button class="btn primary" type="button" onclick="requestDirectTruckDriver('${esc(p.driverEmail)}')">Request to Hire</button>`;
+      if(active){
+        if(active.status==='Waiting Owner Agreement')action=`<button class="btn good" type="button" onclick="ownerAgreeDirectHire('${esc(active.id)}')">Agree</button>`;
+        else if(['Waiting Driver Agreement','Direct Hire Agreed'].includes(active.status))action=`<button class="btn primary" type="button" onclick="viewDirectDriverInformation('${esc(active.id)}')">View Driver Information</button>`;
+        else action=`<span class="pill">${esc(active.status)}</span>`;
+      }
+      return `<div class="card"><h3>👤 ${esc(p.name||p.driverName||'Truck Driver')}</h3><p><b>City:</b> ${esc(p.city||'')}</p><p><b>CDL / License:</b> ${esc(p.license||'')}</p><p><b>Experience:</b> ${esc(p.experience||'')}</p><p><b>Looking For:</b> ${esc(p.looking||'')}</p><p class="muted">${esc(p.notes||'')}</p><p class="small">Phone and email remain protected until both sides agree.</p><div class="actions">${action}</div></div>`;
+    }).join('')||'<div class="card"><p>No truck driver profiles are available yet.</p></div>';
+    return `<section id="directTruckDriverHire" style="margin-top:20px"><div class="card"><h2 style="margin:0">👥 Drivers Available for Hire</h2><p class="muted">Review driver profiles and send a direct hire request. Each person sees the other person's contact information only after clicking their own Agree button.</p></div><div class="grid">${profileCards}</div></section>`;
+  }
+  function driverDirectHirePanel(){
+    if(!currentUser||currentUser.role!=='driver')return '';
+    const reqs=(data.truckApplications||[]).filter(a=>isDirectHire(a)&&norm(a.driverEmail)===norm(currentUser.email)&&a.status!=='Driver Declined');
+    if(!reqs.length)return '';
+    return `<section id="driverDirectHireRequests" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚛 Direct Hire Requests</h2><p class="muted">Truck owners who selected your profile appear here.</p></div><div class="grid">${reqs.map(a=>{
+      let actions='';
+      if(a.status==='Pending Driver Review')actions=`<button class="btn good" type="button" onclick="driverRespondDirectHire('${esc(a.id)}',true)">Accept</button> <button class="btn bad" type="button" onclick="driverRespondDirectHire('${esc(a.id)}',false)">Decline</button>`;
+      else if(a.status==='Waiting Owner Agreement')actions='<span class="pill">Accepted — waiting for owner agreement</span>';
+      else if(a.status==='Waiting Driver Agreement')actions=`<button class="btn good" type="button" onclick="driverAgreeDirectHire('${esc(a.id)}')">Agree</button>`;
+      else if(a.status==='Direct Hire Agreed')actions=`<button class="btn primary" type="button" onclick="viewDirectOwnerInformation('${esc(a.id)}')">View Truck Owner Information</button>`;
+      const message=a.status==='Pending Driver Review'?'Accept or decline this request. Your phone and email are not released yet.':a.status==='Waiting Owner Agreement'?'You accepted. The owner must click Agree next.':a.status==='Waiting Driver Agreement'?'The owner agreed. Click Agree to release the truck owner information to you.':'Both sides agreed. Truck owner information is available.';
+      return `<div class="card" style="border:2px solid ${a.status==='Direct Hire Agreed'?'#16a34a':'#d97706'}"><h3>🚛 ${esc(ownerNameFor(a))}</h3><p><b>Direct Truck Driver Hire Request</b></p><p class="muted">${message}</p><div class="actions">${actions}</div></div>`;
+    }).join('')}</div></section>`;
+  }
+
+  const oldOwnerHome=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){return (oldOwnerHome?oldOwnerHome():'')+ownerDirectHirePanel();};
+  const oldDriverHome=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){return driverDirectHirePanel()+(oldDriverHome?oldDriverHome():'');};
+})();
+</script>
+
+<script>
+/* V7.8.198 Reverse Rental Matching
+   Targeted addition only: rent seekers can post a Rental Wanted request, Admin approves it,
+   property owners can offer one of their approved properties, and each side separately agrees
+   before seeing the other person's contact information. Existing property-listing flow remains unchanged.
+*/
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const WANTED_TYPE='Rental Wanted';
+  const META='|WANTED:';
+  const baseStatus=s=>String(s||'').split(META)[0];
+  const wantedIdFromStatus=s=>String(s||'').includes(META)?String(s).split(META)[1]:'';
+  const withWanted=(status,wantedId)=>status+META+String(wantedId||'');
+  const isWanted=r=>String(r?.propertyType||'').toLowerCase()===WANTED_TYPE.toLowerCase()||String(r?.title||'').startsWith('Rental Wanted:');
+  const findReq=id=>(data.rentalRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const findRental=id=>(data.rentals||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const ownerIsCurrent=q=>norm(q?.ownerEmail)===norm(currentUser?.email)||String(q?.ownerId||'')===String(currentUser?.id||'');
+  const seekerIsCurrent=q=>norm(q?.seekerEmail)===norm(currentUser?.email)||String(q?.seekerId||'')===String(currentUser?.id||'');
+  const wantedPosts=()=> (data.rentals||[]).filter(isWanted);
+  const openWantedPosts=()=>wantedPosts().filter(r=>['Approved','Available'].includes(String(r.status||'')));
+  const ownerProperties=()=> (data.rentals||[]).filter(r=>!isWanted(r)&&norm(r.ownerEmail)===norm(currentUser?.email)&&['Approved','Available'].includes(String(r.status||'')));
+
+  window.submitRentalWanted=async function(){
+    if(!requireLogin())return;
+    if(currentUser.role!=='rent_seeker')return alert('Only rent seekers can post what they need to rent.');
+    if(!authReady())return alert('Supabase is required. Please refresh and log in again.');
+    const type=($('wantedType')?.value||'Home').trim();
+    const city=($('wantedCity')?.value||'').trim();
+    const budget=Number($('wantedBudget')?.value||0);
+    const bedrooms=Number($('wantedBedrooms')?.value||0);
+    const moveDate=$('wantedMoveDate')?.value||'';
+    const details=($('wantedDetails')?.value||'').trim();
+    if(!city||!budget)return alert('Please enter the city and your maximum monthly budget.');
+    if(moveDate&&moveDate<addDaysIso(0))return alert('Please choose today or a future move-in date.');
+    const title=`Rental Wanted: ${type} in ${city}`;
+    const utilities=`SEEKER NEEDS: ${details||'No additional details'}${bedrooms?` | Bedrooms: ${bedrooms}`:''}`;
+    const payload={owner_id:currentUser.id||null,title,city,property_type:WANTED_TYPE,bedrooms, bathrooms:0,monthly_rent:budget,security_deposit:0,move_in_date:moveDate||null,lease_term:'Wanted by seeker',pets_allowed:'Ask seeker',parking:'Ask seeker',furnished:false,utilities_included:utilities,photos:[],owner_paid:true,status:'Pending'};
+    let res=await hcSupabase.from('properties').insert(payload).select('*').single();
+    if(res.error)return alert('Rental Wanted request could not be saved: '+res.error.message);
+    const item={id:res.data.id,dbId:res.data.id,title,propertyType:WANTED_TYPE,city,price:budget,deposit:0,bed:bedrooms,bath:0,moveDate,leaseTerm:'Wanted by seeker',pets:'Ask seeker',parking:'Ask seeker',furnished:'No',utilities,photos:[],owner:currentUser.name,ownerPhone:currentUser.phone||'',ownerEmail:currentUser.email,ownerId:currentUser.id||'',status:'Pending',ownerPaid:true,source:'supabase'};
+    data.rentals.unshift(item);persistOnly();
+    sendAdminEmailNotice('Rental Wanted request needs approval','A rent seeker posted what they need to rent. Approve it in the Admin Verification Center so property owners can see it.',{Seeker:currentUser.name,Email:currentUser.email,Type:type,City:city,Maximum_Budget:money(budget),Move_In:moveDate||'Flexible'},'admin');
+    addNote(currentUser.email,'Your Rental Wanted request was submitted for admin approval.');
+    alert('Your Rental Wanted request was submitted. Property owners will see it after Admin approval.');
+    home();show('home');
+  };
+
+  window.offerPropertyToSeeker=async function(wantedId,selectId){
+    if(!requireLogin())return;
+    if(currentUser.role!=='owner')return alert('Only property owners can offer a property.');
+    const wanted=findRental(wantedId);if(!wanted||!isWanted(wanted))return alert('Rental Wanted request not found. Please refresh.');
+    const propertyId=$(selectId)?.value||'';const property=findRental(propertyId);
+    if(!property||isWanted(property)||!ownerProperties().includes(property))return alert('Choose one of your approved properties first.');
+    const existing=(data.rentalRequests||[]).find(q=>String(q.rentalId)===String(property.dbId||property.id)&&norm(q.seekerEmail)===norm(wanted.ownerEmail)&&!['Owner Offer Declined','Rental Match Closed'].includes(baseStatus(q.status)));
+    if(existing)return alert('You already offered this property to this seeker.');
+    const status=withWanted('Owner Offered Property - Waiting Seeker Review',wanted.dbId||wanted.id);
+    const payload={property_id:property.dbId||property.id,seeker_id:wanted.ownerId||null,paid:true,status};
+    let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
+    if(res.error)return alert('The property offer could not be saved: '+res.error.message);
+    const q={id:res.data.id,dbId:res.data.id,rentalId:property.dbId||property.id,propertyTitle:property.title,seekerName:wanted.owner,seekerPhone:wanted.ownerPhone||'',seekerEmail:wanted.ownerEmail,seekerId:wanted.ownerId||'',ownerName:currentUser.name,ownerPhone:currentUser.phone||'',ownerEmail:currentUser.email,ownerId:currentUser.id||'',status,paymentStatus:'Offer Sent',paid:true,amountPaid:0,time:new Date().toISOString(),source:'supabase'};
+    data.rentalRequests.unshift(q);persistOnly();
+    addNote(wanted.ownerEmail,`${currentUser.name} offered a property for your Rental Wanted request. Accept or decline from your home page.`);
+    sendEmailNotice({to:wanted.ownerEmail,name:wanted.owner,subject:'A property owner offered you a rental',summary:'A property owner responded to your Rental Wanted request. Open your home page to accept or decline the offer. Contact information remains protected until each side agrees.',buttonText:'Open Home Page',page:'home',details:{Property:property.title,City:property.city,Monthly_Rent:money(property.price),Status:'Waiting for your decision'}});
+    alert('Property offer sent to the rent seeker.');home();
+  };
+
+  async function updateOffer(q,status){
+    const raw=withWanted(status,wantedIdFromStatus(q.status));
+    if(authReady()&&(q.dbId||q.id)){
+      const {error}=await hcSupabase.from('rental_requests').update({status:raw}).eq('id',q.dbId||q.id);
+      if(error)return {error};
+    }
+    q.status=raw;persistOnly();return {error:null};
+  }
+
+  window.seekerRespondRentalOffer=async function(id,accept){
+    if(!requireLogin())return;const q=findReq(id);if(!q)return alert('Rental offer not found.');
+    if(!seekerIsCurrent(q))return alert('Only the rent seeker who received this offer can respond.');
+    if(baseStatus(q.status)!=='Owner Offered Property - Waiting Seeker Review')return alert('This offer is no longer waiting for your response.');
+    const next=accept?'Seeker Accepted - Waiting Owner Agreement':'Owner Offer Declined';
+    const r=await updateOffer(q,next);if(r.error)return alert('Could not update the offer: '+r.error.message);
+    if(accept){
+      sendAdminEmailNotice('Rent seeker accepted a property offer','A rent seeker accepted a property owner offer. The owner must click Agree next.',{Property:q.propertyTitle,Owner:q.ownerName,Owner_Email:q.ownerEmail,Seeker:q.seekerName,Seeker_Email:q.seekerEmail},'admin');
+      sendEmailNotice({to:q.ownerEmail,name:q.ownerName,subject:'Rent seeker accepted your property offer',summary:'The rent seeker accepted your offer. Open your home page and click Agree to release the seeker information to you.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Seeker:q.seekerName,Status:'Waiting for your agreement'}});
+      alert('Offer accepted. The property owner must click Agree next.');
+    }else{
+      sendEmailNotice({to:q.ownerEmail,name:q.ownerName,subject:'Rent seeker declined your property offer',summary:'The rent seeker declined your property offer.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Declined'}});
+      alert('Offer declined.');
+    }
+    home();
+  };
+
+  window.ownerAgreeRentalMatch=async function(id){
+    if(!requireLogin())return;const q=findReq(id);if(!q)return alert('Rental match not found.');
+    if(!ownerIsCurrent(q))return alert('Only the property owner can agree.');
+    if(baseStatus(q.status)!=='Seeker Accepted - Waiting Owner Agreement')return alert('The seeker must accept first.');
+    const r=await updateOffer(q,'Owner Agreed - Waiting Seeker Agreement');if(r.error)return alert('Could not save your agreement: '+r.error.message);
+    addNote(q.seekerEmail,'The property owner agreed. Click Agree on your home page to release the owner information to you.');
+    sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Property owner agreed — your agreement is next',summary:'The property owner agreed. Open your home page and click Agree to release the property owner information to you.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Waiting for your agreement'}});
+    alert('Agreed. The seeker information is now available to you. The seeker must agree separately to see your information.');home();
+  };
+
+  window.seekerAgreeRentalMatch=async function(id){
+    if(!requireLogin())return;const q=findReq(id);if(!q)return alert('Rental match not found.');
+    if(!seekerIsCurrent(q))return alert('Only the rent seeker can agree.');
+    if(baseStatus(q.status)!=='Owner Agreed - Waiting Seeker Agreement')return alert('The property owner must agree first.');
+    const r=await updateOffer(q,'Rental Match Complete');if(r.error)return alert('Could not save your agreement: '+r.error.message);
+    const wanted=findRental(wantedIdFromStatus(q.status));
+    if(wanted){wanted.status='Matched';if(authReady()&&(wanted.dbId||wanted.id))await hcSupabase.from('properties').update({status:'Matched'}).eq('id',wanted.dbId||wanted.id);}
+    addNote(q.ownerEmail,'The rent seeker agreed. Both sides can now view the appropriate contact information.');
+    sendEmailNotice({to:q.ownerEmail,name:q.ownerName,subject:'Rental match completed',summary:'The rent seeker agreed. Both sides have completed the agreement steps.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Seeker:q.seekerName,Status:'Rental Match Complete'}});
+    alert('Agreed. The property owner information is now available to you.');persistOnly();home();
+  };
+
+  window.viewRentalMatchSeekerInfo=function(id){const q=findReq(id);if(!q||!ownerIsCurrent(q))return alert('Rental match not found.');if(!['Owner Agreed - Waiting Seeker Agreement','Rental Match Complete'].includes(baseStatus(q.status)))return alert('Click Agree first.');alert(`Rent Seeker Information\n\nName: ${q.seekerName||''}\nPhone: ${q.seekerPhone||'Not provided'}\nEmail: ${q.seekerEmail||'Not provided'}`);};
+  window.viewRentalMatchOwnerInfo=function(id){const q=findReq(id);if(!q||!seekerIsCurrent(q))return alert('Rental match not found.');if(baseStatus(q.status)!=='Rental Match Complete')return alert('Click Agree first.');alert(`Property Owner Information\n\nName: ${q.ownerName||''}\nPhone: ${q.ownerPhone||'Not provided'}\nEmail: ${q.ownerEmail||'Not provided'}`);};
+
+  function seekerWantedAndOffersPanel(){
+    if(!currentUser||currentUser.role!=='rent_seeker')return '';
+    const mine=wantedPosts().filter(r=>norm(r.ownerEmail)===norm(currentUser.email));
+    const offers=(data.rentalRequests||[]).filter(q=>seekerIsCurrent(q)&&wantedIdFromStatus(q.status));
+    const offerCards=offers.map(q=>{
+      const st=baseStatus(q.status);let actions='';let note='';
+      if(st==='Owner Offered Property - Waiting Seeker Review'){actions=`<button class="btn good" onclick="seekerRespondRentalOffer('${esc(q.id)}',true)">Accept</button> <button class="btn bad" onclick="seekerRespondRentalOffer('${esc(q.id)}',false)">Decline</button>`;note='A property owner offered this property. Contact information is still protected.';}
+      else if(st==='Seeker Accepted - Waiting Owner Agreement'){actions='<span class="pill warn">Accepted — waiting for owner agreement</span>';note='You accepted. The property owner must click Agree next.';}
+      else if(st==='Owner Agreed - Waiting Seeker Agreement'){actions=`<button class="btn good" onclick="seekerAgreeRentalMatch('${esc(q.id)}')">Agree</button>`;note='The property owner agreed. Click Agree to release the owner information to you.';}
+      else if(st==='Rental Match Complete'){actions=`<button class="btn primary" onclick="viewRentalMatchOwnerInfo('${esc(q.id)}')">View Property Owner Information</button>`;note='Both agreement steps are complete.';}
+      else {actions=`<span class="pill">${esc(st)}</span>`;note='This offer is closed.';}
+      return `<div class="card" style="border:2px solid ${st==='Rental Match Complete'?'#16a34a':'#d97706'}"><h3>🏠 ${esc(q.propertyTitle)}</h3><p class="muted">${esc(note)}</p><div class="actions">${actions}</div></div>`;
+    }).join('');
+    const mineCards=mine.map(r=>`<div class="card"><h3>${esc(r.title)}</h3><p>${esc(r.city)} • Maximum ${money(r.price)}/month</p><p><b>Status:</b> ${esc(r.status)}</p></div>`).join('')||'<div class="card"><p>You have not posted a Rental Wanted request yet.</p></div>';
+    return `<section id="rentalWantedSeekerHome" style="margin-top:20px"><div class="card"><h2 style="margin:0">🔍 Post What You Need to Rent</h2><p class="muted">After Admin approves your request, all property owners can see it and offer an approved property.</p><div class="grid"><label>Property Type<select id="wantedType"><option>Home</option><option>Apartment</option><option>Room</option><option>Basement</option><option>Town House</option></select></label><label>City<input id="wantedCity" placeholder="Atlanta, GA"></label><label>Maximum Monthly Budget<input id="wantedBudget" type="number" min="1" placeholder="1500"></label><label>Bedrooms Needed<input id="wantedBedrooms" type="number" min="0" placeholder="2"></label><label>Move-in Date<input id="wantedMoveDate" type="date"></label><label>Other Needs<textarea id="wantedDetails" placeholder="Neighborhood, pets, parking, lease length, accessibility, or other needs"></textarea></label></div><button class="btn primary" onclick="submitRentalWanted()">Post Rental Wanted</button></div>${offerCards?`<div class="card"><h2 style="margin:0">🏠 Property Offers Requiring Your Action</h2></div><div class="grid">${offerCards}</div>`:''}<div class="card"><h2 style="margin:0">📋 My Rental Wanted Posts</h2></div><div class="grid">${mineCards}</div></section>`;
+  }
+
+  function ownerWantedPanel(){
+    if(!currentUser||currentUser.role!=='owner')return '';
+    const wanted=openWantedPosts().filter(r=>norm(r.ownerEmail)!==norm(currentUser.email));
+    const props=ownerProperties();
+    const myOffers=(data.rentalRequests||[]).filter(q=>ownerIsCurrent(q)&&wantedIdFromStatus(q.status));
+    const actionCards=myOffers.filter(q=>['Seeker Accepted - Waiting Owner Agreement','Owner Agreed - Waiting Seeker Agreement','Rental Match Complete'].includes(baseStatus(q.status))).map(q=>{
+      const st=baseStatus(q.status);let actions='';let note='';
+      if(st==='Seeker Accepted - Waiting Owner Agreement'){actions=`<button class="btn good" onclick="ownerAgreeRentalMatch('${esc(q.id)}')">Agree</button>`;note='The seeker accepted your offer. Click Agree to release the seeker information to you.';}
+      else {actions=`<button class="btn primary" onclick="viewRentalMatchSeekerInfo('${esc(q.id)}')">View Rent Seeker Information</button>`;note=st==='Rental Match Complete'?'Both sides agreed.':'You agreed. The seeker must agree separately to see your information.';}
+      return `<div class="card" style="border:2px solid ${st==='Rental Match Complete'?'#16a34a':'#d97706'}"><h3>🏠 ${esc(q.propertyTitle)}</h3><p><b>Rent Seeker:</b> ${esc(q.seekerName)}</p><p class="muted">${esc(note)}</p><div class="actions">${actions}</div></div>`;
+    }).join('');
+    const wantedCards=wanted.map((r,i)=>{
+      const selectId='wantedOfferProperty_'+i+'_'+String(r.id).replace(/[^a-zA-Z0-9]/g,'');
+      const opts=props.map(p=>`<option value="${esc(p.dbId||p.id)}">${esc(p.title)} — ${esc(p.city)} — ${money(p.price)}/month</option>`).join('');
+      const existing=myOffers.find(q=>wantedIdFromStatus(q.status)===String(r.dbId||r.id)&&!['Owner Offer Declined','Rental Match Closed'].includes(baseStatus(q.status)));
+      let action=existing?`<span class="pill">${esc(baseStatus(existing.status))}</span>`:(opts?`<label>Choose one of your approved properties<select id="${selectId}">${opts}</select></label><button class="btn primary" onclick="offerPropertyToSeeker('${esc(r.dbId||r.id)}','${selectId}')">Offer Property</button>`:'<p class="muted">Add and receive Admin approval for a property before making an offer.</p>');
+      return `<div class="card"><h3>🔍 ${esc(r.owner||'Rent Seeker')}</h3><p><b>Needs:</b> ${esc(String(r.title||'').replace('Rental Wanted: ',''))}</p><p><b>Maximum Budget:</b> ${money(r.price)}/month</p><p><b>Move-in:</b> ${esc(r.moveDate||'Flexible')}</p><p><b>Bedrooms:</b> ${esc(r.bed||'Flexible')}</p><p class="muted">The seeker's phone and email remain hidden until you agree after the seeker accepts.</p><div class="actions" style="display:block">${action}</div></div>`;
+    }).join('')||'<div class="card"><p>No Admin-approved Rental Wanted requests are available right now.</p></div>';
+    return `<section id="rentSeekersLookingForHomes" style="margin-top:20px">${actionCards?`<div class="card"><h2 style="margin:0">🤝 Rental Matches Requiring Your Action</h2></div><div class="grid">${actionCards}</div>`:''}<div class="card"><h2 style="margin:0">🔍 Rent Seekers Looking for Properties</h2><p class="muted">Offer one of your approved properties. Contact information remains protected until each person clicks their own Agree button.</p></div><div class="grid">${wantedCards}</div></section>`;
+  }
+
+  const oldOwnerHome=window.propertyOwnerHomeActions;
+  window.propertyOwnerHomeActions=function(){return (oldOwnerHome?oldOwnerHome():'')+ownerWantedPanel();};
+  const oldSeekerHome=window.rentSeekerHomeActions;
+  window.rentSeekerHomeActions=function(){return seekerWantedAndOffersPanel()+(oldSeekerHome?oldSeekerHome():'');};
+
+  // Keep Rental Wanted records out of the ordinary public property cards while preserving Admin approval cards.
+  const oldRentalCards=window.rentalCards;
+  window.rentalCards=function(list,role){
+    list=list||[];
+    if(role==='admin')return oldRentalCards?oldRentalCards(list,role):'';
+    return oldRentalCards?oldRentalCards(list.filter(r=>!isWanted(r)),role):'';
+  };
+
+  // Give Admin and the seeker the correct approval message for Rental Wanted posts.
+  const oldApproveRental=window.approveRental;
+  window.approveRental=async function(id){
+    const r=findRental(id);
+    if(!r||!isWanted(r))return oldApproveRental(id);
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    r.status='Approved';
+    if(authReady()&&(r.dbId||r.id)){const {error}=await hcSupabase.from('properties').update({status:'Approved'}).eq('id',r.dbId||r.id);if(error)return alert('Could not approve Rental Wanted request: '+error.message);}
+    addNote(r.ownerEmail,'Your Rental Wanted request was approved. Property owners can now see it and offer a property.');
+    sendEmailNotice({to:r.ownerEmail,name:r.owner,subject:'Your Rental Wanted request was approved',summary:'Admin approved what you need to rent. Property owners can now see it and offer one of their approved properties.',buttonText:'Open Home Page',page:'home',details:{Request:r.title,City:r.city,Maximum_Budget:money(r.price),Status:'Approved'}});
+    persistOnly();adminSuccess();
+  };
+})();
+</script>
+
 </body>
 </html>
