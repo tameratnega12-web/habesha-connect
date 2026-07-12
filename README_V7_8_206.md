@@ -1,7 +1,8 @@
 # Habesha Agenagn V7.8.206
 
-## Fix
-- Restored the Truck Owner home-page action section for admin-approved driver applications.
-- Applications with status `Pending Owner Review` now show **Accept** and **Decline** to the correct Truck Owner.
-- Completed hired/filled jobs remain hidden from active user views.
-- No SQL changes are required.
+## Truck Post Job Form Typing Fix
+- Fixed the Truck Owner **Post Driver Job** form jumping/re-rendering while the owner is typing.
+- Trucking Supabase realtime updates no longer rebuild the trucking page while focus is inside the Post Job form.
+- Realtime refresh resumes normally after leaving the form or posting the job.
+- No other category or workflow was changed.
+- No SQL update is required.

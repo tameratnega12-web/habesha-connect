@@ -1243,7 +1243,9 @@ async function initTruckRealtime(){
  ['trucking_jobs','trucking_applications','trucking_driver_profiles','trailer_rentals'].forEach(tbl=>{
    hcSupabase.channel('hc_'+tbl).on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
      await loadSupabaseTrucking();
-     if(currentPage==='truck')truck();
+     const activeTruckField=document.activeElement;
+     const editingPostJob=!!(activeTruckField&&activeTruckField.closest&&activeTruckField.closest('#jobPostCard'));
+     if(currentPage==='truck'&&!editingPostJob)truck();
      if(currentPage==='admin')adminSuccess();
    }).subscribe();
  });
