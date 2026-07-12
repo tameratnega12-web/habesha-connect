@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.202">
+<meta name="app-version" content="V7.8.203">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -829,7 +829,27 @@ async function goJobSeekerJobs(){
  const openTarget=()=>{const el=$('jobsList');if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
  if(!openTarget())setTimeout(openTarget,120);
 }
-function home(){const publicIntro=!currentUser?`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>`:'';$('home').innerHTML=`${publicIntro}${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${customerHomeActions()}${jobSeekerHomeActions()}${eventOrganizerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function placeAllHomeTransactionsBelowQuickActions(){
+ const root=$('home');
+ if(!root||!currentUser)return;
+ const actionIds=['travelerHomeActions','senderHomeActions','propertyOwnerHomeActions','rentSeekerHomeActions','truckOwnerHomeActions','truckDriverHomeActions','taxiOwnerHomeActions','taxiDriverHomeActions','homeServiceProviderHomeActions','businessOwnerHomeActions','marketplaceHomeActions','customerHomeActions','jobSeekerHomeActions','eventOrganizerHomeActions'];
+ const action=actionIds.map(id=>root.querySelector('#'+id)).find(Boolean);
+ if(!action)return;
+ const firstGrid=action.querySelector(':scope > .grid');
+ if(!firstGrid)return;
+ const holder=document.createElement('div');
+ holder.id='homePriorityTransactions';
+ holder.className='hc-home-priority-transactions';
+ let node=action.nextElementSibling;
+ while(node){
+   const next=node.nextElementSibling;
+   if(node.tagName==='H2'&&/available services/i.test(node.textContent||''))break;
+   holder.appendChild(node);
+   node=next;
+ }
+ if(holder.children.length)action.insertBefore(holder,firstGrid);
+}
+function home(){const publicIntro=!currentUser?`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>`:'';$('home').innerHTML=`${publicIntro}${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${customerHomeActions()}${jobSeekerHomeActions()}${eventOrganizerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`;placeAllHomeTransactionsBelowQuickActions()}
 
 
 
