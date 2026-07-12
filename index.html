@@ -5711,11 +5711,10 @@ goRentalSection=async function(section){
       <div class="card"><h3>🚛 Truck Owner Record</h3><p class="muted">Manage truck, insurance, registration, income, expenses, and maintenance records.</p><button class="btn primary" onclick="goTruckSection('record')">Truck Owner Record</button></div>
       <div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Post a truck driver hiring job.</p><button class="btn primary" onclick="goTruckSection('postJob')">Post Driver Job</button></div>
       <div class="card"><h3>👥 Driver Applications</h3><p class="muted">Review applications for your posted jobs.</p><button class="btn primary" onclick="goTruckSection('applications')">See Driver Applications</button></div>
+      <div class="card"><h3>👤 Drivers Available for Hire</h3><p class="muted">Browse driver profiles and send a direct hire request.</p><button class="btn primary" onclick="goTruckSection('driversForHire')">Drivers Available for Hire</button></div>
       <div class="card"><h3>🚚 Post Trailer for Rent</h3><p class="muted">Post your trailer for admin approval and rental.</p><button class="btn primary" onclick="goTruckSection('postTrailer')">Post Trailer for Rent</button></div>
       <div class="card"><h3>📨 Trailer Rental Requests</h3><p class="muted">See only requests for trailers you posted and accept or decline them.</p><button class="btn primary" onclick="goTruckSection('trailerRequests')">See Trailer Requests</button></div>
       <div class="card"><h3>🔎 Available Trailers</h3><p class="muted">Browse approved trailers available to request.</p><button class="btn primary" onclick="goTruckSection('trailers')">Available Trailers</button></div>
-      <div class="card"><h3>📝 Post Trailer Needed</h3><p class="muted">Post the trailer you need. The form opens only after you click.</p><button class="btn primary" onclick="goTruckSection('trailerNeededPost')">Post Trailer Needed</button></div>
-      <div class="card"><h3>🚛 Renters Looking for Trailers</h3><p class="muted">See approved Trailer Needed posts and make an offer.</p><button class="btn primary" onclick="goTruckSection('rentersLooking')">Renters Looking for Trailers</button></div>
     </div></section>`;
   };
 
@@ -5765,83 +5764,7 @@ goRentalSection=async function(section){
     return previousGo(section);
   };
 
-  window.__hcVersion='V7.8.215';
-})();
-</script>
-
-
-<script id="v78215-truck-owner-button-routing-cleanup">
-/* V7.8.215 — Final truck-owner UI routing cleanup.
-   - No Drivers Available for Hire button on Truck Owner Home.
-   - Trailer Needed form appears only after Post Trailer Needed is clicked.
-   - See Trailer Requests shows request records/actions only, never a form. */
-(function(){
-  const safe=v=>typeof hcHomeEsc==='function'?hcHomeEsc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const norm=v=>String(v||'').trim().toLowerCase();
-  const mine=v=>norm(v)===norm(currentUser&&currentUser.email);
-
-  function cleanTruckOwnerHomeExtras(){
-    if(!currentUser||currentUser.role!=='truck_owner')return;
-    // Remove any stale form/list panels injected by older two-way wrappers.
-    document.querySelectorAll('#home #directTruckDriverHire').forEach(x=>x.remove());
-    document.querySelectorAll('#home .cmFlow').forEach(panel=>{
-      const text=(panel.textContent||'').toLowerCase();
-      if(text.includes('post trailer needed')||text.includes('renters looking for trailers'))panel.remove();
-    });
-    // Remove any stale Drivers Available for Hire buttons/cards left by cached markup.
-    document.querySelectorAll('#home button').forEach(b=>{
-      if(/drivers available for hire/i.test(b.textContent||'')){
-        const card=b.closest('.card');
-        (card||b).remove();
-      }
-    });
-  }
-
-  function setWorkspace(title,body){
-    const root=document.getElementById('truck');if(!root)return;
-    root.innerHTML=`<h2>🚛 Trucking & Trailer</h2><div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">${safe(title)}</h3><p class="muted" style="margin-bottom:0">Only this selected workspace is shown.</p></div><button class="btn ghost" onclick="show('home')">Back Home</button></div></div>${body}`;
-  }
-
-  function trailerRequestsOnly(){
-    const rows=(data.trailerRentals||[]).filter(t=>mine(t.ownerEmail)&&t.renterEmail);
-    const cards=rows.map(t=>{
-      let action='';
-      if(t.status==='Pending Owner Review')action=`<button class="btn good" onclick="approveTrailerRental('${safe(t.id)}')">Accept</button> <button class="btn bad" onclick="declineTrailerRental('${safe(t.id)}')">Decline</button>`;
-      else action=`<span class="pill">${safe(t.status||'')}</span>`;
-      return `<div class="card"><h3>🚚 ${safe(t.trailerType||'Trailer')}</h3><p><b>Requester:</b> ${safe(t.renterName||'')}</p><p><b>Location:</b> ${safe(t.location||'')}</p><p><b>Price:</b> ${safe(t.price||'')}</p><p class="muted">${safe(t.status||'')}</p><div class="actions">${action}</div></div>`;
-    }).join('')||'<div class="card"><p>No trailer rental requests yet.</p></div>';
-    return `<section id="focusedTrailerRequests"><div class="grid">${cards}</div></section>`;
-  }
-
-  function trailerNeededFormOnly(){
-    return `<section id="focusedTrailerNeededForm"><div class="card cmFlow"><p class="muted">Admin approves this request before trailer owners can see it.</p><div class="grid"><label>Trailer needed / title<input id="cmTitle_trailer_needed" placeholder="Example: 53-foot dry van needed"></label><label>City / area<input id="cmCity_trailer_needed" placeholder="Atlanta, GA"></label><label>Details<textarea id="cmDetails_trailer_needed" placeholder="Trailer type, dates, budget, route, and other requirements"></textarea></label></div><button class="btn primary" onclick="cmCreatePost('trailer_needed')">Post Trailer Needed</button></div></section>`;
-  }
-
-  const priorGo=window.goTruckSection;
-  window.goTruckSection=async function(section){
-    if(section==='trailerRequests'){
-      await show('truck');
-      setWorkspace('Trailer Rental Requests',trailerRequestsOnly());
-      return;
-    }
-    if(section==='trailerNeededPost'){
-      await show('truck');
-      setWorkspace('Post Trailer Needed',trailerNeededFormOnly());
-      return;
-    }
-    return priorGo.apply(this,arguments);
-  };
-
-  const priorHome=window.home;
-  if(typeof priorHome==='function')window.home=function(){
-    const result=priorHome.apply(this,arguments);
-    cleanTruckOwnerHomeExtras();
-    requestAnimationFrame(cleanTruckOwnerHomeExtras);
-    setTimeout(cleanTruckOwnerHomeExtras,100);
-    return result;
-  };
-
-  window.__hcVersion='V7.8.215';
+  window.__hcVersion='V7.8.214';
 })();
 </script>
 
