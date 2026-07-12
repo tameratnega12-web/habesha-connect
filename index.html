@@ -5546,3 +5546,55 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.202';
 })();
 </script>
+
+<script id="v78205-remove-completed-truck-trailer-all-parties">
+/* V7.8.205 — Completed truck hires and rented trailers are removed from
+   all non-admin active Home and Trucking views. Admin keeps the records. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const isParty=()=>window.currentUser&&['driver','truck_owner'].includes(currentUser.role);
+  const jobDone=s=>['hired','filled','completed','closed','closed - position filled'].includes(norm(s));
+  const appDone=s=>['hired','filled','completed','closed','closed - position filled','declined'].includes(norm(s));
+  const trailerDone=s=>['rented','completed','closed'].includes(norm(s));
+
+  // Remove terminal records from the general Home activity feed.
+  const priorItems=window.personalizedHomeItems;
+  window.personalizedHomeItems=function(){
+    const items=typeof priorItems==='function'?priorItems():[];
+    if(!isParty())return items;
+    return (items||[]).filter(item=>{
+      const title=norm(item&&item.title), status=norm(item&&item.status);
+      if((title.includes('truck job')||title.includes('driver application')) && (jobDone(status)||appDone(status)))return false;
+      if((title.includes('trailer')||title.includes('rental')) && trailerDone(status))return false;
+      return true;
+    });
+  };
+
+  // Generate role-specific Home sections without completed transaction data.
+  function withActiveData(render){
+    if(!isParty()||typeof render!=='function')return typeof render==='function'?render():'';
+    const jobs=data.truckJobs, apps=data.truckApplications, trailers=data.trailerRentals;
+    data.truckJobs=(jobs||[]).filter(x=>!jobDone(x.status));
+    data.truckApplications=(apps||[]).filter(x=>!appDone(x.status));
+    data.trailerRentals=(trailers||[]).filter(x=>!trailerDone(x.status));
+    try{return render();}
+    finally{data.truckJobs=jobs;data.truckApplications=apps;data.trailerRentals=trailers;}
+  }
+
+  const priorDriverActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){return withActiveData(()=>typeof priorDriverActions==='function'?priorDriverActions():'');};
+  const priorOwnerActions=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){return withActiveData(()=>typeof priorOwnerActions==='function'?priorOwnerActions():'');};
+
+  // Hide completed records from both parties inside the Trucking page.
+  const priorTruck=window.truck;
+  window.truck=function(){
+    if(!isParty()||typeof priorTruck!=='function')return typeof priorTruck==='function'?priorTruck.apply(this,arguments):undefined;
+    const args=arguments, self=this;
+    return withActiveData(()=>priorTruck.apply(self,args));
+  };
+
+  window.__hcVersion='V7.8.205';
+})();
+</script>
+
