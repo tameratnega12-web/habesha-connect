@@ -5364,12 +5364,10 @@ async function adminApproveTrailerPayment(id){
 
   function showOwner(a){
     const j=jobForApp(a)||{};
-    contactAlert(
-      a.ownerName||j.ownerName||'Not provided',
-      j.ownerPhone||a.ownerPhone||j.phone||'Not provided',
-      a.ownerEmail||j.ownerEmail||'Not provided',
-      'Truck Owner Information'
-    );
+    const ownerName=a.ownerName||j.ownerName||'Not provided';
+    const ownerPhone=j.ownerPhone||a.ownerPhone||j.phone||'Not provided';
+    const ownerEmail=a.ownerEmail||j.ownerEmail||'Not provided';
+    alert(`Truck Owner Information\n\nName: ${ownerName}\nPhone: ${ownerPhone}\nEmail: ${ownerEmail}`);
   }
 
   window.driverAgreeTruckJob=async function(id){
@@ -5400,7 +5398,7 @@ async function adminApproveTrailerPayment(id){
     try{home();}catch(e){console.warn('Home refresh after truck driver agreement failed',e);}
   };
 
-  window.__hcVersion='V7.8.203';
+  window.__hcVersion='V7.8.204';
 })();
 </script>
 </body>

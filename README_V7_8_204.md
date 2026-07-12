@@ -1,12 +1,14 @@
 # Habesha Agenagn V7.8.204
 
-Focused transaction-view cleanup.
+## Truck Driver Agree popup fix
 
-- Home-page transaction cards now open the correct category records and next actions.
-- Shipping Open Trip, My Open Trips, Available Travelers, Post Item, and Shipping Requests are separated.
-- Rental Add Property, Available Rentals, and Rental Requests are separated.
-- Trucking, Trailer, Taxi/Limo, Home Services, Marketplace, Jobs, Business, and Events activity cards route to the relevant existing sections.
-- Unrelated forms, statistics, history, and navigation sections are hidden in focused transaction views.
-- A Back Home button is shown in each focused view.
-- No workflow, approval, email, contact-release, or database behavior was changed.
-- No SQL is required.
+Fixed the Truck Job transaction after the accepted driver clicks **Agree**.
+
+The V7.8.203 handler called a contact popup function that was outside its JavaScript scope, causing the button to appear unresponsive. V7.8.204 now creates the Truck Owner information popup directly inside the active Agree handler.
+
+After Agree:
+- Application moves to **Pending Final Admin Approval**.
+- Truck Owner name, phone, and email appear immediately.
+- Admin final approval flow remains unchanged.
+
+No SQL is required.
