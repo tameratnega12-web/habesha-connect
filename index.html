@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.217">
+<meta name="app-version" content="V7.8.133">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -69,7 +69,127 @@
   <section id="terms" class="page hide"></section>
 </main>
 <div class="footer"><div class="actions" style="justify-content:center;margin-bottom:10px"><button class="btn ghost" onclick="show('how')">How It Works</button> <button class="btn ghost" onclick="show('about')">About</button> <button class="btn ghost" onclick="show('contact')">Contact</button> <button class="btn ghost" onclick="show('help')">Help</button> <button class="btn ghost" onclick="show('privacy')">Privacy</button> <button class="btn ghost" onclick="show('terms')">Terms</button></div><div>© Habesha Connect</div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+/* V7.8.69 RENTALS: restore requested flow
+   Owner posts property -> Admin approves property -> Seeker requests -> Admin approves/declines request.
+   Admin approval marks property Rented. Admin decline keeps/returns property Available. No seeker $10 payment. */
+function rentalRequestActionButtons(q,role){
+  const st=String(q.status||'Pending');
+  const id=q.id||q.dbId;
+  if(role==='admin'){
+    if(['Pending','Pending Admin Review','Pending Owner Review','Waiting Owner Review'].includes(st)){
+      return `<button class="btn primary" onclick="approveRentalReq('${id}')">Approve - Mark Rented</button> <button class="btn bad" onclick="declineRentalReq('${id}')">Decline</button>`;
+    }
+    return '-';
+  }
+  return '-';
+}
+function rentalRequestsTable(reqs,role){
+  let wrapId=role==='owner'?' id="ownerRentalRequests"':(role==='rent_seeker'?' id="seekerRentalRequests"':'');
+  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${(q.status==='Approved'||role==='admin'||role==='owner')?(q.ownerPhone||''):'Shown after admin approval'}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+}
+rentalRequestsHtml=function(reqs,role,anchor){
+  let wrapId=anchor?` id="${anchor}"`:(role==='owner'?' id="ownerRentalRequests"':'');
+  return `<div${wrapId}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Phone</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>`<tr><td>${q.propertyTitle}</td><td>${q.seekerName}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${(q.status==='Approved'||role==='admin'||role==='owner')?(q.ownerPhone||''):'Shown after admin approval'}</td><td>${q.status}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+};
+async function requestViewing(id){
+ if(!requireLogin())return;
+ if(!authReady())return alert('Supabase is required to send rental viewing requests. Please refresh the page and log in again.');
+ if(!currentUser.id)return alert('Your profile ID is missing. Please log out, log back in, and try again.');
+ await loadSupabaseRentals();
+ await loadSupabaseRentalRequests();
+ let r=data.rentals.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+ if(!r)return alert('Rental listing not found. Please refresh and try again.');
+ if(!['Approved','Available'].includes(String(r.status||'')))return alert('This property is not available for requests.');
+ if(r.ownerEmail===currentUser.email||String(r.ownerId||'')===String(currentUser.id||''))return alert('You cannot request your own property.');
+ let propertyKey=r.dbId||r.id;
+ let existing=data.rentalRequests.find(q=>(String(q.rentalId)===String(r.id)||String(q.rentalId)===String(r.dbId)||String(q.rentalId)===String(propertyKey))&&(String(q.seekerId||'')===String(currentUser.id||'')||q.seekerEmail===currentUser.email)&&!['Declined','Cancelled'].includes(String(q.status||'')));
+ if(existing){alert('You already sent a viewing request for this property.');await rentals();return;}
+ let payload={property_id:propertyKey,seeker_id:currentUser.id,paid:false,amount_paid:0,status:'Pending Admin Review'};
+ let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
+ if(res.error){
+   let msg=String(res.error.message||'').toLowerCase();
+   if(msg.includes('amount_paid')){delete payload.amount_paid;res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();}
+   if(res.error&&msg.includes('paid')){delete payload.paid;res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();}
+   if(res.error)return alert('Viewing request could not be saved to Supabase: '+res.error.message);
+ }
+ let localReq={id:res.data.id,dbId:res.data.id,rentalId:propertyKey,propertyTitle:r.title,seekerName:currentUser.name,seekerPhone:currentUser.phone||'',seekerEmail:currentUser.email,seekerId:currentUser.id||'',ownerName:r.owner,ownerPhone:r.ownerPhone||'',ownerEmail:r.ownerEmail||'',ownerId:r.ownerId||'',status:'Pending Admin Review',paymentStatus:'No payment required',paid:false,amountPaid:0,time:new Date().toLocaleString(),source:'supabase'};
+ data.rentalRequests.unshift(localReq);
+ addNote('admin.habeshaconnect@gmail.com','New rental viewing request for '+r.title+' from '+currentUser.name+'. Admin approval is needed.');
+ sendAdminEmailNotice('Rental viewing request needs admin approval','A rent seeker requested a property viewing. Admin approval will mark the property rented.',{Seeker:currentUser.name,Email:currentUser.email,Property:r.title,Owner:r.owner,OwnerEmail:r.ownerEmail},'admin');
+ addNote(currentUser.email,'Your viewing request was sent to admin for approval. No payment is required during .');
+ persistOnly();
+ alert('Viewing request submitted. Waiting for admin approval. No payment required.');
+ await rentals();
+}
+function __findRentalForReqV7869(q){
+  return data.rentals.find(r=>String(r.id)===String(q.rentalId)||String(r.dbId)===String(q.rentalId)||String(r.id)===String(q.propertyId)||String(r.dbId)===String(q.propertyId));
+}
+async function __updateRentalStatusV7869(r,status){
+  if(!r)return {error:null};
+  const old=r.status;
+  r.status=status;
+  persistOnly();
+  let res={error:null};
+  if(authReady()&&r.dbId)res=await hcSupabase.from('properties').update({status}).eq('id',r.dbId);
+  if(res.error){r.status=old;persistOnly();}
+  return res;
+}
+approveRentalReq=async function(id){
+  if(!requireAdmin())return;
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  if(!['Pending','Pending Admin Review','Pending Owner Review','Waiting Owner Review'].includes(String(q.status||'')))return alert('This rental request is not waiting for admin approval.');
+  let rental=__findRentalForReqV7869(q);
+  let oldQ=q.status;
+  q.status='Approved'; q.paymentStatus='No payment required'; q.paid=false; q.amountPaid=0;
+  persistOnly();
+  let reqRes={error:null};
+  if(authReady()&&q.dbId)reqRes=await hcSupabase.from('rental_requests').update({status:'Approved',paid:false,amount_paid:0}).eq('id',q.dbId);
+  if(reqRes.error){q.status=oldQ;persistOnly();return alert('Could not approve rental request: '+reqRes.error.message);}
+  let propRes=await __updateRentalStatusV7869(rental,'Rented');
+  if(propRes.error)return alert('Request approved, but property could not be marked Rented in Supabase: '+propRes.error.message);
+  // Cancel other unfinished requests for this property so seekers do not continue requesting a rented property.
+  let propertyKey=String((rental&&rental.dbId)||q.rentalId||'');
+  (data.rentalRequests||[]).forEach(other=>{
+    if(other!==q && String(other.rentalId)===propertyKey && !['Approved','Declined','Cancelled'].includes(String(other.status||''))){other.status='Cancelled';}
+  });
+  addNote(q.seekerEmail,'Congratulations! Admin approved your rental request and the property is now marked Rented. Open your home page and click Request Owner Information to release the owner contact details.');
+  addNote(q.ownerEmail,'Admin approved a rental request for your property. The property is now marked Rented.');
+  sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Congratulations — your rental was approved',summary:'Congratulations! Admin approved your rental request and the property is now marked rented. Open your home page and click Request Owner Information to release the owner contact details.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Approved / Rented'}});
+  persistOnly();
+  if(currentPage==='admin')adminSuccess('Rental request approved. Property marked Rented.'); else await rentals();
+};
+declineRentalReq=async function(id){
+  if(!requireAdmin())return;
+  let q=data.rentalRequests.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!q)return alert('Rental request not found.');
+  let rental=__findRentalForReqV7869(q);
+  let oldQ=q.status;
+  q.status='Declined'; q.paymentStatus='No payment required'; q.paid=false; q.amountPaid=0;
+  persistOnly();
+  let reqRes={error:null};
+  if(authReady()&&q.dbId)reqRes=await hcSupabase.from('rental_requests').update({status:'Declined',paid:false,amount_paid:0}).eq('id',q.dbId);
+  if(reqRes.error){q.status=oldQ;persistOnly();return alert('Could not decline rental request: '+reqRes.error.message);}
+  // If this request did not rent the property, keep/return property Available.
+  if(rental && String(rental.status||'')!=='Rented'){
+    let propRes=await __updateRentalStatusV7869(rental,'Available');
+    if(propRes.error)return alert('Request declined, but property could not be returned to Available: '+propRes.error.message);
+  }
+  addNote(q.seekerEmail,'Admin declined your rental request. No payment was required.');
+  addNote(q.ownerEmail,'Admin declined a rental request for your property. The property remains available.');
+  sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental request declined',summary:'Admin declined your rental request. The property remains available.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Status:'Declined'}});
+  persistOnly();
+  if(currentPage==='admin')adminSuccess('Rental request declined. Property remains Available.'); else await rentals();
+};
+async function adminApproveRentalReq(id){return approveRentalReq(id);}
+async function adminDeclineRentalReq(id){return declineRentalReq(id);}
+async function adminFinalApproveRentalReq(id){return alert('Final admin approval was removed from Rentals. Admin approval of the seeker request is the final step and marks the property Rented.');}
+async function ownerAcceptRentalReq(id){return alert('Owner accept/decline was removed from the Rental flow. Admin approves or declines the seeker request.');}
+async function ownerDeclineRentalReq(id){return alert('Owner accept/decline was removed from the Rental flow. Admin approves or declines the seeker request.');}
+
+</script>
 <script src="js/supabase-config.js"></script>
 <script>
 
@@ -647,8 +767,10 @@ function personalizedHomeItems(){
    (data.trailerRentals||[]).filter(t=>cleanEmail(t.ownerEmail)===email&&t.renterEmail&&pending(t.status)).forEach(t=>add(hcHomeItem('New Trailer Rental Request',`${t.renterName||'Requester'} requested ${t.trailerType||'your trailer'}`,t.status,'truck','🔔',hcHomeTime(t),0)));
    (data.truckJobs||[]).filter(j=>cleanEmail(j.ownerEmail)===email).forEach(j=>add(hcHomeItem('My Truck Job',`${j.title||'Driver job'} • ${j.route||''}`,j.status,'truck','🚛',hcHomeTime(j),pending(j.status)?0:2)));
  }
- // Shipping. Traveler shipping requests are rendered directly below
- // Traveler Quick Actions so they stay above Open Trip / View Requests.
+ // Shipping.
+ if(role==='traveler'){
+   (data.shipments||[]).filter(x=>cleanEmail(x.travelerEmail)===email).forEach(x=>add(hcHomeItem('Shipping Request',`${x.senderName||'Sender'} • ${x.from||x.origin||''} to ${x.to||x.destination||''}`,x.status,'shipping','📦',hcHomeTime(x),pending(x.status)?0:2)));
+ }
  if(role==='sender'){
    (data.trips||[]).filter(t=>available(t.status)).forEach(t=>add(hcHomeItem('Traveler Trip Available',`${t.from||t.origin||''} to ${t.to||t.destination||''} • ${t.date||''}`,t.status,'shipping','✈️',hcHomeTime(t),1)));
    (data.shipments||[]).filter(x=>cleanEmail(x.senderEmail)===email).forEach(x=>add(hcHomeItem('My Shipping Transaction',`${x.tracking||x.item||'Shipment'} • ${x.from||''} to ${x.to||''}`,x.status,'shipping','📦',hcHomeTime(x),pending(x.status)?0:2)));
@@ -703,71 +825,16 @@ function personalizedHomeItems(){
 function personalizedHomeFeed(){
  if(!currentUser||currentUser.role==='admin')return '';
  const items=personalizedHomeItems();
- const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="openHomeTransaction('${x.page}','${encodeURIComponent(x.title||'')}')">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
+ const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="show('${x.page}')">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
  return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${items.length?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
-}
-function senderPostedItemAgreementCards(){
- if(!currentUser||currentUser.role!=='sender')return '';
- const email=cleanEmail(currentUser.email);
- const items=(data.shippingItems||[]).filter(x=>cleanEmail(x.senderEmail)===email&&['Accepted','Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved'].includes(String(x.status||'')));
- if(!items.length)return '';
- return `<div id="senderPostedItemAgreements" class="grid" style="margin-top:12px">${items.map(it=>{
-   const st=String(it.status||''); let actions=''; let note='';
-   if(st==='Accepted'){
-     actions=`<button class="btn good" onclick="senderAgreeShippingItem('${hcHomeEsc(it.id)}')">Agree</button>`;
-     note='A traveler accepted your item. Click Agree to see the traveler information.';
-   }else if(st==='Sender Agreed - Waiting Traveler Agreement'){
-     actions=`<button class="btn primary" onclick="viewShippingItemContact('${hcHomeEsc(it.id)}','sender')">View Traveler Information</button>`;
-     note='You agreed. Waiting for the traveler to agree.';
-   }else if(st==='Both Agreed - Ready for Payment'){
-     actions=`<button class="btn primary" onclick="viewShippingItemContact('${hcHomeEsc(it.id)}','sender')">View Traveler Information</button><button class="btn good" onclick="payShippingItem('${hcHomeEsc(it.id)}')">Confirm Payment</button>`;
-     note='Both sides agreed. Confirm payment to continue.';
-   }else{
-     actions=`<button class="btn primary" onclick="viewShippingItemContact('${hcHomeEsc(it.id)}','sender')">View Traveler Information</button>`;
-     note=st;
-   }
-   return `<div class="card" style="border-left:5px solid #16a34a"><h3 style="margin:0">📦 Posted Item Agreement</h3><p>${hcHomeEsc((it.itemDescription||'Shipping item')+' • '+(it.route||''))}</p><p class="muted">${hcHomeEsc(note)}</p><div class="actions">${actions}</div></div>`;
- }).join('')}</div>`;
-}
-function travelerPostedItemAgreementCards(){
- if(!currentUser||currentUser.role!=='traveler')return '';
- const email=cleanEmail(currentUser.email), uid=String(currentUser.id||'');
- const items=(data.shippingItems||[]).filter(x=>(cleanEmail(x.travelerEmail)===email||String(x.travelerId||'')===uid)&&['Accepted','Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved'].includes(String(x.status||'')));
- if(!items.length)return '';
- return `<div id="travelerPostedItemAgreements" class="grid" style="margin-top:12px">${items.map(it=>{
-   const st=String(it.status||''); let actions=''; let note='';
-   if(st==='Accepted') note='You accepted this item. Waiting for the sender to agree.';
-   else if(st==='Sender Agreed - Waiting Traveler Agreement'){
-     actions=`<button class="btn good" onclick="travelerAgreeShippingItem('${hcHomeEsc(it.id)}')">Agree</button>`;
-     note='The sender agreed. Click Agree to see the sender information.';
-   }else{
-     actions=`<button class="btn primary" onclick="viewShippingItemContact('${hcHomeEsc(it.id)}','traveler')">View Sender Information</button>`;
-     note=st==='Both Agreed - Ready for Payment'?'Both sides agreed. Waiting for sender payment.':st;
-   }
-   return `<div class="card" style="border-left:5px solid #16a34a"><h3 style="margin:0">📦 Accepted Item Agreement</h3><p>${hcHomeEsc((it.itemDescription||'Shipping item')+' • '+(it.route||''))}</p><p class="muted">${hcHomeEsc(note)}</p><div class="actions">${actions}</div></div>`;
- }).join('')}</div>`;
-}
-function travelerPriorityShippingRequests(){
- if(!currentUser||currentUser.role!=='traveler')return '';
- const email=cleanEmail(currentUser.email);
- const requests=(data.shipments||[])
-   .filter(x=>cleanEmail(x.travelerEmail)===email)
-   .sort((a,b)=>hcHomeTime(b)-hcHomeTime(a));
- const postedItems=(data.shippingItems||[])
-   .filter(x=>String(x.status||'')==='Open'&&!travelerDeclinedShippingItem(x))
-   .sort((a,b)=>hcHomeTime(b)-hcHomeTime(a));
- if(!requests.length&&!postedItems.length)return '';
- const requestCards=requests.map(x=>`<div class="card" style="border-left:5px solid #dc2626"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">📦 Shipping Request</h3><span class="pill warn">${hcHomeEsc(x.status||'Requested')}</span></div><p>${hcHomeEsc((x.senderName||x.sender||'Sender')+' • '+(x.from||x.origin||'')+' to '+(x.to||x.destination||''))}</p><button class="btn primary" onclick="goTravelerShipSection('requests')">Open Shipping</button></div>`).join('');
- const itemCards=postedItems.map(x=>`<div class="card" style="border-left:5px solid #d97706"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">📦 Sender Posted Item</h3><span class="pill good">Open</span></div><p>${hcHomeEsc((x.itemDescription||'Item')+' • '+(x.route||'')+' • '+(x.weight||0)+' lb')}</p><button class="btn primary" onclick="goTravelerShipSection('requests')">Accept or Decline</button></div>`).join('');
- return `${travelerPostedItemAgreementCards()}<div id="travelerPriorityShippingRequests" class="grid" style="margin-top:12px">${requestCards}${itemCards}</div>`;
 }
 function travelerHomeActions(){
  if(!currentUser||currentUser.role!=='traveler')return '';
- return `<section id="travelerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">✈️ Traveler Quick Actions</h2><p class="muted">Open a trip or review sender requests immediately after signing in.</p></div>${travelerPriorityShippingRequests()}<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div></section>`;
+ return `<section id="travelerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">✈️ Traveler Quick Actions</h2><p class="muted">Open a trip or review sender requests immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div></section>`;
 }
 function senderHomeActions(){
  if(!currentUser||currentUser.role!=='sender')return '';
- return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find a traveler or post an item to ship immediately after signing in.</p></div>${senderPostedItemAgreementCards()}<div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
+ return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find a traveler or post an item to ship immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
 }
 function propertyOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='owner')return '';
@@ -874,27 +941,7 @@ async function goJobSeekerJobs(){
  const openTarget=()=>{const el=$('jobsList');if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
  if(!openTarget())setTimeout(openTarget,120);
 }
-function placeAllHomeTransactionsBelowQuickActions(){
- const root=$('home');
- if(!root||!currentUser)return;
- const actionIds=['travelerHomeActions','senderHomeActions','propertyOwnerHomeActions','rentSeekerHomeActions','truckOwnerHomeActions','truckDriverHomeActions','taxiOwnerHomeActions','taxiDriverHomeActions','homeServiceProviderHomeActions','businessOwnerHomeActions','marketplaceHomeActions','customerHomeActions','jobSeekerHomeActions','eventOrganizerHomeActions'];
- const action=actionIds.map(id=>root.querySelector('#'+id)).find(Boolean);
- if(!action)return;
- const firstGrid=action.querySelector(':scope > .grid');
- if(!firstGrid)return;
- const holder=document.createElement('div');
- holder.id='homePriorityTransactions';
- holder.className='hc-home-priority-transactions';
- let node=action.nextElementSibling;
- while(node){
-   const next=node.nextElementSibling;
-   if(node.tagName==='H2'&&/available services/i.test(node.textContent||''))break;
-   holder.appendChild(node);
-   node=next;
- }
- if(holder.children.length)action.insertBefore(holder,firstGrid);
-}
-function home(){const publicIntro=!currentUser?`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>`:'';$('home').innerHTML=`${publicIntro}${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${customerHomeActions()}${jobSeekerHomeActions()}${eventOrganizerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`;placeAllHomeTransactionsBelowQuickActions()}
+function home(){const publicIntro=!currentUser?`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>`:'';$('home').innerHTML=`${publicIntro}${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${customerHomeActions()}${jobSeekerHomeActions()}${eventOrganizerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
 
 
@@ -1281,36 +1328,6 @@ async function loadSupabaseTrips(){
   data.trips=[...dbTrips,...localOnly];
 }
 
-// V7.8.214 — one canonical shipping status flow used by creation, loading, actions, and focused views.
-const SHIP_STATUS={
-  REQUESTED:'Requested',
-  ACCEPTED:'Accepted',
-  PAYMENT_PENDING:'Payment Pending Admin Review',
-  APPROVED:'Approved',
-  READY:'Ready for Delivery',
-  IN_TRANSIT:'In Transit',
-  DELIVERED:'Delivered',
-  COMPLETED:'Completed',
-  DECLINED:'Declined'
-};
-function canonicalShipmentStatus(value){
-  const raw=String(value||'').trim();
-  const key=raw.toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
-  if(!key)return SHIP_STATUS.REQUESTED;
-  if(['requested','request','pending','pending traveler decision','waiting traveler decision','waiting for traveler decision','traveler decision pending'].includes(key))return SHIP_STATUS.REQUESTED;
-  if(['accepted','traveler accepted','accepted by traveler'].includes(key))return SHIP_STATUS.ACCEPTED;
-  if(['payment pending admin review','pending payment approval','waiting admin payment approval','paid pending admin review'].includes(key))return SHIP_STATUS.PAYMENT_PENDING;
-  if(['approved','payment approved'].includes(key))return SHIP_STATUS.APPROVED;
-  if(['ready for delivery','ready'].includes(key))return SHIP_STATUS.READY;
-  if(['in transit','transit'].includes(key))return SHIP_STATUS.IN_TRANSIT;
-  if(['delivered'].includes(key))return SHIP_STATUS.DELIVERED;
-  if(['completed','complete'].includes(key))return SHIP_STATUS.COMPLETED;
-  if(['declined','rejected','cancelled','canceled'].includes(key))return SHIP_STATUS.DECLINED;
-  return raw;
-}
-function shipmentNeedsTravelerDecision(s){return canonicalShipmentStatus(s&&s.status)===SHIP_STATUS.REQUESTED;}
-function shipmentIsActiveForTraveler(s){return ![SHIP_STATUS.DELIVERED,SHIP_STATUS.COMPLETED,SHIP_STATUS.DECLINED].includes(canonicalShipmentStatus(s&&s.status));}
-
 function mapDbShipment(row){
   let sender=row.sender||row.sender_profile||{};
   let traveler=row.traveler||row.traveler_profile||{};
@@ -1325,7 +1342,7 @@ function mapDbShipment(row){
     toCity:to,
     weight:Number(row.weight_lb||0),
     fee:Number(row.weight_lb||0)*settings().shippingRatePerLb,
-    status:canonicalShipmentStatus(row.status),
+    status:row.status||'Requested',
     tracking:row.tracking_number||('HC-'+String(sid).slice(0,6)),
     packagePhotos:row.package_photo?[row.package_photo]:[],
     sender:sender.name||row.sender_name||'Sender',
@@ -1388,7 +1405,7 @@ async function loadSupabaseShipments(){
   const normalRows=(rows||[]).filter(row=>!isShippingItemFallbackRow(row));
   let dbShips=normalRows.map(mapDbShipment);
   let localOnly=(data.shipments||[]).filter(x=>x.source!=='supabase'&&!x.dbId);
-  data.shipments=[...dbShips,...localOnly].map(x=>{x.status=canonicalShipmentStatus(x.status);return x;});
+  data.shipments=[...dbShips,...localOnly];
   const fallbackItems=fallbackRows.map(mapShipmentFallbackToShippingItem);
   const otherItems=(data.shippingItems||[]).filter(x=>x.source!=='shipments_fallback');
   data.shippingItems=[...fallbackItems,...otherItems];
@@ -1407,14 +1424,6 @@ async function loadSupabaseShippingItems(){
   let remote=(rows||[]).map(mapDbShippingItem);
   let preserved=(data.shippingItems||[]).filter(x=>x.source==='shipments_fallback'||(x.source!=='supabase'&&!x.dbId));
   data.shippingItems=[...remote,...preserved];
-  // V7.8.214: each traveler may decline a sender-posted item without closing it for other travelers.
-  window.shippingItemDeclines=[];
-  if(currentUser&&currentUser.email){
-    try{
-      const res=await hcSupabase.from('community_matches').select('parent_id,initiator_email,status').eq('flow_type','shipping_item_decline').eq('record_type','match').eq('initiator_email',currentUser.email);
-      if(!res.error)window.shippingItemDeclines=res.data||[];
-    }catch(e){console.warn('Shipping item decline preferences could not load',e);}
-  }
 }
 
 function recalcTripSpacesFromShipments(){
@@ -1446,7 +1455,7 @@ let travelerShippingView='all';
 async function goTravelerShipSection(section){
   travelerShippingView=section||'all';
   await show('shipping');
-  const targetId=section==='post'?'travelerPostTrip':(section==='requests'?'travelerOpenShipping':'travelerOpenTrips');
+  const targetId=section==='post'?'travelerPostTrip':(section==='requests'?'travelerShipRequests':'travelerOpenTrips');
   const openTarget=()=>{
     // Open Trip must begin at the dashboard top so How It Works stays above the form.
     if(section==='post'){
@@ -1475,39 +1484,6 @@ function travelerShippingDashboardCards(){
  return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
-// V7.8.214: sender-posted items are offered to every traveler after Admin approval.
-function shippingItemRef(it){return String(it?.dbId||it?.id||'');}
-function travelerDeclinedShippingItem(it){
-  if(!currentUser||currentUser.role!=='traveler')return false;
-  const ref=shippingItemRef(it), email=cleanEmail(currentUser.email);
-  const shared=(window.shippingItemDeclines||[]).some(x=>String(x.parent_id||'')===ref&&cleanEmail(x.initiator_email)===email&&String(x.status||'')==='Declined');
-  const local=JSON.parse(localStorage.getItem('hc_shipping_item_declines_'+email)||'[]').includes(ref);
-  return shared||local;
-}
-async function travelerDeclineShippingItem(id){
-  if(!requireLogin())return;
-  if(currentUser.role!=='traveler')return alert('Only travelers can decline posted shipping items.');
-  const it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
-  if(!it||String(it.status)!=='Open')return alert('This item is no longer available.');
-  const ref=shippingItemRef(it), email=cleanEmail(currentUser.email);
-  if(!confirm('Decline this item? It will be hidden only from your traveler account and will remain available to other travelers.'))return;
-  let savedShared=false;
-  if(authReady()){
-    const row={id:'SID-'+String(currentUser.id||email).replace(/[^a-zA-Z0-9]/g,'').slice(-16)+'-'+ref.replace(/[^a-zA-Z0-9]/g,'').slice(-20),flow_type:'shipping_item_decline',record_type:'match',parent_id:ref,poster_name:it.sender||'Sender',poster_email:it.senderEmail||'',poster_phone:'',initiator_name:currentUser.name||'Traveler',initiator_email:currentUser.email,initiator_phone:currentUser.phone||'',title:it.itemDescription||'Shipping item',city:it.route||'',details:'Traveler declined this item',status:'Declined'};
-    try{
-      const res=await hcSupabase.from('community_matches').upsert(row,{onConflict:'id'});
-      if(!res.error){savedShared=true;window.shippingItemDeclines=window.shippingItemDeclines||[];window.shippingItemDeclines.push(row);}
-    }catch(e){console.warn('Could not save shared shipping decline',e);}
-  }
-  if(!savedShared){
-    let list=JSON.parse(localStorage.getItem('hc_shipping_item_declines_'+email)||'[]');
-    if(!list.includes(ref))list.push(ref);
-    localStorage.setItem('hc_shipping_item_declines_'+email,JSON.stringify(list));
-  }
-  addNote(currentUser.email,'You declined the posted shipping item '+(it.tracking||it.id)+'. It remains available to other travelers.');
-  await shipping();
-}
-
 // V7.8.181: Paid requests approved by Admin appear directly below How It Works for Traveler Accept/Decline.
 async function shipping(){
  let role=currentUser?currentUser.role:null;
@@ -1517,18 +1493,18 @@ async function shipping(){
  let senderItemBox = ((role==='sender'||role==='customer')) ? `<section id="senderPostItem" class="card"><h3>Post Item to Ship</h3><p class="muted">Post your item even when no traveler trip is available yet. You can post U.S. to Ethiopia or Ethiopia to U.S.</p>${routeSelects('itemShip')}<label>Needed By Date</label><input id="itemNeededBy" type="date" min="${addDaysIso(0)}"><label>Item Description</label><textarea id="itemDesc" placeholder="Example: clothes, documents, small box"></textarea><label>Weight lb</label><input id="itemWeight" type="number" min="1" value="25"><label>Sender Phone</label><input id="itemSenderPhone" inputmode="numeric" placeholder="4045551234" value="${(currentUser&&currentUser.phone)||''}"><label>Receiver Name</label><input id="itemReceiver" placeholder="Receiver full name"><label>Receiver Phone</label><input id="itemReceiverPhone" inputmode="numeric" placeholder="251911123456"><label>Notes</label><textarea id="itemNotes" placeholder="Pickup details or special notes"></textarea><button class="btn primary" onclick="submitShippingItem()">Submit Item to Admin</button></section>` : '';
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();
  let visibleTrips=data.trips.filter(t=>{let openForBooking=role==='admin'||isTripBookable(t);let matches=!shipFilter||String(t.route||'').toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)||String(t.fromCity||'').toLowerCase().includes(shipFilter)||String(t.toCity||'').toLowerCase().includes(shipFilter);return openForBooking&&matches;}).sort(activeTripSort);
- let terminalStatuses=[SHIP_STATUS.DELIVERED,SHIP_STATUS.COMPLETED];
+ let terminalStatuses=['Delivered','Completed'];
  let shipments=data.shipments.filter(s=>{
    if(role==='admin')return true;
    // V7.8.185: once Admin marks a shipment delivered, close it from both Sender and Traveler dashboards.
-   if(terminalStatuses.includes(canonicalShipmentStatus(s.status)))return false;
+   if(terminalStatuses.includes(s.status||''))return false;
    if(!currentUser)return true;
    if(role==='traveler')return (String(s.travelerId||'')===String(currentUser.id||'') || (s.travelerEmail&&s.travelerEmail===currentUser.email));
    if(role==='sender'||role==='customer')return (String(s.senderId||'')===String(currentUser.id||'') || (s.senderEmail&&s.senderEmail===currentUser.email));
    return (s.senderEmail===currentUser.email || s.travelerEmail===currentUser.email);
  });
  let myTrips=data.trips.filter(t=>{let mine=currentUser&&(String(t.travelerId||'')===String(currentUser.id||'')||t.travelerEmail===currentUser.email);let status=String(t.status||'Open');return mine&&!['Closed','Cancelled','Canceled','Completed','Delivered','Flown'].includes(status);}).sort(activeTripSort);
- let shippingItems=(data.shippingItems||[]).filter(it=>{if(role==='admin')return true;let itemStatus=String(it.status||'');if(['Delivered','Completed'].includes(itemStatus))return false;if(!currentUser)return ['Open'].includes(itemStatus);if(role==='traveler')return ['Open','Accepted','Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved'].includes(itemStatus)&&(!it.travelerEmail||it.travelerEmail===currentUser.email||String(it.travelerId||'')===String(currentUser.id||''))&&!travelerDeclinedShippingItem(it);if(role==='sender'||role==='customer')return (it.senderEmail===currentUser.email||String(it.senderId||'')===String(currentUser.id||''));return false;});
+ let shippingItems=(data.shippingItems||[]).filter(it=>{if(role==='admin')return true;let itemStatus=String(it.status||'');if(['Delivered','Completed'].includes(itemStatus))return false;if(!currentUser)return ['Open'].includes(itemStatus);if(role==='traveler')return ['Open','Accepted','Payment Pending Admin Review','Approved'].includes(itemStatus)&&(!it.travelerEmail||it.travelerEmail===currentUser.email||String(it.travelerId||'')===String(currentUser.id||''));if(role==='sender'||role==='customer')return (it.senderEmail===currentUser.email||String(it.senderId||'')===String(currentUser.id||''));return false;});
  let statsHtml='';
  if(role==='admin'){
    statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>`;
@@ -1539,26 +1515,14 @@ async function shipping(){
  }
  let searchBox=`<div class="card" id="shippingSearchPanel"><h3>Search Filters</h3><label>Search route, city, or date</label><input id="shipSearch" value="${shipFilter}" oninput="shipping()" placeholder="Atlanta, Addis Ababa, 2026-07"><button class="btn ghost" onclick="$('shipSearch').value='';shipping()">Show All</button></div>`;
  let availableTripsHtml=`<section id="shippingAvailableTrips"><h3>Available Traveler Trips</h3><div class="list">${visibleTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">No traveler trips posted yet.</div>'}</div></section>`;
- let travelerDecisionRequests=shipments.filter(shipmentNeedsTravelerDecision);
- let travelerDecisionHtml=(role==='traveler')?`<section id="travelerDecisionRequests" class="card" style="border:2px solid #f59e0b"><h3>Sender Requests Waiting for Your Decision</h3><p class="muted">Review each new sender request and use Accept or Decline. Payment follows only after acceptance.</p><div class="list">${travelerDecisionRequests.map(s=>shipCard(s,role)).join('')||'<div class="item">No new sender requests are waiting for your decision.</div>'}</div></section>`:'';
- let otherShipments=(role==='traveler')?shipments.filter(s=>!shipmentNeedsTravelerDecision(s)):shipments;
+ let travelerDecisionRequests=shipments.filter(s=>s.status==='Waiting Traveler Decision');
+ let travelerDecisionHtml=(role==='traveler'&&travelerDecisionRequests.length)?`<section id="travelerDecisionRequests" class="card" style="border:2px solid #f59e0b"><h3>Sender Requests Waiting for Your Decision</h3><p class="muted">Admin approved the sender payment. Accept or decline each request.</p><div class="list">${travelerDecisionRequests.map(s=>shipCard(s,role)).join('')}</div></section>`:'';
+ let otherShipments=(role==='traveler')?shipments.filter(s=>s.status!=='Waiting Traveler Decision'):shipments;
  let shipmentRequestsHtml=`<section id="travelerShipRequests"><h3>Shipment Requests</h3><div class="list">${otherShipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div></section>`;
  let shippingItemsHtml=`<section id="shippingItemRequests"><h3>${role==='traveler'?'Available Items to Ship':(role==='admin'?'Sender Posted Items':'My Posted Items')}</h3><div class="list">${shippingItems.map(it=>shippingItemCard(it,role)).join('')||'<div class="item">No posted shipping items yet.</div>'}</div></section>`;
  let shippingDash=categoryDashboard('Shipping Dashboard','Choose what you want to do in Shipping.',[categoryButton('🔍 Find Traveler Trips','shippingAvailableTrips',true),(role==='sender'||role==='customer')?categoryButton('📦 Post Item to Ship','senderPostItem',false):'',categoryButton('📋 Posted Items','shippingItemRequests',false),categoryButton('📦 Shipment Requests','travelerShipRequests',false), role==='traveler'?categoryButton('✈️ Post Trip','travelerPostTrip',false):(!currentUser?signInButton('Sign In to Ship'):'' )]);
  if(role==='traveler'){
-   const openTripsHtml=`<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>`;
-   const view=travelerShippingView||'all';
-   // Render the selected Traveler workspace at the source. Later Supabase refreshes
-   // cannot reveal unrelated sections such as the Post Trip form inside Open Shipping.
-   if(view==='requests'){
-     $('shipping').innerHTML=`<h2>📦 Shipping Requests / Open Shipping</h2>${categoryIntro('shipping')}<section id="travelerOpenShipping">${shippingItemsHtml}${travelerDecisionHtml}${shipmentRequestsHtml}</section>`;
-   } else if(view==='post'){
-     $('shipping').innerHTML=`<h2>✈️ Open Trip</h2>${categoryIntro('shipping')}${tripBox}`;
-   } else if(view==='trips'){
-     $('shipping').innerHTML=`<h2>🧳 My Open Trips</h2>${categoryIntro('shipping')}${openTripsHtml}`;
-   } else {
-     $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${travelerDecisionHtml}${tripBox}${statsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${openTripsHtml}${intro}`;
-   }
+   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${travelerDecisionHtml}${tripBox}${statsHtml}${shippingItemsHtml}${shipmentRequestsHtml}<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>${intro}`;
  } else if(role==='sender'||role==='customer'||!currentUser){
    const senderFormForCurrentView=(currentUser&&(role==='sender'||role==='customer')&&senderShippingView==='post')?senderItemBox:'';
    $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${senderFormForCurrentView}${statsHtml}${searchBox}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${intro}`;
@@ -1575,9 +1539,7 @@ function tripCard(t,role){
  let showTripPhone=role==='admin'||(currentUser&&t.travelerEmail===currentUser.email);return `<div class="item"><div class="item-head"><b>${t.id} ${t.route}</b><span class="pill good">${t.availableSpace} lb available</span></div><p><b>Traveler:</b> ${t.traveler} ${verifiedBadge(t.travelerVerified)}</p><p><b>Phone:</b> ${showTripPhone?(t.travelerPhone||'Not entered'):'Shown after admin approval'} • <b>Date:</b> ${t.travelDate||'Ask traveler'}</p><p><b>Status:</b> <span class="pill ${String(t.status||'Open').includes('Pending')?'warn':(String(t.status||'Open')==='Declined'?'bad':'good')}">${t.status||'Open'}</span></p><p><b>Original space:</b> ${t.totalSpace} lb • <b>Remaining:</b> ${t.availableSpace} lb</p>${role==='admin'?`<p><b>Trip listing fee:</b> ${t.listingFeePaid?'<span class="pill good">Paid '+money(t.listingFeeAmount)+'</span>':'<span class="pill warn">Not paid</span>'} ${t.listingFeeRefunded?'<span class="pill good">Refunded in payout</span>':''}</p>`:''}<div class="actions">${request}${ownerActions}</div></div>`;
 }
 function shipCard(s,role){
- const shipStatus=canonicalShipmentStatus(s.status);
- s.status=shipStatus;
- let statusClass=['Paid',SHIP_STATUS.PAYMENT_PENDING,SHIP_STATUS.APPROVED,SHIP_STATUS.READY].includes(shipStatus)?'good':(shipStatus===SHIP_STATUS.DECLINED?'bad':'warn');
+ let statusClass=['Paid','Payment Pending Admin Review','Approved','Ready for Delivery'].includes(s.status)?'good':(s.status==='Declined'?'bad':'warn');
  let photos=(s.packagePhotos||[]).map(x=>`<span class="photoThumb">📷 ${x}</span>`).join('')||'<span class="small">No package photo yet</span>';
  let relatedTripForPayout=s.tripId?data.trips.find(t=>String(t.id)===String(s.tripId)):null;
  let refundEligible=relatedTripForPayout&&relatedTripForPayout.listingFeePaid&&!relatedTripForPayout.listingFeeRefunded;
@@ -1590,7 +1552,7 @@ function shipCard(s,role){
  let relatedTrip=s.tripId?data.trips.find(t=>String(t.id)===String(s.tripId)||String(t.dbId)===String(s.tripId)):null;let tripSpace=relatedTrip?`<p><b>Traveler space:</b> Original ${relatedTrip.totalSpace} lb • Remaining ${relatedTrip.availableSpace} lb</p>`:'';let senderCanSeeTraveler=['Approved','Ready for Delivery','In Transit'].includes(s.status||'') && !s.travelerPaid;let senderInfo = `<p><b>Tracking:</b> ${s.tracking||''}</p><div class="photoStrip">${photos}</div><p><b>Weight:</b> ${s.weight} lb ${s.paid?'<span class="pill good">✅ Agreement Confirmed</span>':''}</p>${verifiedBadge(s.senderVerified)} ${s.travelerEmail&&senderCanSeeTraveler?contactLine('Traveler',s.traveler,s.travelerPhone,'')+verifiedBadge(s.travelerVerified)+tripSpace:(s.travelerEmail?'<p class="muted">Traveler contact will show after admin approves payment.</p>':'')}`;
  let info = role==='admin' ? adminInfo : (role==='traveler' ? travelerInfo : senderInfo);
  let actions='';
- if(role==='traveler') actions=(shipmentNeedsTravelerDecision(s)?`<button class="btn primary" type="button" onclick="acceptShip('${s.id}')">Accept</button><button class="btn bad" type="button" onclick="declineShip('${s.id}')">Decline</button>`:'')+`<button class="btn ghost" type="button" onclick="reviewUser('${s.senderEmail}','sender')">Review Sender</button>`;
+ if(role==='traveler') actions=(s.status==='Waiting Traveler Decision'?`<button class="btn primary" onclick="acceptShip('${s.id}')">Accept</button><button class="btn bad" onclick="declineShip('${s.id}')">Decline</button>`:'')+`<button class="btn ghost" onclick="reviewUser('${s.senderEmail}','sender')">Review Sender</button>`;
  else if(role==='admin') actions=`<button class="btn primary" onclick="approveShipment('${s.id}')">Approve Payment</button><button class="btn ghost" onclick="markDelivered('${s.id}')">Mark Delivered</button><button class="btn ghost" onclick="payTraveler('${s.id}')">Pay Traveler</button><button class="btn bad" onclick="declineShip('${s.id}')">Decline</button>`;
  else actions=`${s.paid?'<button class="btn ghost" disabled>Payment sent - waiting for approval/decision</button>':(['Requested','Accepted'].includes(s.status)?`<button class="btn primary" onclick="payShipment('${s.id}')">Confirm Agreement / Payment</button>`:'<button class="btn ghost" disabled>Waiting for the next step</button>')}<button class="btn ghost" onclick="reviewUser('${s.travelerEmail||''}','traveler')">Review Traveler</button>`;
  return `<div class="item"><div class="item-head"><b>${s.id} ${s.route}</b><span class="pill ${statusClass}">${s.status}</span></div>${info}<div class="actions">${actions}</div></div>`;
@@ -1624,7 +1586,7 @@ async function requestTrip(id){
  if(!confirm(confirmMsg))return;
  const tracking='HC-'+Date.now().toString().slice(-6);
  if(authReady()&&currentUser.id&&t.dbId){
-   const payload={tracking_number:tracking,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),weight_lb:w,sender_name:senderName,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc,paid:false,status:SHIP_STATUS.REQUESTED};
+   const payload={tracking_number:tracking,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),weight_lb:w,sender_name:senderName,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc,paid:false,status:'Requested'};
    if(!payload.traveler_id)return alert('This trip is missing traveler_id. Please refresh the page and try again.');
    let inserted=await hcSupabase.from('shipments').insert(payload).select('*').single();
    if(inserted.error){const msg=String(inserted.error.message||'');if(msg.toLowerCase().includes('sender_name')||msg.toLowerCase().includes('sender_phone')||msg.toLowerCase().includes('package_description'))return alert('Supabase is missing sender shipment/package columns. Please run the latest Supabase SQL for this project, then try again.');return alert('Could not save request to Supabase: '+inserted.error.message);}
@@ -1637,20 +1599,16 @@ async function requestTrip(id){
    save();await loadSupabaseShipments();alert('Your request was entered correctly and submitted.');show('shipping');return;
  }
  let sid='S'+Date.now().toString().slice(-5);
- data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:SHIP_STATUS.REQUESTED,tracking:'HC-'+sid,packagePhotos:[],sender:senderName,senderPhone:senderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:receiver,receiverPhone:receiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
+ data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:'Requested',tracking:'HC-'+sid,packagePhotos:[],sender:senderName,senderPhone:senderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:receiver,receiverPhone:receiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
  addNote(t.travelerEmail,'New '+w+' lb space request from '+senderName+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');sendAdminEmailNotice('Sender requested luggage space','A sender requested traveler luggage space.',{Sender:senderName,SenderEmail:currentUser.email,Traveler:t.traveler,TravelerEmail:t.travelerEmail,Weight:w+' lb',Route:t.route},'admin');sendEmailNotice({to:t.travelerEmail,name:t.traveler,subject:'Someone requested your luggage space',summary:'A sender requested luggage space on your trip. Please open your Traveler Dashboard to review or accept the request.',buttonText:'Open Traveler Dashboard',page:'shipping',details:{Sender:senderName,SenderEmail:currentUser.email,Route:t.route,Weight:w+' lb',Receiver:receiver,Tracking:'HC-'+sid}});save();alert('Your request was entered correctly and submitted.');shipping()}
 
 
 function shippingItemCard(it,role){
  let st=it.status||'Pending Admin Approval';
- let cls=['Open','Accepted','Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved','Delivered'].includes(st)?'good':(st==='Declined'?'bad':'warn');
- const isSender=currentUser&&(cleanEmail(it.senderEmail)===cleanEmail(currentUser.email)||String(it.senderId||'')===String(currentUser.id||''));
- const isTraveler=currentUser&&(cleanEmail(it.travelerEmail)===cleanEmail(currentUser.email)||String(it.travelerId||'')===String(currentUser.id||''));
- const senderMaySeeTraveler=isSender&&['Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved','Delivered','Completed'].includes(st);
- const travelerMaySeeSender=isTraveler&&['Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved','Delivered','Completed'].includes(st);
- let senderContact=(role==='admin'||isSender||travelerMaySeeSender)?contactLine('Sender',it.sender,it.senderPhone,it.senderEmail):'<p class="muted">Sender contact stays hidden until the traveler clicks Agree.</p>';
- let travelerContact=it.travelerEmail?((role==='admin'||isTraveler||senderMaySeeTraveler)?contactLine('Traveler',it.traveler,it.travelerPhone,it.travelerEmail):'<p class="muted">Traveler contact stays hidden until the sender clicks Agree.</p>'):'';
- let receiverLine=(role==='admin'||isSender||['Approved','Delivered','Completed'].includes(st))?contactLine('Receiver',it.receiver,it.receiverPhone,''):'<p class="muted">Receiver contact hidden until approval.</p>';
+ let cls=['Open','Accepted','Payment Pending Admin Review','Approved','Delivered'].includes(st)?'good':(st==='Declined'?'bad':'warn');
+ let senderContact=(role==='admin'||(currentUser&&it.senderEmail===currentUser.email)||['Approved','Delivered','Completed'].includes(st))?contactLine('Sender',it.sender,it.senderPhone,it.senderEmail):'<p class="muted">Sender contact shows after admin approval/payment.</p>';
+ let travelerContact=it.travelerEmail?((role==='admin'||(currentUser&&it.travelerEmail===currentUser.email)||['Approved','Delivered','Completed'].includes(st))?contactLine('Traveler',it.traveler,it.travelerPhone,it.travelerEmail):'<p class="muted">Traveler contact shows after admin approval/payment.</p>'):'';
+ let receiverLine=(role==='admin'||(currentUser&&it.senderEmail===currentUser.email)||['Approved','Delivered','Completed'].includes(st))?contactLine('Receiver',it.receiver,it.receiverPhone,''):'<p class="muted">Receiver contact hidden until approval.</p>';
  let actions='';
  if(role==='admin'){
    actions += st==='Pending Admin Approval'?`<button class="btn primary" onclick="adminApproveShippingItem('${it.id}')">Approve Post</button>`:'';
@@ -1658,13 +1616,9 @@ function shippingItemCard(it,role){
    actions += ['Approved'].includes(st)?`<button class="btn ghost" onclick="adminMarkShippingItemDelivered('${it.id}')">Mark Delivered</button>`:'';
    actions += `<button class="btn bad" onclick="adminDeclineShippingItem('${it.id}')">Decline</button><button class="btn bad" onclick="deleteShippingItem('${it.id}')">Delete</button>`;
  } else if(role==='traveler'){
-   actions += st==='Open'?`<button class="btn primary" onclick="travelerAcceptShippingItem('${it.id}')">Accept Item</button><button class="btn bad" onclick="travelerDeclineShippingItem('${it.id}')">Decline</button>`:'';
-   actions += st==='Sender Agreed - Waiting Traveler Agreement'&&isTraveler?`<button class="btn good" onclick="travelerAgreeShippingItem('${it.id}')">Agree</button>`:'';
-   actions += ['Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved'].includes(st)&&isTraveler?`<button class="btn primary" onclick="viewShippingItemContact('${it.id}','traveler')">View Sender Information</button>`:'';
- } else if(isSender){
-   actions += st==='Accepted'?`<button class="btn good" onclick="senderAgreeShippingItem('${it.id}')">Agree</button>`:'';
-   actions += ['Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved'].includes(st)?`<button class="btn primary" onclick="viewShippingItemContact('${it.id}','sender')">View Traveler Information</button>`:'';
-   actions += st==='Both Agreed - Ready for Payment'&&!it.paid?`<button class="btn good" onclick="payShippingItem('${it.id}')">Confirm Payment</button>`:'';
+   actions += st==='Open'?`<button class="btn primary" onclick="travelerAcceptShippingItem('${it.id}')">Accept Item</button>`:'';
+ } else {
+   actions += st==='Accepted'&&!it.paid?`<button class="btn primary" onclick="payShippingItem('${it.id}')">Confirm Agreement</button>`:'';
  }
  return `<div class="item"><div class="item-head"><b>${it.id} ${it.route}</b><span class="pill ${cls}">${st}</span></div><p><b>Tracking:</b> ${it.tracking||''}</p><p><b>Item:</b> ${it.itemDescription||''}</p><p><b>Weight:</b> ${it.weight||0} lb • <b>Needed by:</b> ${it.neededBy||'Anytime'}</p>${senderContact}${receiverLine}${travelerContact}${it.notes?`<p><b>Notes:</b> ${it.notes}</p>`:''}<div class="actions">${actions}</div></div>`;
 }
@@ -1710,7 +1664,7 @@ async function updateShippingItemDb(it,patch){
  if(!authReady()||!it.dbId)return {error:null};
  if(it.source==='shipments_fallback'||it.fallbackDb){
    const allowed={};
-   ['status','paid','traveler_id'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
+   ['status','paid','traveler_id','traveler_name','traveler_phone'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
    if(allowed.status&&!String(allowed.status).includes('Sender Item')&&allowed.status==='Pending Admin Approval')allowed.status+=' - Sender Item';
    return await hcSupabase.from('shipments').update(allowed).eq('id',it.dbId);
  }
@@ -1718,47 +1672,8 @@ async function updateShippingItemDb(it,patch){
 }
 async function adminApproveShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Open'});if(r.error)return alert('Could not approve item: '+r.error.message);it.status='Open';addNote(it.senderEmail,'Your item to ship was approved. Travelers can now accept it.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Shipping item approved',summary:'Your item to ship was approved. Travelers can now see and accept it.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Route:it.route,Weight:it.weight+' lb',Status:'Open'}});persistOnly();adminSuccess();}
 async function adminDeclineShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Declined'});if(r.error)return alert('Could not decline item: '+r.error.message);it.status='Declined';addNote(it.senderEmail,'Your posted shipping item was declined.');persistOnly();adminSuccess();}
-async function travelerAcceptShippingItem(id){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can accept posted shipping items.');let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.status!=='Open')return alert('This item is not available to accept.');let patch={status:'Accepted',traveler_id:currentUser.id||null};let r=await updateShippingItemDb(it,patch);if(r.error)return alert('Could not accept item: '+r.error.message);Object.assign(it,{status:'Accepted',travelerId:currentUser.id||'',traveler:currentUser.name,travelerEmail:currentUser.email,travelerPhone:currentUser.phone||'',travelerVerified:!!currentUser.verified});addNote(it.senderEmail,'A traveler accepted your posted shipping item. Please confirm the agreement.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Traveler accepted your posted item',summary:'A traveler accepted your item to ship. Please open Shipping and confirm the agreement so admin can approve.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Traveler:currentUser.name,Route:it.route,Weight:it.weight+' lb',Status:'Accepted'}});persistOnly();shipping();}
-async function senderAgreeShippingItem(id){
- if(!requireLogin())return;
- const it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
- if(!it)return alert('Shipping item not found.');
- if(cleanEmail(it.senderEmail)!==cleanEmail(currentUser.email)&&String(it.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can agree.');
- if(String(it.status)!=='Accepted')return alert('Wait for a traveler to accept the item first.');
- const r=await updateShippingItemDb(it,{status:'Sender Agreed - Waiting Traveler Agreement'});
- if(r.error)return alert('Could not save your agreement: '+r.error.message);
- it.status='Sender Agreed - Waiting Traveler Agreement';
- addNote(it.travelerEmail,'The sender agreed. Open your Home page and click Agree to release sender information.');
- sendEmailNotice({to:it.travelerEmail,name:it.traveler,subject:'Sender agreed — your agreement is required',summary:'The sender agreed to the shipping connection. Open your Home page and click Agree to see the sender information.',buttonText:'Open Home Page',page:'home',details:{Tracking:it.tracking,Item:it.itemDescription,Status:'Waiting for Traveler Agreement'}});
- persistOnly();home();
-}
-async function travelerAgreeShippingItem(id){
- if(!requireLogin())return;
- const it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
- if(!it)return alert('Shipping item not found.');
- if(cleanEmail(it.travelerEmail)!==cleanEmail(currentUser.email)&&String(it.travelerId||'')!==String(currentUser.id||''))return alert('Only the accepted traveler can agree.');
- if(String(it.status)!=='Sender Agreed - Waiting Traveler Agreement')return alert('The sender must agree first.');
- const r=await updateShippingItemDb(it,{status:'Both Agreed - Ready for Payment'});
- if(r.error)return alert('Could not save your agreement: '+r.error.message);
- it.status='Both Agreed - Ready for Payment';
- addNote(it.senderEmail,'The traveler agreed. Both sides can now view contact information. Please confirm payment.');
- sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Traveler agreed — payment is ready',summary:'The traveler completed the agreement. You can now view traveler information and confirm payment.',buttonText:'Open Home Page',page:'home',details:{Tracking:it.tracking,Traveler:it.traveler,Status:'Both Agreed - Ready for Payment'}});
- persistOnly();home();
-}
-function viewShippingItemContact(id,side){
- const it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
- if(!it)return alert('Shipping item not found.');
- const st=String(it.status||'');
- if(side==='sender'){
-   if(cleanEmail(it.senderEmail)!==cleanEmail(currentUser?.email)&&String(it.senderId||'')!==String(currentUser?.id||''))return alert('Sender only.');
-   if(!['Sender Agreed - Waiting Traveler Agreement','Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved','Delivered','Completed'].includes(st))return alert('Click Agree first.');
-   return alert(`Traveler Information\n\nName: ${it.traveler||'Not provided'}\nPhone: ${it.travelerPhone||'Not provided'}\nEmail: ${it.travelerEmail||'Not provided'}`);
- }
- if(cleanEmail(it.travelerEmail)!==cleanEmail(currentUser?.email)&&String(it.travelerId||'')!==String(currentUser?.id||''))return alert('Traveler only.');
- if(!['Both Agreed - Ready for Payment','Payment Pending Admin Review','Approved','Delivered','Completed'].includes(st))return alert('Click Agree first.');
- alert(`Sender Information\n\nName: ${it.sender||'Not provided'}\nPhone: ${it.senderPhone||'Not provided'}\nEmail: ${it.senderEmail||'Not provided'}`);
-}
-async function payShippingItem(id){if(!requireLogin())return;let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.senderEmail!==currentUser.email&&String(it.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can confirm agreement.');if(it.status!=='Both Agreed - Ready for Payment')return alert('Both the sender and traveler must click Agree before payment.');pay('Shipping',Number(it.weight||0)*settings().shippingRatePerLb,'Posted item '+it.id+' agreement');let r=await updateShippingItemDb(it,{status:'Payment Pending Admin Review',paid:true});if(r.error)return alert('Agreement recorded locally, but Supabase update failed: '+r.error.message);it.status='Payment Pending Admin Review';it.paid=true;addNote('admin.habeshaconnect@gmail.com','Posted shipping item payment needs approval: '+it.tracking);sendAdminEmailNotice('Posted shipping item payment needs approval','A sender confirmed agreement for a posted shipping item.',{Sender:it.sender,Traveler:it.traveler,Tracking:it.tracking,Amount:money(Number(it.weight||0)*settings().shippingRatePerLb)},'shipping');persistOnly();shipping();}
+async function travelerAcceptShippingItem(id){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can accept posted shipping items.');let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.status!=='Open')return alert('This item is not available to accept.');let patch={status:'Accepted',traveler_id:currentUser.id||null,traveler_name:currentUser.name,traveler_email:currentUser.email,traveler_phone:currentUser.phone||''};let r=await updateShippingItemDb(it,patch);if(r.error)return alert('Could not accept item: '+r.error.message);Object.assign(it,{status:'Accepted',travelerId:currentUser.id||'',traveler:currentUser.name,travelerEmail:currentUser.email,travelerPhone:currentUser.phone||'',travelerVerified:!!currentUser.verified});addNote(it.senderEmail,'A traveler accepted your posted shipping item. Please confirm the agreement.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Traveler accepted your posted item',summary:'A traveler accepted your item to ship. Please open Shipping and confirm the agreement so admin can approve.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Traveler:currentUser.name,Route:it.route,Weight:it.weight+' lb',Status:'Accepted'}});persistOnly();shipping();}
+async function payShippingItem(id){if(!requireLogin())return;let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.senderEmail!==currentUser.email&&String(it.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can confirm agreement.');if(it.status!=='Accepted')return alert('Please wait for a traveler to accept.');pay('Shipping',Number(it.weight||0)*settings().shippingRatePerLb,'Posted item '+it.id+' agreement');let r=await updateShippingItemDb(it,{status:'Payment Pending Admin Review',paid:true});if(r.error)return alert('Agreement recorded locally, but Supabase update failed: '+r.error.message);it.status='Payment Pending Admin Review';it.paid=true;addNote('admin.habeshaconnect@gmail.com','Posted shipping item payment needs approval: '+it.tracking);sendAdminEmailNotice('Posted shipping item payment needs approval','A sender confirmed agreement for a posted shipping item.',{Sender:it.sender,Traveler:it.traveler,Tracking:it.tracking,Amount:money(Number(it.weight||0)*settings().shippingRatePerLb)},'shipping');persistOnly();shipping();}
 async function adminApproveShippingItemPayment(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Approved',paid:true});if(r.error)return alert('Could not approve payment: '+r.error.message);it.status='Approved';it.paid=true;addNote(it.senderEmail,'Your posted item payment was approved. Contact is now available.');addNote(it.travelerEmail,'Posted item was approved by admin. Contact is now available.');persistOnly();adminSuccess();}
 async function adminMarkShippingItemDelivered(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Delivered'});if(r.error)return alert('Could not mark delivered: '+r.error.message);it.status='Delivered';addNote(it.senderEmail,'Your posted shipping item was marked delivered.');addNote(it.travelerEmail,'Posted shipping item was marked delivered.');persistOnly();adminSuccess();}
 async function deleteShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');if(!confirm('Delete this posted shipping item?'))return;let backup=[...(data.shippingItems||[])];data.shippingItems=(data.shippingItems||[]).filter(x=>String(x.id)!==String(id)&&String(x.dbId)!==String(id));if(authReady()&&it.dbId){let table=(it.source==='shipments_fallback'||it.fallbackDb)?'shipments':'hc_shipping_items';let r=await hcSupabase.from(table).delete().eq('id',it.dbId);if(r.error){data.shippingItems=backup;return alert('Could not delete item: '+r.error.message)}}persistOnly();adminSuccess();}
@@ -1770,22 +1685,22 @@ function addShipment(){
 }
 
 
-async function payShipment(id){if(!requireLogin())return;let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!s)return;if(currentUser.role!=='admin'&&s.senderEmail!==currentUser.email&&String(s.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can pay for this shipment.');if(canonicalShipmentStatus(s.status)!==SHIP_STATUS.ACCEPTED&&currentUser.role!=='admin')return alert('Please wait for the traveler to accept this request before confirming payment.');if(s.paid){alert('Agreement already sent. Waiting for admin approval.');shipping();return;}pay('Shipping',s.weight*settings().shippingRatePerLb,'Shipment '+s.id+' agreement');if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({paid:true,status:'Payment Pending Admin Review'}).eq('id',s.dbId);if(error)alert('Payment recorded locally, but Supabase update failed: '+error.message);}s.paid=true;s.paymentStatus='Paid';s.status='Payment Pending Admin Review';addNote('admin.habeshaconnect@gmail.com','Sender paid for shipment '+s.id+' tracking '+(s.tracking||'')+'. Admin approval is needed.');sendAdminEmailNotice('Payment requires admin approval','A shipping transaction/payment requires admin approval.',{Sender:s.sender||currentUser.name,Email:s.senderEmail||currentUser.email,Tracking:s.tracking||s.id,Amount:money(s.weight*settings().shippingRatePerLb)},'admin');addNote(s.senderEmail||currentUser.email,'Agreement confirmed. Waiting for admin approval.');save();shipping()}
+async function payShipment(id){if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;if(currentUser.role!=='admin'&&s.senderEmail!==currentUser.email&&String(s.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can pay for this shipment.');if(!['Requested','Accepted'].includes(s.status)&&currentUser.role!=='admin')return alert('This request is not ready for payment.');if(s.paid){alert('Agreement already sent. Waiting for admin approval.');shipping();return;}pay('Shipping',s.weight*settings().shippingRatePerLb,'Shipment '+s.id+' agreement');if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({paid:true,status:'Payment Pending Admin Review'}).eq('id',s.dbId);if(error)alert('Payment recorded locally, but Supabase update failed: '+error.message);}s.paid=true;s.paymentStatus='Paid';s.status='Payment Pending Admin Review';addNote('admin.habeshaconnect@gmail.com','Sender paid for shipment '+s.id+' tracking '+(s.tracking||'')+'. Admin approval is needed.');sendAdminEmailNotice('Payment requires admin approval','A shipping transaction/payment requires admin approval.',{Sender:s.sender||currentUser.name,Email:s.senderEmail||currentUser.email,Tracking:s.tracking||s.id,Amount:money(s.weight*settings().shippingRatePerLb)},'admin');addNote(s.senderEmail||currentUser.email,'Agreement confirmed. Waiting for admin approval.');save();shipping()}
 async function acceptShip(id){
  if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;
  if(currentUser.role!=='admin'&&s.travelerEmail&&s.travelerEmail!==currentUser.email&&String(s.travelerId||'')!==String(currentUser.id||''))return alert('This request belongs to another traveler.');
- if(!shipmentNeedsTravelerDecision(s))return alert('This request is not waiting for your decision.');
+ if(s.status!=='Waiting Traveler Decision')return alert('This request is not waiting for your decision.');
  let t=s.tripId?data.trips.find(x=>String(x.id)===String(s.tripId)||String(x.dbId)===String(s.tripId)):null;
  if(t&&!s.spaceDeducted&&s.weight>t.availableSpace)return alert('Not enough space left. Remaining: '+t.availableSpace+' lb');
  let oldTrip=t?{availableSpace:t.availableSpace,status:t.status}:null;
  if(t&&!s.spaceDeducted){t.availableSpace=Math.max(0,Number(t.availableSpace||0)-Number(s.weight||0));t.status=t.availableSpace===0?'Full':'Open';s.spaceDeducted=true;}
- if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:SHIP_STATUS.ACCEPTED}).eq('id',s.dbId);if(error){if(t&&oldTrip)Object.assign(t,oldTrip);s.spaceDeducted=false;return alert('Could not accept request: '+error.message);}}
+ if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Approved'}).eq('id',s.dbId);if(error){if(t&&oldTrip)Object.assign(t,oldTrip);s.spaceDeducted=false;return alert('Could not accept request: '+error.message);}}
  if(authReady()&&t&&t.dbId){let {error}=await hcSupabase.from('trips').update({remaining_space_lb:t.availableSpace,status:t.status}).eq('id',t.dbId);if(error)return alert('Request accepted, but trip space update failed: '+error.message);}
- s.status=SHIP_STATUS.ACCEPTED;s.traveler=currentUser.name;s.travelerPhone=currentUser.phone||'';s.travelerEmail=currentUser.email;s.travelerVerified=!!currentUser.verified;
- addNote(s.senderEmail||'all','Your shipping request was accepted by '+currentUser.name+'. Please confirm agreement/payment next.');
- if(s.senderEmail)sendEmailNotice({to:s.senderEmail,name:s.sender||'Sender',subject:'Traveler accepted your shipping request',summary:'The traveler accepted your request. Please open Shipping and confirm the agreement/payment next.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Traveler:currentUser.name,Weight:(s.weight||0)+' lb',Status:'Accepted'}});
+ s.status='Approved';s.traveler=currentUser.name;s.travelerPhone=currentUser.phone||'';s.travelerEmail=currentUser.email;s.travelerVerified=!!currentUser.verified;
+ addNote(s.senderEmail||'all','Your paid shipment request was accepted by '+currentUser.name+'. The shipment is approved.');
+ if(s.senderEmail)sendEmailNotice({to:s.senderEmail,name:s.sender||'Sender',subject:'Traveler accepted your paid shipping request',summary:'The traveler accepted your request after admin approved payment. The shipment is now approved.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Traveler:currentUser.name,Weight:(s.weight||0)+' lb',Status:'Approved'}});
  save();shipping()}
-async function declineShip(id){let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!s)return;if(currentUser?.role==='traveler'){if(s.travelerEmail&&cleanEmail(s.travelerEmail)!==cleanEmail(currentUser.email)&&String(s.travelerId||'')!==String(currentUser.id||''))return alert('This request belongs to another traveler.');if(!shipmentNeedsTravelerDecision(s))return alert('This request is not waiting for your decision.');}if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Declined'}).eq('id',s.dbId);if(error)return alert('Could not decline request: '+error.message);}s.status='Declined';addNote(s.senderEmail||'all','Your shipment request was declined.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping request rejected',summary:'Your shipment request was declined.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Declined'}});save();shipping()}
+async function declineShip(id){let s=data.shipments.find(x=>x.id===id);if(!s)return;if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Declined'}).eq('id',s.dbId);if(error)return alert('Could not decline request: '+error.message);}s.status='Declined';addNote(s.senderEmail||'all','Your shipment request was declined.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping request rejected',summary:'Your shipment request was declined.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Declined'}});save();shipping()}
 function reviewUser(email,type){if(!requireLogin())return;if(!email)return alert('No user assigned yet to review.');let rating=prompt('Rating 1-5:','5');if(rating===null)return;let text=prompt('Write a short review:','Good service');data.reviews.unshift({type,target:email,from:currentUser.email,rating:+rating||5,text:text||'',time:new Date().toLocaleString()});addNote(email,'You received a new rating/review.');save();}
 
 function mapDbRental(row){
@@ -2525,7 +2440,7 @@ function truck(){
  let ownerPanel=`<div class="grid">${truckOwnerRecordForm}${truckJobForm}${trailerRentForm}</div>`;
  let driverPanel=`<div class="card" id="driverProfileCard"><h3>👤 Driver Job Profile</h3><label>Full Name</label><input id="dpName" value="${driverProfile?.name||currentUser.name||''}"><label>Phone</label><input id="dpPhone" value="${driverProfile?.phone||currentUser.phone||''}"><label>City</label><input id="dpCity" value="${driverProfile?.city||currentUser.city||''}"><label>CDL / License Type</label><input id="dpLicense" value="${driverProfile?.license||''}" placeholder="CDL A, CDL B, Box truck"><label>Experience</label><input id="dpExperience" value="${driverProfile?.experience||''}" placeholder="5 years, local, OTR"><label>Looking For</label><select id="dpLooking"><option ${driverProfile?.looking==='Full Time'?'selected':''}>Full Time</option><option ${driverProfile?.looking==='Part Time'?'selected':''}>Part Time</option><option ${driverProfile?.looking==='Owner Operator'?'selected':''}>Owner Operator</option><option ${driverProfile?.looking==='Box Truck'?'selected':''}>Box Truck</option></select><label>Skills / Notes</label><textarea id="dpNotes" placeholder="Routes, languages, availability, safety record">${driverProfile?.notes||''}</textarea><button class="btn primary" onclick="saveDriverProfile()">Save Driver Profile</button></div>`;
  let jobsTable=`<h3 id="availableTruckJobs">🚛 Available Truck Jobs</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Schedule</th><th>Requirements</th><th>Status</th><th>Action</th></tr>${availableJobs.map(j=>{let already=(data.truckApplications||[]).find(a=>a.jobId===j.id&&a.driverEmail===currentUser.email);let action=role==='driver'?(already?`<span class="pill good">Applied</span><br><span class="small">${already.status}</span>`:`<button class="btn primary" onclick="applyTruckJob('${j.id}')">Apply This Job</button>`):(role==='truck_owner'&&j.ownerEmail===currentUser.email?`<span class="pill good">Owner Post</span>`:'-');return `<tr><td>${j.ownerName}<br><span class="small">${j.ownerPhone||''}</span></td><td>${j.title}<br><span class="small">${j.truckDetails||''}</span></td><td>${j.route}</td><td>${j.schedule}</td><td>${j.requirements}</td><td><span class="pill good">Published</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No approved truck owner hiring posts yet.</td></tr>'}</table>`;
- let driverProfilesTable='';
+ let driverProfilesTable=`<h3 id="driverProfilesTable">👤 Drivers Looking for Truck Driving Jobs</h3><table><tr><th>Driver</th><th>Phone</th><th>City</th><th>License</th><th>Experience</th><th>Looking For</th><th>Skills / Notes</th><th>Updated</th></tr>${driverProfiles.map(p=>`<tr><td>${p.name||p.driverName||'Driver'}<br><span class="small">${p.driverEmail||''}</span></td><td>${p.phone||''}</td><td>${p.city||''}</td><td>${p.license||''}</td><td>${p.experience||''}</td><td>${p.looking||''}</td><td>${p.notes||''}</td><td>${p.updatedAt||''}</td></tr>`).join('')||'<tr><td colspan="8">No driver looking-for-job posts yet.</td></tr>'}</table>`;
  let appsTable=`<h3 id="truckApplicationsTable">Driver Applications / Hiring Records</h3><table><tr><th>Job</th><th>Driver</th><th>Phone</th><th>License</th><th>Experience</th><th>Looking For / Notes</th><th>Status</th><th>Action</th></tr>${myApps.map(a=>{let canManage=role==='truck_owner'&&a.ownerEmail===currentUser.email&&a.status==='Pending Owner Review';return `<tr><td>${a.jobTitle}</td><td>${a.driverName}<br><span class="small">${a.driverEmail}</span></td><td>${a.driverPhone}</td><td>${a.license}</td><td>${a.experience}</td><td>${a.looking||''}<br><span class="small">${a.notes||''}</span></td><td><span class="pill ${(a.status==='Approved'||a.status==='Hired')?'good':a.status==='Declined'?'bad':'warn'}">${a.status}</span></td><td>${canManage?`<button class="btn primary" onclick="approveTruckApp('${a.id}')">Accept Driver</button> <button class="btn bad" onclick="declineTruckApp('${a.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No applications yet.</td></tr>'}</table>`;
  let recordsTable=`<h3>Truck Owner / Driver Records</h3><table><tr><th>Truck</th><th>Plate</th><th>Driver</th><th>Status</th><th>Insurance</th><th>Registration</th><th>Income</th><th>Expenses</th><th>Profit</th><th>Mileage</th><th>Maintenance</th></tr>${myTruckRecords.map(t=>`<tr><td>${t.truck}<br><span class="small">VIN: ${t.vin||''}</span></td><td>${t.plate||''}</td><td>${t.driver}<br><span class="small">${t.driverEmail||''}</span></td><td>${t.status||'Available'}</td><td>${t.insurance||''}<br>${expiryBadge(t.insurance,'Insurance')}</td><td>${t.registration||''}<br>${expiryBadge(t.registration,'Registration')}</td><td>${money(t.income)}</td><td>${money(t.expenses)}</td><td>${money((+t.income||0)-(+t.expenses||0))}</td><td>${t.mileage}</td><td>${t.maintenance||''}</td></tr>`).join('')||'<tr><td colspan="11">No truck records yet.</td></tr>'}</table>`;
  let trailerTable=`<h3 id="trailerRentalsTable">🚛 Trailer Rentals</h3><table><tr><th>Owner</th><th>Trailer</th><th>Location</th><th>Price</th><th>Available</th><th>Status</th><th>Action</th></tr>${trailerRentals.map(t=>{let mine=t.ownerEmail===currentUser.email;let requested=t.renterEmail===currentUser.email;let ownerManage=mine&&t.status==='Pending Owner Review';let action=ownerManage?`<span class="pill warn">Action shown at top</span>`:(t.status==='Available'&&!mine&&(role==='driver'||role==='truck_owner')?`<button class="btn primary" onclick="requestTrailerRental('${t.id}')">Request Trailer</button>`:(requested?`<span class="pill warn">${t.status}</span>`:(mine?(t.status==='Pending Admin Approval'?'<span class="pill warn">Waiting Admin Approval</span>':'<span class="pill good">Your Trailer</span>'):'-')));return `<tr><td>${t.ownerName||''}<br><span class="small">${t.ownerEmail||''}</span></td><td>${t.trailerType||''}<br><span class="small">${t.description||''}</span></td><td>${t.location||''}</td><td>${t.price||''}<br><span class="small">Deposit: ${t.deposit||''}</span></td><td>${t.availability||''}</td><td><span class="pill ${t.status==='Available'?'good':t.status==='Rented'?'bad':'warn'}">${t.status||'Available'}</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No trailer rentals posted yet.</td></tr>'}</table>`;
@@ -3647,12 +3562,12 @@ async function approveShipment(id){
   let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!s)return alert('Shipment not found.');
   let old={status:s.status,paid:s.paid,paymentStatus:s.paymentStatus,spaceDeducted:s.spaceDeducted};
-  s.status='Approved';s.paid=true;s.paymentStatus='Paid';
+  s.status='Waiting Traveler Decision';s.paid=true;s.paymentStatus='Paid';
   let res={error:null};
-  if(authReady()&&s.dbId){res=await hcSupabase.from('shipments').update({status:'Approved',paid:true}).eq('id',s.dbId);}
+  if(authReady()&&s.dbId){res=await hcSupabase.from('shipments').update({status:'Waiting Traveler Decision',paid:true}).eq('id',s.dbId);}
   if(res.error){Object.assign(s,old);return alert('Could not approve shipment payment in Supabase: '+res.error.message)}
-  addNote(s.senderEmail||'all','Admin approved your payment for shipment '+(s.tracking||id)+'. The shipment is approved.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping payment approved',summary:'Admin approved your payment. The shipment is now approved.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Approved'}});
-  if(s.travelerEmail){addNote(s.travelerEmail,'Payment was approved for shipment '+(s.tracking||id)+'. The shipment is ready for the next delivery step.');sendEmailNotice({to:s.travelerEmail,name:s.traveler,subject:'Shipping payment approved',summary:'Admin approved the sender payment. The shipment is now approved for delivery.',buttonText:'Open Shipping Request',page:'shipping',details:{Tracking:s.tracking||id,Sender:s.sender,Weight:(s.weight||0)+' lb',Status:'Approved'}});}
+  addNote(s.senderEmail||'all','Admin approved your payment for shipment '+(s.tracking||id)+'. Waiting for the traveler to accept or decline.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping payment approved',summary:'Admin approved your payment. The request is now waiting for the traveler to accept or decline.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Waiting Traveler Decision'}});
+  if(s.travelerEmail){addNote(s.travelerEmail,'A paid shipment request '+(s.tracking||id)+' is waiting for your accept or decline decision.');sendEmailNotice({to:s.travelerEmail,name:s.traveler,subject:'Paid shipping request needs your decision',summary:'Admin approved the sender payment. Open your Traveler Shipping dashboard and accept or decline the request.',buttonText:'Review Shipping Request',page:'shipping',details:{Tracking:s.tracking||id,Sender:s.sender,Weight:(s.weight||0)+' lb',Status:'Waiting Traveler Decision'}});}
   persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function markDelivered(id){
@@ -5253,484 +5168,8 @@ async function adminApproveTrailerPayment(id){
   };
 
   const style=document.createElement('style');style.textContent='@media(max-width:700px){#jobSeekerAgreementHome .btn{width:100%;min-height:48px;margin-top:7px}}';document.head.appendChild(style);
-  window.__hcVersion='V7.8.197';
+  window.__hcVersion='V7.8.194';
 })();
 </script>
-
-<script>
-/* V7.8.196 — Direct truck-driver hiring from approved/saved driver profiles.
-   Uses the existing trucking_applications table; no new SQL is required. */
-(function(){
-  const DIRECT_PREFIX='DIRECT_HIRE:';
-  function norm(v){return String(v||'').trim().toLowerCase();}
-  function isDirectHire(a){return !!a && (String(a.jobId||'').startsWith('DIRECT-') || String(a.notes||'').startsWith(DIRECT_PREFIX) || a.jobTitle==='Direct Driver Hire Request');}
-  function directMeta(a){
-    const raw=String((a&&a.notes)||'');
-    if(!raw.startsWith(DIRECT_PREFIX))return {};
-    try{return JSON.parse(raw.slice(DIRECT_PREFIX.length))||{};}catch(e){return {};}
-  }
-  function directNotes(meta){return DIRECT_PREFIX+JSON.stringify(meta||{});}
-  function userByEmail(email){return (data.users||[]).find(u=>norm(u.email)===norm(email))||{};}
-  function profileByEmail(email){return (data.truckDriverProfiles||[]).find(p=>norm(p.driverEmail)===norm(email))||{};}
-  function ownerPhoneFor(a){const m=directMeta(a),u=userByEmail(a.ownerEmail);return m.ownerPhone||u.phone||'';}
-  function ownerNameFor(a){const m=directMeta(a),u=userByEmail(a.ownerEmail);return a.ownerName||m.ownerName||u.name||'Truck Owner';}
-
-  window.requestDirectTruckDriver=async function(driverEmail){
-    if(!requireLogin())return;
-    if(currentUser.role!=='truck_owner')return alert('Only a truck owner can request a driver.');
-    const p=profileByEmail(driverEmail);
-    if(!p.driverEmail)return alert('Driver profile not found.');
-    if(norm(p.driverEmail)===norm(currentUser.email))return alert('You cannot request yourself.');
-    const active=(data.truckApplications||[]).find(a=>isDirectHire(a)&&norm(a.ownerEmail)===norm(currentUser.email)&&norm(a.driverEmail)===norm(driverEmail)&&!['Driver Declined','Direct Hire Closed'].includes(a.status));
-    if(active)return alert('You already have an active hire request for this driver.');
-    const meta={type:'direct_hire',ownerPhone:currentUser.phone||'',ownerName:currentUser.name||'Truck Owner',requestedAt:new Date().toISOString()};
-    const app={
-      id:'TA'+Date.now().toString().slice(-6),jobId:'DIRECT-'+Date.now(),jobDbId:'',jobTitle:'Direct Driver Hire Request',
-      ownerName:currentUser.name||'Truck Owner',ownerEmail:currentUser.email,
-      driverName:p.name||p.driverName||'Driver',driverEmail:p.driverEmail,driverPhone:p.phone||'',city:p.city||'',
-      license:p.license||'',experience:p.experience||'',looking:p.looking||'',notes:directNotes(meta),
-      status:'Pending Driver Review',createdAt:new Date().toLocaleString()
-    };
-    const res=await syncTruckApplicationToSupabase(app,null);
-    if(res.error)return alert('The hire request could not be sent: '+res.error.message);
-    data.truckApplications=data.truckApplications||[];data.truckApplications.unshift(app);
-    addNote(app.driverEmail,app.ownerName+' sent you a direct truck-driving hire request. Open your home page to accept or decline.');
-    try{await Promise.resolve(sendEmailNotice({to:app.driverEmail,name:app.driverName,subject:'New truck driver hire request',summary:'A truck owner reviewed your driver profile and sent you a direct hire request. Open your home page to accept or decline.',buttonText:'Open Home Page',page:'home',details:{TruckOwner:app.ownerName,Position:'Truck Driver',Status:'Waiting for Your Response'}}));}catch(e){console.warn(e);}
-    try{await Promise.resolve(sendAdminEmailNotice('Truck owner requested a driver','A truck owner sent a direct hire request to a truck driver.',{TruckOwner:app.ownerName,OwnerEmail:app.ownerEmail,Driver:app.driverName,DriverEmail:app.driverEmail,Status:app.status},'admin'));}catch(e){console.warn(e);}
-    persistOnly();alert('Hire request sent to the driver.');home();
-  };
-
-  window.driverRespondDirectHire=async function(id,accept){
-    if(!requireLogin())return;
-    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
-    if(!a||!isDirectHire(a))return alert('Hire request not found.');
-    if(currentUser.role!=='driver'||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the requested driver can respond.');
-    if(a.status!=='Pending Driver Review')return alert('This request has already been answered.');
-    const old={...a};
-    a.status=accept?'Waiting Owner Agreement':'Driver Declined';
-    const meta={...directMeta(a),driverRespondedAt:new Date().toISOString(),driverAccepted:!!accept};a.notes=directNotes(meta);
-    const res=await updateTruckApplicationDb(a,{status:a.status,notes:a.notes});
-    if(res.error){Object.assign(a,old);return alert('Could not save your response: '+res.error.message);}
-    if(accept){
-      addNote(a.ownerEmail,a.driverName+' accepted your direct hire request. Open your home page and click Agree to release contact information.');
-      try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver accepted your hire request',summary:'The driver accepted your direct hire request. Open your home page and click Agree to release contact information.',buttonText:'Open Home Page',page:'home',details:{Driver:a.driverName,License:a.license||'',Experience:a.experience||'',Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
-      try{await Promise.resolve(sendAdminEmailNotice('Driver accepted direct hire request','A truck driver accepted a truck owner direct hire request. The owner must click Agree before contact information is released.',{TruckOwner:a.ownerName,Driver:a.driverName,Status:a.status},'admin'));}catch(e){console.warn(e);}
-      alert('Accepted. The truck owner must now click Agree.');
-    }else{
-      addNote(a.ownerEmail,a.driverName+' declined your direct hire request.');
-      try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver declined your hire request',summary:'The driver declined your direct truck-driving hire request.',buttonText:'Open Home Page',page:'home',details:{Driver:a.driverName,Status:'Declined'}}));}catch(e){console.warn(e);}
-      alert('Hire request declined.');
-    }
-    persistOnly();home();
-  };
-
-  window.ownerAgreeDirectHire=async function(id){
-    if(!requireLogin())return;
-    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
-    if(!a||!isDirectHire(a))return alert('Hire request not found.');
-    if(currentUser.role!=='truck_owner'||norm(a.ownerEmail)!==norm(currentUser.email))return alert('Only the requesting truck owner can agree.');
-    if(a.status!=='Waiting Owner Agreement')return alert('The driver must accept before you can agree.');
-    const old={...a};a.status='Waiting Driver Agreement';a.hiredAt=new Date().toLocaleString();
-    const meta={...directMeta(a),ownerAgreedAt:new Date().toISOString(),ownerContactReleased:true};a.notes=directNotes(meta);
-    const res=await updateTruckApplicationDb(a,{status:a.status,notes:a.notes,hired_at:new Date().toISOString()});
-    if(res.error){Object.assign(a,old);return alert('Could not save the agreement: '+res.error.message);}
-    addNote(a.driverEmail,a.ownerName+' agreed to the direct hire. Open your home page and click Agree to release the truck owner information.');
-    try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck owner agreed to hire you',summary:'The truck owner clicked Agree. Open your home page and click Agree to release the truck owner information.',buttonText:'Open Home Page',page:'home',details:{TruckOwner:a.ownerName,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
-    try{await Promise.resolve(sendAdminEmailNotice('Truck owner agreed to direct hire','The truck owner agreed after the driver accepted. The driver must now click Agree.',{TruckOwner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:a.status},'admin'));}catch(e){console.warn(e);}
-    persistOnly();alert('You agreed. Driver information is now available to you. The driver must also click Agree to see your information.');home();
-  };
-
-  window.driverAgreeDirectHire=async function(id){
-    if(!requireLogin())return;
-    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
-    if(!a||!isDirectHire(a))return alert('Hire request not found.');
-    if(currentUser.role!=='driver'||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the requested driver can agree.');
-    if(a.status!=='Waiting Driver Agreement')return alert('The truck owner must agree before you can complete this step.');
-    const old={...a};a.status='Direct Hire Agreed';
-    const meta={...directMeta(a),driverAgreedAt:new Date().toISOString(),driverContactReleased:true};a.notes=directNotes(meta);
-    const res=await updateTruckApplicationDb(a,{status:a.status,notes:a.notes});
-    if(res.error){Object.assign(a,old);return alert('Could not save your agreement: '+res.error.message);}
-    addNote(a.ownerEmail,a.driverName+' also agreed to the direct hire. Both sides completed the agreement.');
-    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver completed the hire agreement',summary:'The driver also clicked Agree. Both sides have completed the direct hire agreement.',buttonText:'Open Home Page',page:'home',details:{Driver:a.driverName,Status:'Both Sides Agreed'}}));}catch(e){console.warn(e);}
-    try{await Promise.resolve(sendAdminEmailNotice('Direct truck-driver hire fully agreed','Both the truck owner and driver completed their agreement steps.',{TruckOwner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:a.status},'admin'));}catch(e){console.warn(e);}
-    persistOnly();alert('Agreement complete. Truck owner information is now available.');home();
-  };
-
-  window.viewDirectDriverInformation=function(id){
-    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
-    if(!a||!isDirectHire(a)||!['Waiting Driver Agreement','Direct Hire Agreed'].includes(a.status))return alert('Driver information is not available yet.');
-    if(!currentUser||norm(a.ownerEmail)!==norm(currentUser.email))return alert('Only the requesting truck owner can view this information.');
-    const p=profileByEmail(a.driverEmail);
-    contactAlert(a.driverName,p.phone||a.driverPhone,a.driverEmail,'Truck Driver Information');
-  };
-  window.viewDirectOwnerInformation=function(id){
-    const a=(data.truckApplications||[]).find(x=>x.id===id||x.dbId===id);
-    if(!a||!isDirectHire(a)||a.status!=='Direct Hire Agreed')return alert('Truck owner information is not available until you click Agree.');
-    if(!currentUser||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the requested driver can view this information.');
-    contactAlert(ownerNameFor(a),ownerPhoneFor(a),a.ownerEmail,'Truck Owner Information');
-  };
-
-  function ownerDirectHirePanel(){
-    if(!currentUser||currentUser.role!=='truck_owner')return '';
-    const profiles=(data.truckDriverProfiles||[]).filter(p=>p.driverEmail&&norm(p.driverEmail)!==norm(currentUser.email));
-    const reqs=(data.truckApplications||[]).filter(a=>isDirectHire(a)&&norm(a.ownerEmail)===norm(currentUser.email));
-    const profileCards=profiles.map(p=>{
-      const active=reqs.find(a=>norm(a.driverEmail)===norm(p.driverEmail)&&!['Driver Declined','Direct Hire Closed'].includes(a.status));
-      let action=`<button class="btn primary" type="button" onclick="requestDirectTruckDriver('${esc(p.driverEmail)}')">Request to Hire</button>`;
-      if(active){
-        if(active.status==='Waiting Owner Agreement')action=`<button class="btn good" type="button" onclick="ownerAgreeDirectHire('${esc(active.id)}')">Agree</button>`;
-        else if(['Waiting Driver Agreement','Direct Hire Agreed'].includes(active.status))action=`<button class="btn primary" type="button" onclick="viewDirectDriverInformation('${esc(active.id)}')">View Driver Information</button>`;
-        else action=`<span class="pill">${esc(active.status)}</span>`;
-      }
-      return `<div class="card"><h3>👤 ${esc(p.name||p.driverName||'Truck Driver')}</h3><p><b>City:</b> ${esc(p.city||'')}</p><p><b>CDL / License:</b> ${esc(p.license||'')}</p><p><b>Experience:</b> ${esc(p.experience||'')}</p><p><b>Looking For:</b> ${esc(p.looking||'')}</p><p class="muted">${esc(p.notes||'')}</p><p class="small">Phone and email remain protected until both sides agree.</p><div class="actions">${action}</div></div>`;
-    }).join('')||'<div class="card"><p>No truck driver profiles are available yet.</p></div>';
-    return `<section id="directTruckDriverHire" style="margin-top:20px"><div class="card"><h2 style="margin:0">👥 Drivers Available for Hire</h2><p class="muted">Review driver profiles and send a direct hire request. Each person sees the other person's contact information only after clicking their own Agree button.</p></div><div class="grid">${profileCards}</div></section>`;
-  }
-  function driverDirectHirePanel(){
-    if(!currentUser||currentUser.role!=='driver')return '';
-    const reqs=(data.truckApplications||[]).filter(a=>isDirectHire(a)&&norm(a.driverEmail)===norm(currentUser.email)&&a.status!=='Driver Declined');
-    if(!reqs.length)return '';
-    return `<section id="driverDirectHireRequests" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚛 Direct Hire Requests</h2><p class="muted">Truck owners who selected your profile appear here.</p></div><div class="grid">${reqs.map(a=>{
-      let actions='';
-      if(a.status==='Pending Driver Review')actions=`<button class="btn good" type="button" onclick="driverRespondDirectHire('${esc(a.id)}',true)">Accept</button> <button class="btn bad" type="button" onclick="driverRespondDirectHire('${esc(a.id)}',false)">Decline</button>`;
-      else if(a.status==='Waiting Owner Agreement')actions='<span class="pill">Accepted — waiting for owner agreement</span>';
-      else if(a.status==='Waiting Driver Agreement')actions=`<button class="btn good" type="button" onclick="driverAgreeDirectHire('${esc(a.id)}')">Agree</button>`;
-      else if(a.status==='Direct Hire Agreed')actions=`<button class="btn primary" type="button" onclick="viewDirectOwnerInformation('${esc(a.id)}')">View Truck Owner Information</button>`;
-      const message=a.status==='Pending Driver Review'?'Accept or decline this request. Your phone and email are not released yet.':a.status==='Waiting Owner Agreement'?'You accepted. The owner must click Agree next.':a.status==='Waiting Driver Agreement'?'The owner agreed. Click Agree to release the truck owner information to you.':'Both sides agreed. Truck owner information is available.';
-      return `<div class="card" style="border:2px solid ${a.status==='Direct Hire Agreed'?'#16a34a':'#d97706'}"><h3>🚛 ${esc(ownerNameFor(a))}</h3><p><b>Direct Truck Driver Hire Request</b></p><p class="muted">${message}</p><div class="actions">${actions}</div></div>`;
-    }).join('')}</div></section>`;
-  }
-
-  const oldOwnerHome=window.truckOwnerHomeActions;
-  window.truckOwnerHomeActions=function(){return (oldOwnerHome?oldOwnerHome():'')+ownerDirectHirePanel();};
-  const oldDriverHome=window.truckDriverHomeActions;
-  window.truckDriverHomeActions=function(){return driverDirectHirePanel()+(oldDriverHome?oldDriverHome():'');};
-})();
-</script>
-
-
-<script id="v78199-all-category-two-way-communication">
-/* V7.8.199 — Missing reverse communication flows.
-   Uses public.community_matches. Run supabase/v7_8_199_two_way_communication.sql once. */
-(function(){
-  const CFG={
-    job_reverse:{label:'Job Seeker Profiles',icon:'💼',posterRole:'job_seeker',initiatorRole:'business_owner',posterPost:'Post Looking for Work Profile',available:'Job Seekers Available for Hire',offer:'Send Job Offer',posterContact:'Business Owner Information',initiatorContact:'Job Seeker Information'},
-    market_wanted:{label:'Marketplace Item Wanted',icon:'🛍️',posterRole:'customer',initiatorRole:'marketplace',posterPost:'Post Item Wanted',available:'Customers Looking for Items',offer:'Make Seller Offer',posterContact:'Seller Information',initiatorContact:'Customer Information'},
-    trailer_needed:{label:'Trailer Needed',icon:'🚛',posterRole:['driver','truck_owner'],initiatorRole:'truck_owner',posterPost:'Post Trailer Needed',available:'Renters Looking for Trailers',offer:'Offer Trailer',posterContact:'Trailer Owner Information',initiatorContact:'Renter Information'},
-    taxi_available:{label:'Taxi/Limo Driver Availability',icon:'🚕',posterRole:['taxi_limo_driver','taxi_driver'],initiatorRole:'customer',posterPost:'Post Driver Availability',available:'Taxi/Limo Drivers Available',offer:'Request This Driver',posterContact:'Customer Information',initiatorContact:'Driver Information'}
-  };
-  window.communityMatches=window.communityMatches||[];
-  const norm=x=>String(x||'').trim().toLowerCase();
-  const roleOk=(need,role)=>Array.isArray(need)?need.includes(role):need===role;
-  const mine=(email)=>norm(email)===norm(currentUser&&currentUser.email);
-  const byId=id=>communityMatches.find(x=>String(x.id)===String(id));
-  const postById=id=>communityMatches.find(x=>x.record_type==='post'&&String(x.id)===String(id));
-  const safe=x=>typeof esc==='function'?esc(x):String(x||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const uid=()=>('CM'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)).toUpperCase();
-  const dbReady=()=>typeof hcSupabase!=='undefined'&&!!hcSupabase;
-  async function loadMatches(){
-    if(!dbReady())return;
-    try{const {data,error}=await hcSupabase.from('community_matches').select('*').order('created_at',{ascending:false});if(error)throw error;window.communityMatches=data||[];}catch(e){console.warn('community_matches load failed',e);}
-  }
-  async function insertMatch(row){
-    communityMatches.unshift(row);
-    if(!dbReady())return {error:new Error('Supabase is not connected.')};
-    const {error}=await hcSupabase.from('community_matches').insert(row);if(error)communityMatches=communityMatches.filter(x=>x!==row);return {error};
-  }
-  async function updateMatch(row,patch){
-    const old={...row};Object.assign(row,patch,{updated_at:new Date().toISOString()});
-    if(!dbReady())return {error:new Error('Supabase is not connected.')};
-    const {error}=await hcSupabase.from('community_matches').update({...patch,updated_at:row.updated_at}).eq('id',row.id);if(error)Object.assign(row,old);return {error};
-  }
-  function notify(to,name,subject,summary,details){try{return Promise.resolve(sendEmailNotice({to,name,subject,summary,buttonText:'Open Home Page',page:'home',details}));}catch(e){return Promise.resolve();}}
-  function adminNotify(subject,summary,details){try{return Promise.resolve(sendAdminEmailNotice(subject,summary,details,'admin'));}catch(e){return Promise.resolve();}}
-
-  window.cmCreatePost=async function(flow){
-    const c=CFG[flow];if(!currentUser||!roleOk(c.posterRole,currentUser.role))return alert('This action is not available for your role.');
-    const title=(document.getElementById('cmTitle_'+flow)?.value||'').trim(),city=(document.getElementById('cmCity_'+flow)?.value||'').trim(),details=(document.getElementById('cmDetails_'+flow)?.value||'').trim();
-    if(!title||!city||!details)return alert('Please complete the title, city, and details.');
-    const row={id:uid(),flow_type:flow,record_type:'post',parent_id:null,poster_name:currentUser.name||'',poster_email:currentUser.email,poster_phone:currentUser.phone||'',initiator_name:'',initiator_email:'',initiator_phone:'',title,city,details,status:'Pending Admin Approval',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
-    const r=await insertMatch(row);if(r.error)return alert('Could not save this post. Run the V7.8.199 SQL first, then try again. '+r.error.message);
-    await adminNotify(c.label+' needs approval','A new reverse-matching post is waiting for approval.',{Category:c.label,PostedBy:row.poster_name,Email:row.poster_email,Title:title,City:city,Status:row.status});
-    alert('Posted and sent to Admin for approval.');home();
-  };
-  window.cmAdminDecision=async function(id,approve){const r=byId(id);if(!r||!currentUser||currentUser.role!=='admin')return alert('Admin only.');const st=approve?'Approved':'Declined';const x=await updateMatch(r,{status:st});if(x.error)return alert(x.error.message);const c=CFG[r.flow_type];await notify(r.poster_email,r.poster_name,c.label+' '+st.toLowerCase(),approve?'Admin approved your post. It is now visible to matching users.':'Admin declined your post.',{Title:r.title,City:r.city,Status:st});adminSuccess();};
-  window.cmSendOffer=async function(postId){const p=postById(postId),c=p&&CFG[p.flow_type];if(!p||!c||!currentUser||!roleOk(c.initiatorRole,currentUser.role))return alert('This request is not available.');if(mine(p.poster_email))return alert('You cannot respond to your own post.');const details=(document.getElementById('cmOffer_'+postId)?.value||'').trim();if(!details)return alert('Enter your offer or request details.');if(communityMatches.some(x=>x.record_type==='match'&&x.parent_id===p.id&&mine(x.initiator_email)&&!['Declined by Poster','Closed'].includes(x.status)))return alert('You already have an active response for this post.');
-    const r={id:uid(),flow_type:p.flow_type,record_type:'match',parent_id:p.id,poster_name:p.poster_name,poster_email:p.poster_email,poster_phone:p.poster_phone,initiator_name:currentUser.name||'',initiator_email:currentUser.email,initiator_phone:currentUser.phone||'',title:p.title,city:p.city,details,status:'Waiting Poster Response',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
-    const x=await insertMatch(r);if(x.error)return alert(x.error.message);await notify(r.poster_email,r.poster_name,'New '+c.label+' response','Someone responded to your approved post. Open your Home page to accept or decline.',{From:r.initiator_name,Title:r.title,City:r.city,Offer:details,Status:r.status});alert('Sent successfully.');home();
-  };
-  window.cmPosterRespond=async function(id,accept){const r=byId(id),c=r&&CFG[r.flow_type];if(!r||!c||!mine(r.poster_email)||r.status!=='Waiting Poster Response')return alert('This response is not waiting for you.');const st=accept?'Poster Accepted - Waiting Initiator Agreement':'Declined by Poster';const x=await updateMatch(r,{status:st});if(x.error)return alert(x.error.message);await notify(r.initiator_email,r.initiator_name,accept?'Your response was accepted':'Your response was declined',accept?'The poster accepted. Open your Home page and click Agree before their contact information is released.':'The poster declined your response.',{Title:r.title,Status:st});if(accept)await adminNotify(c.label+' response accepted','The poster accepted a reverse-matching response. The initiator must click Agree next.',{Poster:r.poster_name,Initiator:r.initiator_name,Title:r.title,Status:st});home();};
-  window.cmInitiatorAgree=async function(id){const r=byId(id),c=r&&CFG[r.flow_type];if(!r||!c||!mine(r.initiator_email)||r.status!=='Poster Accepted - Waiting Initiator Agreement')return alert('This agreement is not ready.');const x=await updateMatch(r,{status:'Initiator Agreed - Waiting Poster Agreement'});if(x.error)return alert(x.error.message);await notify(r.poster_email,r.poster_name,'Agreement action required','The other person agreed. Open your Home page and click Agree to release their contact information to you.',{Title:r.title,Status:'Waiting for Your Agreement'});alert(c.initiatorContact+' is now available to you.');home();};
-  window.cmPosterAgree=async function(id){const r=byId(id),c=r&&CFG[r.flow_type];if(!r||!c||!mine(r.poster_email)||r.status!=='Initiator Agreed - Waiting Poster Agreement')return alert('The other person must agree first.');const x=await updateMatch(r,{status:'Both Agreed'});if(x.error)return alert(x.error.message);await notify(r.initiator_email,r.initiator_name,'Both sides agreed','Both people completed their agreement steps.',{Title:r.title,Status:'Both Agreed'});alert(c.posterContact+' is now available to you.');home();};
-  window.cmViewContact=function(id,side){const r=byId(id),c=r&&CFG[r.flow_type];if(!r||!c)return;const poster=side==='poster';if(poster&&!mine(r.poster_email))return;if(!poster&&!mine(r.initiator_email))return;const allowed=poster?r.status==='Both Agreed':['Initiator Agreed - Waiting Poster Agreement','Both Agreed'].includes(r.status);if(!allowed)return alert('Click Agree first.');const name=poster?r.initiator_name:r.poster_name,email=poster?r.initiator_email:r.poster_email,phone=poster?r.initiator_phone:r.poster_phone;alert(`${poster?c.posterContact:c.initiatorContact}\n\nName: ${name||''}\nPhone: ${phone||'Not provided'}\nEmail: ${email||'Not provided'}`);};
-
-  function createPanel(flow){const c=CFG[flow];return `<div class="card"><h2 style="margin:0">${c.icon} ${safe(c.posterPost)}</h2><p class="muted">Admin approves your post before it becomes visible. Contact information stays hidden until each side clicks their own Agree button.</p><div class="grid"><label>Title / Need<input id="cmTitle_${flow}" placeholder="Describe what you need or offer"></label><label>City / Area<input id="cmCity_${flow}" placeholder="Atlanta, GA"></label><label>Details<textarea id="cmDetails_${flow}" placeholder="Add schedule, qualifications, budget, item, trailer, route, or other important details"></textarea></label></div><button class="btn primary" onclick="cmCreatePost('${flow}')">${safe(c.posterPost)}</button></div>`;}
-  function posterPanel(flow){const c=CFG[flow];if(!currentUser||!roleOk(c.posterRole,currentUser.role))return '';const posts=communityMatches.filter(x=>x.flow_type===flow&&x.record_type==='post'&&mine(x.poster_email));const matches=communityMatches.filter(x=>x.flow_type===flow&&x.record_type==='match'&&mine(x.poster_email));const acts=matches.map(r=>{let a='';if(r.status==='Waiting Poster Response')a=`<button class="btn good" onclick="cmPosterRespond('${r.id}',true)">Accept</button> <button class="btn bad" onclick="cmPosterRespond('${r.id}',false)">Decline</button>`;else if(r.status==='Initiator Agreed - Waiting Poster Agreement')a=`<button class="btn good" onclick="cmPosterAgree('${r.id}')">Agree</button>`;else if(r.status==='Both Agreed')a=`<button class="btn primary" onclick="cmViewContact('${r.id}','poster')">View ${safe(c.posterContact)}</button>`;else a=`<span class="pill">${safe(r.status)}</span>`;return `<div class="card"><h3>${c.icon} ${safe(r.title)}</h3><p><b>Response from:</b> ${safe(r.initiator_name)}</p><p>${safe(r.details)}</p><p class="muted">Contact details remain protected until agreement.</p><div class="actions">${a}</div></div>`;}).join('');const minePosts=posts.map(p=>`<div class="card"><h3>${safe(p.title)}</h3><p>${safe(p.city)} • ${safe(p.details)}</p><span class="pill">${safe(p.status)}</span></div>`).join('');return `<section class="cmFlow" style="margin-top:20px">${createPanel(flow)}${acts?`<div class="card"><h2>Responses Requiring Your Action</h2></div><div class="grid">${acts}</div>`:''}${minePosts?`<div class="card"><h2>My Posts</h2></div><div class="grid">${minePosts}</div>`:''}</section>`;}
-  function initiatorPanel(flow){const c=CFG[flow];if(!currentUser||!roleOk(c.initiatorRole,currentUser.role))return '';const posts=communityMatches.filter(x=>x.flow_type===flow&&x.record_type==='post'&&x.status==='Approved'&&!mine(x.poster_email));const own=communityMatches.filter(x=>x.flow_type===flow&&x.record_type==='match'&&mine(x.initiator_email));const actions=own.filter(r=>['Poster Accepted - Waiting Initiator Agreement','Initiator Agreed - Waiting Poster Agreement','Both Agreed'].includes(r.status)).map(r=>{let a='';if(r.status==='Poster Accepted - Waiting Initiator Agreement')a=`<button class="btn good" onclick="cmInitiatorAgree('${r.id}')">Agree</button>`;else a=`<button class="btn primary" onclick="cmViewContact('${r.id}','initiator')">View ${safe(c.initiatorContact)}</button>`;return `<div class="card"><h3>${c.icon} ${safe(r.title)}</h3><p class="muted">${safe(r.status)}</p><div class="actions">${a}</div></div>`;}).join('');const cards=posts.map(p=>`<div class="card"><h3>${c.icon} ${safe(p.title)}</h3><p><b>City:</b> ${safe(p.city)}</p><p>${safe(p.details)}</p><p class="muted">Private contact information is hidden.</p><label>Your offer / request details<textarea id="cmOffer_${p.id}" placeholder="Explain your job offer, item offer, trailer offer, or ride request"></textarea></label><button class="btn primary" onclick="cmSendOffer('${p.id}')">${safe(c.offer)}</button></div>`).join('')||`<div class="card"><p>No approved ${safe(c.label)} posts are available right now.</p></div>`;return `<section class="cmFlow" style="margin-top:20px">${actions?`<div class="card"><h2>Agreements Requiring Your Action</h2></div><div class="grid">${actions}</div>`:''}<div class="card"><h2 style="margin:0">${c.icon} ${safe(c.available)}</h2><p class="muted">Respond directly. Each person sees the other person's information only after clicking their own Agree button.</p></div><div class="grid">${cards}</div></section>`;}
-
-  function wrap(name,flow,side){const old=window[name];window[name]=function(){return (old?old():'')+(side==='poster'?posterPanel(flow):initiatorPanel(flow));};}
-  wrap('jobSeekerHomeActions','job_reverse','poster');wrap('businessOwnerHomeActions','job_reverse','initiator');
-  wrap('marketplaceHomeActions','market_wanted','initiator');
-  const oldCustomer=window.customerHomeActions;window.customerHomeActions=function(){return (oldCustomer?oldCustomer():'')+posterPanel('market_wanted')+initiatorPanel('taxi_available');};
-  const oldTruckOwner=window.truckOwnerHomeActions;window.truckOwnerHomeActions=function(){return (oldTruckOwner?oldTruckOwner():'')+posterPanel('trailer_needed')+initiatorPanel('trailer_needed');};
-  wrap('truckDriverHomeActions','trailer_needed','poster');wrap('taxiDriverHomeActions','taxi_available','poster');
-
-  function injectAdmin(){const grid=document.getElementById('adminPendingQueueGrid');if(!grid)return;grid.querySelectorAll('.cmAdminPending').forEach(x=>x.remove());communityMatches.filter(x=>x.record_type==='post'&&x.status==='Pending Admin Approval').forEach(r=>{const c=CFG[r.flow_type],d=document.createElement('div');d.className='adminPendingCard cmAdminPending';d.innerHTML=`<h4>${c.icon} ${safe(c.label)} Approval</h4><div class="adminPendingField"><b>Posted by</b><div>${safe(r.poster_name)}<br><span class="small">${safe(r.poster_email)}</span></div></div><div class="adminPendingField"><b>Post</b><div>${safe(r.title)} • ${safe(r.city)}<br><span class="small">${safe(r.details)}</span></div></div><div class="adminPendingActions"><button class="btn primary" onclick="cmAdminDecision('${r.id}',true)">Approve</button><button class="btn bad" onclick="cmAdminDecision('${r.id}',false)">Decline</button></div>`;grid.prepend(d);});const count=document.getElementById('adminPendingQueueCount');if(count)count.textContent=String(grid.querySelectorAll('.adminPendingCard').length);}
-  const oldAdmin=window.adminSuccess;window.adminSuccess=function(){const x=oldAdmin.apply(this,arguments);setTimeout(injectAdmin,50);return x;};
-  const oldHome=window.home;window.home=function(){const x=oldHome.apply(this,arguments);return x;};
-  const style=document.createElement('style');style.textContent='@media(max-width:700px){.cmFlow .btn,.cmFlow input,.cmFlow select,.cmFlow textarea,.cmAdminPending .btn{width:100%;min-height:48px}.cmFlow textarea{min-height:90px}}';document.head.appendChild(style);
-  loadMatches().then(()=>{if(currentPage==='home')home();if(currentPage==='admin')adminSuccess();});
-  setInterval(()=>loadMatches().then(()=>{if(currentPage==='home')home();}),30000);
-})();
-</script>
-
-
-<script id="v78204-focused-transaction-views">
-// V7.8.214: Home transaction cards open only the matching records/actions.
-function hcResetFocusedPage(rootId){
-  const root=document.getElementById(rootId); if(!root)return;
-  [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
-  const old=document.getElementById('hcFocusedViewNotice'); if(old)old.remove();
-}
-function hcFocusPage(rootId,targetIds,title){
-  const root=document.getElementById(rootId); if(!root)return false;
-  hcResetFocusedPage(rootId);
-  const targets=(targetIds||[]).map(id=>document.getElementById(id)).filter(Boolean);
-  if(!targets.length)return false;
-  [...root.children].forEach((child,index)=>{
-    const keep=(index===0&&/^H[1-3]$/.test(child.tagName))||targets.some(t=>child===t||child.contains(t));
-    if(!keep){child.style.display='none';child.dataset.hcFocusHidden='1';}
-  });
-  const note=document.createElement('div');
-  note.id='hcFocusedViewNotice';note.className='card';
-  note.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><b>${hcHomeEsc(title||'Active Transactions')}</b><div class="muted">Only the selected transaction records and their next actions are shown.</div></div><button class="btn ghost" onclick="show('home')">Back Home</button></div>`;
-  const firstKept=[...root.children].find((x,i)=>i>0&&x.style.display!=='none');
-  root.insertBefore(note,firstKept||root.children[1]||null);
-  setTimeout(()=>{const t=targets[0];if(t&&t.scrollIntoView)t.scrollIntoView({behavior:'smooth',block:'start'});},80);
-  return true;
-}
-function hcAfterShowFocus(page,ids,title){
-  const run=()=>hcFocusPage(page,ids,title);
-  if(!run())setTimeout(run,180);
-}
-async function openHomeTransaction(page,encodedTitle){
-  const title=decodeURIComponent(encodedTitle||'');
-  const role=currentUser&&currentUser.role;
-  if(page==='shipping'){
-    if(role==='traveler'){await goTravelerShipSection('requests');return;}
-    await show('shipping');hcAfterShowFocus('shipping',['travelerShipRequests','shippingItemRequests'],'My Shipping Transactions');return;
-  }
-  if(page==='rentals'){
-    await show('rentals');
-    if(role==='owner')hcAfterShowFocus('rentals',['availableRentSeekers','ownerRentalRequests'],'Rental Requests');
-    else hcAfterShowFocus('rentals',['seekerRentalRequests','rentalList'],'My Rental Activity');
-    return;
-  }
-  if(page==='truck'){
-    const lower=title.toLowerCase();
-    if(lower.includes('trailer')){await goTruckSection('trailers');return;}
-    if(lower.includes('application')||lower.includes('hire')){await goTruckSection('applications');return;}
-    if(lower.includes('job')){await goTruckSection(role==='driver'?'jobs':'applications');return;}
-    await show('truck');return;
-  }
-  if(page==='taxi'){
-    const lower=title.toLowerCase();
-    if(lower.includes('ride')){await goTaxiSection(role==='taxi_limo_driver'||role==='taxi_driver'?'openRides':'rideRequests');return;}
-    if(lower.includes('application')||lower.includes('job')){await goTaxiSection(role==='taxi_limo_driver'||role==='taxi_driver'?'availableJobs':'availableDrivers');return;}
-    await show('taxi');return;
-  }
-  if(page==='home_services'){
-    await show('home_services');
-    if(role==='service_provider')hcAfterShowFocus('home_services',['providerRequestedServices','homeServiceDirectActivityTop','homeServiceActionTop'],'Home Service Requests');
-    else hcAfterShowFocus('home_services',['homeServiceDirectActivityTop','homeServiceActionTop','homeServicesList'],'My Home Service Activity');
-    return;
-  }
-  if(page==='marketplace'){
-    await show('marketplace');
-    if(role==='marketplace')hcAfterShowFocus('marketplace',['marketSellerRequestsTop','marketBuyerAgreeTop','marketBuyerSellerInfoTop'],'Marketplace Requests and Agreements');
-    else hcAfterShowFocus('marketplace',['marketBuyerAgreeTop','marketBuyerSellerInfoTop','marketList'],'My Marketplace Activity');
-    return;
-  }
-  if(page==='jobs'){
-    await show('jobs');
-    if(role==='business_owner'||role==='employer')hcAfterShowFocus('jobs',['businessApplicantsPanel','jobPostCard'],'Job Applications and Posts');
-    else hcAfterShowFocus('jobs',['jobSeekerAgreementHome','jobsList'],'Jobs and Applications');
-    return;
-  }
-  if(page==='business'){await show('business');hcAfterShowFocus('business',['businessList','publicBusinessDirectory','businessOwnerPanel'],'Business Activity');return;}
-  if(page==='events'){await show('events');hcAfterShowFocus('events',['eventList','upcomingEvents','eventCreatePanel'],'Event Activity');return;}
-  await show(page);
-}
-// Focus Shipping quick-action buttons, not only personalized activity cards.
-// V7.8.214: Route each Traveler Shipping button directly to one focused view.
-// Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
-goTravelerShipSection=async function(section){
-  travelerShippingView=section||'all';
-  await show('shipping');
-  const applyFocus=()=>{
-    if(section==='post')return hcFocusPage('shipping',['travelerPostTrip'],'Open Trip');
-    if(section==='trips')return hcFocusPage('shipping',['travelerOpenTrips'],'My Open Trips');
-    if(section==='requests')return hcFocusPage('shipping',['travelerDecisionRequests','travelerShipRequests'],'Shipping Requests / Open Shipping');
-    return false;
-  };
-  // Apply after rendering and again after the browser finishes its layout pass.
-  applyFocus();
-  requestAnimationFrame(()=>requestAnimationFrame(applyFocus));
-  setTimeout(applyFocus,220);
-};
-const hcOldSenderShipSection=goSenderShipSection;
-goSenderShipSection=async function(section){
-  await hcOldSenderShipSection(section);
-  if(section==='post')hcAfterShowFocus('shipping',['senderPostItem'],'Post Item to Ship');
-  else if(section==='travelers')hcAfterShowFocus('shipping',['shippingSearchPanel','shippingAvailableTrips'],'Available Travelers');
-  else hcAfterShowFocus('shipping',['travelerShipRequests','shippingItemRequests'],'My Shipping Transactions');
-};
-const hcOldRentalSection=goRentalSection;
-goRentalSection=async function(section){
-  await hcOldRentalSection(section);
-  if(section==='add')hcAfterShowFocus('rentals',['rentAddPropertyCard'],'Add Property');
-  else if(section==='seekers')hcAfterShowFocus('rentals',['availableRentSeekers','ownerRentalRequests'],'Rental Requests');
-  else hcAfterShowFocus('rentals',['rentalSearchFilters','availableRentals','rentalList'],'Available Rentals');
-};
-</script>
-
-
-
-<script id="v78213-rental-single-flow-cleanup">
-/* V7.8.214 — Rentals returned to the original one-way flow only.
-   Property owner posts -> Admin approves -> seeker requests -> Admin approves -> owner responds -> seeker requests/views owner information.
-   Reverse Rental Wanted and property-offer matching are disabled and hidden. */
-(function(){
-  const norm=v=>String(v||'').trim().toLowerCase();
-  const safe=v=>typeof hcHomeEsc==='function'?hcHomeEsc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const isWanted=r=>norm(r?.propertyType)==='rental wanted'||String(r?.title||'').startsWith('Rental Wanted:');
-
-  // Keep any old Rental Wanted rows out of every current rental listing and admin rental card.
-  const oldRentalCards=window.rentalCards;
-  if(typeof oldRentalCards==='function')window.rentalCards=function(list,role){
-    return oldRentalCards((list||[]).filter(r=>!isWanted(r)),role);
-  };
-
-  // Rent seeker home: only original rental flow actions.
-  window.rentSeekerHomeActions=function(){
-    if(!currentUser||currentUser.role!=='rent_seeker')return '';
-    const email=norm(currentUser.email);
-    const approved=(data.rentals||[]).filter(r=>!isWanted(r)&&['approved','available','open','published','active'].includes(norm(r.status)));
-    const seekerReqs=(data.rentalRequests||[]).filter(q=>norm(q.seekerEmail)===email&&!String(q.status||'').includes('|WANTED:'));
-    const ownerInfo=typeof seekerOwnerInformationPanel==='function'?seekerOwnerInformationPanel(seekerReqs):'';
-    const pending=seekerReqs.filter(q=>!['Completed','Declined','Rejected','Cancelled'].includes(String(q.status||'')));
-    const activity=pending.map(q=>{
-      const title=q.propertyTitle||q.propertyName||q.address||'Rental Request';
-      let action='';
-      if(String(q.status||'')==='Owner Accepted' || String(q.status||'')==='Rented' || String(q.status||'')==='Approved - Rented'){
-        action=`<button class="btn primary" onclick="requestOwnerInformation('${safe(q.id)}')">Request Owner Information</button>`;
-      }
-      return `<div class="card" style="border-left:5px solid #d97706"><h3 style="margin:0">🏠 ${safe(title)}</h3><p><b>Status:</b> ${safe(q.status||'Pending')}</p>${action?`<div class="actions">${action}</div>`:''}</div>`;
-    }).join('');
-    const newRentalCard=`<div class="card" style="border-left:5px solid #d97706"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">🏠 New Rental Available</h3><span class="pill good">${approved.length} Available</span></div><p>${approved.length?`${safe(approved[0].propertyType||'Property')} • ${safe(approved[0].city||approved[0].location||'')}${approved.length>1?` • +${approved.length-1} more`:''}`:'No approved rentals are available right now.'}</p><button class="btn primary" onclick="goRentalSection('available')">Open Rentals</button></div>`;
-    return `<section id="rentSeekerHomeActions" style="margin-top:20px">
-      <div class="card"><h2 style="margin:0">🔍 Rental Quick Actions</h2><p class="muted">New rentals and your active rental requests appear here first.</p></div>
-      <div id="rentSeekerPriorityActivity" class="grid" style="margin-top:12px">${newRentalCard}${activity}</div>
-      ${ownerInfo}
-      <div class="grid" style="margin-top:12px"><div class="card"><h3>🏠 Open Rentals</h3><p class="muted">Browse Admin-approved properties and request a rental.</p><button class="btn primary" onclick="goRentalSection('available')">Open Rentals</button></div></div>
-    </section>`;
-  };
-
-  // Property owner home: original property and seeker-request actions only.
-  const originalOwnerHome=window.propertyOwnerHomeActions;
-  if(typeof originalOwnerHome==='function')window.propertyOwnerHomeActions=function(){
-    const html=originalOwnerHome();
-    const temp=document.createElement('div');temp.innerHTML=html;
-    temp.querySelectorAll('#rentSeekersLookingForHomes,[id*="Wanted"],button').forEach(el=>{
-      if(el.tagName==='BUTTON'&&/offer property|rental wanted/i.test(el.textContent||''))el.remove();
-      else if(el.id==='rentSeekersLookingForHomes'||/rental wanted/i.test(el.textContent||''))el.remove();
-    });
-    return temp.innerHTML;
-  };
-
-  // Disable old reverse-rental functions if stale buttons or cached markup remain.
-  ['submitRentalWanted','offerPropertyToSeeker','seekerRespondRentalOffer','ownerAgreeRentalMatch','seekerAgreeRentalMatch','viewRentalMatchOwnerInfo','viewRentalMatchSeekerInfo','toggleRentalWantedForm'].forEach(name=>{
-    window[name]=function(){alert('Rental Wanted has been removed. Please use Open Rentals to request an approved property.');};
-  });
-
-  // Remove stale reverse-rental cards after any home/admin rerender.
-  function cleanRentalWantedUi(){
-    document.querySelectorAll('#rentalWantedSeekerHome,#rentSeekersLookingForHomes,#rentalWantedFormPanel').forEach(x=>x.remove());
-    document.querySelectorAll('button').forEach(b=>{if(/post rental wanted|offer property/i.test(b.textContent||''))b.remove();});
-  }
-  const oldHome=window.home;
-  if(typeof oldHome==='function')window.home=function(){const r=oldHome.apply(this,arguments);cleanRentalWantedUi();requestAnimationFrame(cleanRentalWantedUi);return r;};
-  const oldAdmin=window.admin;
-  if(typeof oldAdmin==='function')window.admin=function(){const r=oldAdmin.apply(this,arguments);cleanRentalWantedUi();requestAnimationFrame(cleanRentalWantedUi);return r;};
-})();
-</script>
-
-
-<script id="v78217-truck-owner-home-cleanup">
-/* V7.8.217 — Truck owner home cleanup.
-   Urgent transactions appear first. Long lists/forms open only from dedicated buttons.
-   Trailer requests use a focused Accept/Decline workspace. */
-(function(){
-  const norm=v=>String(v||'').trim().toLowerCase();
-  const safe=v=>typeof hcHomeEsc==='function'?hcHomeEsc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const direct=a=>!!a&&(String(a.jobId||'').startsWith('DIRECT-')||String(a.notes||'').startsWith('DIRECT_HIRE:')||a.jobTitle==='Direct Driver Hire Request');
-  const ownerEmail=()=>norm(currentUser&&currentUser.email);
-  const mine=v=>norm(v)===ownerEmail();
-
-  function ownerUrgentCards(){
-    if(!currentUser||currentUser.role!=='truck_owner')return '';
-    const cards=[];
-    (data.truckApplications||[]).filter(a=>mine(a.ownerEmail)).forEach(a=>{
-      if(!direct(a)&&a.status==='Pending Owner Review'){
-        cards.push(`<div class="card" style="border-left:5px solid #d97706"><h3>👤 New Driver Application</h3><p><b>${safe(a.driverName||'Truck Driver')}</b> applied for ${safe(a.jobTitle||'your job')}.</p><p class="muted">Review the application and accept or decline.</p><div class="actions"><button class="btn good" onclick="approveTruckApp('${safe(a.id)}')">Accept</button><button class="btn bad" onclick="declineTruckApp('${safe(a.id)}')">Decline</button></div></div>`);
-      }
-      if(direct(a)&&a.status==='Waiting Owner Agreement'){
-        cards.push(`<div class="card" style="border-left:5px solid #16a34a"><h3>🤝 Driver Accepted Your Hire Request</h3><p><b>${safe(a.driverName||'Truck Driver')}</b></p><p class="muted">Click Agree to see the driver's information.</p><div class="actions"><button class="btn good" onclick="ownerAgreeDirectHire('${safe(a.id)}')">Agree</button></div></div>`);
-      }
-    });
-    (data.trailerRentals||[]).filter(t=>mine(t.ownerEmail)&&t.renterEmail).forEach(t=>{
-      if(t.status==='Pending Owner Review'){
-        cards.push(`<div class="card" style="border-left:5px solid #d97706"><h3>🚚 New Trailer Rental Request</h3><p><b>${safe(t.trailerType||'Trailer')}</b> requested by ${safe(t.renterName||'Renter')}.</p><p class="muted">Accept or decline this request.</p><div class="actions"><button class="btn good" onclick="approveTrailerRental('${safe(t.id)}')">Accept</button><button class="btn bad" onclick="declineTrailerRental('${safe(t.id)}')">Decline</button></div></div>`);
-      }
-    });
-    return cards.length?`<section id="truckOwnerUrgentTransactions" style="margin-top:12px"><div class="card"><h2 style="margin:0">🔔 New Trucking Activity</h2><p class="muted">Transactions requiring your attention appear here first.</p></div><div class="grid">${cards.join('')}</div></section>`:'';
-  }
-
-  window.truckOwnerHomeActions=function(){
-    if(!currentUser||currentUser.role!=='truck_owner')return '';
-    return `<section id="truckOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚛 Truck Owner Quick Actions</h2><p class="muted">New activity appears first. Open a button below only when you need that form or list.</p></div>${ownerUrgentCards()}<div class="grid">
-      <div class="card"><h3>🚛 Truck Owner Record</h3><p class="muted">Manage truck, insurance, registration, income, expenses, and maintenance records.</p><button class="btn primary" onclick="goTruckSection('record')">Truck Owner Record</button></div>
-      <div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Post a truck driver hiring job.</p><button class="btn primary" onclick="goTruckSection('postJob')">Post Driver Job</button></div>
-      <div class="card"><h3>👥 Driver Applications</h3><p class="muted">Review applications for your posted jobs.</p><button class="btn primary" onclick="goTruckSection('applications')">See Driver Applications</button></div>
-      <div class="card"><h3>🚚 Post Trailer for Rent</h3><p class="muted">Post your trailer for admin approval and rental.</p><button class="btn primary" onclick="goTruckSection('postTrailer')">Post Trailer for Rent</button></div>
-      <div class="card"><h3>📨 Trailer Rental Requests</h3><p class="muted">See only requests for trailers you posted and accept or decline them.</p><button class="btn primary" onclick="goTruckSection('trailerRequests')">See Trailer Requests</button></div>
-      <div class="card"><h3>🔎 Available Trailers</h3><p class="muted">Browse approved trailers available to request.</p><button class="btn primary" onclick="goTruckSection('trailers')">Available Trailers</button></div>
-    </div></section>`;
-  };
-
-  function setTruckWorkspace(title,body){
-    const root=document.getElementById('truck');if(!root)return;
-    root.innerHTML=`<h2>🚛 Trucking & Trailer</h2><div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">${safe(title)}</h3><p class="muted" style="margin-bottom:0">Only this selected workspace is shown.</p></div><button class="btn ghost" onclick="show('home')">Back Home</button></div></div>${body}`;
-  }
-  function trailerRequestsWorkspace(){
-    const rows=(data.trailerRentals||[]).filter(t=>mine(t.ownerEmail)&&t.renterEmail);
-    const cards=rows.map(t=>{
-      let action='';
-      if(t.status==='Pending Owner Review')action=`<button class="btn good" onclick="approveTrailerRental('${safe(t.id)}')">Accept</button> <button class="btn bad" onclick="declineTrailerRental('${safe(t.id)}')">Decline</button>`;
-      else action=`<span class="pill">${safe(t.status||'')}</span>`;
-      return `<div class="card"><h3>🚚 ${safe(t.trailerType||'Trailer')}</h3><p><b>Requester:</b> ${safe(t.renterName||'')}</p><p><b>Location:</b> ${safe(t.location||'')}</p><p><b>Price:</b> ${safe(t.price||'')}</p><p class="muted">${safe(t.status||'')}</p><div class="actions">${action}</div></div>`;
-    }).join('')||'<div class="card"><p>No trailer rental requests yet.</p></div>';
-    return `<div class="grid">${cards}</div>`;
-  }
-  const previousGo=window.goTruckSection;
-  window.goTruckSection=async function(section){
-    if(section==='trailerRequests'){await show('truck');setTruckWorkspace('Trailer Rental Requests',trailerRequestsWorkspace());return;}
-    return previousGo(section);
-  };
-
-  window.__hcVersion='V7.8.217';
-})();
-</script>
-
 </body>
 </html>
