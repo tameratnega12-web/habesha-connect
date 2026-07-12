@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.204">
+<meta name="app-version" content="V7.8.206">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -1430,7 +1430,19 @@ async function shipping(){
  let shippingItemsHtml=`<section id="shippingItemRequests"><h3>${role==='traveler'?'Available Items to Ship':(role==='admin'?'Sender Posted Items':'My Posted Items')}</h3><div class="list">${shippingItems.map(it=>shippingItemCard(it,role)).join('')||'<div class="item">No posted shipping items yet.</div>'}</div></section>`;
  let shippingDash=categoryDashboard('Shipping Dashboard','Choose what you want to do in Shipping.',[categoryButton('🔍 Find Traveler Trips','shippingAvailableTrips',true),(role==='sender'||role==='customer')?categoryButton('📦 Post Item to Ship','senderPostItem',false):'',categoryButton('📋 Posted Items','shippingItemRequests',false),categoryButton('📦 Shipment Requests','travelerShipRequests',false), role==='traveler'?categoryButton('✈️ Post Trip','travelerPostTrip',false):(!currentUser?signInButton('Sign In to Ship'):'' )]);
  if(role==='traveler'){
-   $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${travelerDecisionHtml}${tripBox}${statsHtml}${shippingItemsHtml}${shipmentRequestsHtml}<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>${intro}`;
+   const openTripsHtml=`<section id="travelerOpenTrips"><h3>My Traveler Trips</h3><div class="list">${myTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">You have not posted a trip yet.</div>'}</div></section>`;
+   const view=travelerShippingView||'all';
+   // Render the selected Traveler workspace at the source. Later Supabase refreshes
+   // cannot reveal unrelated sections such as the Post Trip form inside Open Shipping.
+   if(view==='requests'){
+     $('shipping').innerHTML=`<h2>📦 Shipping Requests / Open Shipping</h2>${categoryIntro('shipping')}${travelerDecisionHtml}${shipmentRequestsHtml}`;
+   } else if(view==='post'){
+     $('shipping').innerHTML=`<h2>✈️ Open Trip</h2>${categoryIntro('shipping')}${tripBox}`;
+   } else if(view==='trips'){
+     $('shipping').innerHTML=`<h2>🧳 My Open Trips</h2>${categoryIntro('shipping')}${openTripsHtml}`;
+   } else {
+     $('shipping').innerHTML=`<h2>🚢 Shipping Dashboard</h2>${categoryIntro('shipping')}${travelerDecisionHtml}${tripBox}${statsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${openTripsHtml}${intro}`;
+   }
  } else if(role==='sender'||role==='customer'||!currentUser){
    const senderFormForCurrentView=(currentUser&&(role==='sender'||role==='customer')&&senderShippingView==='post')?senderItemBox:'';
    $('shipping').innerHTML=`<h2>📦 Shipping Connect</h2>${categoryIntro('shipping')}${senderFormForCurrentView}${statsHtml}${searchBox}${availableTripsHtml}${shippingItemsHtml}${shipmentRequestsHtml}${intro}`;
@@ -5492,7 +5504,7 @@ async function adminApproveTrailerPayment(id){
 
 
 <script id="v78204-focused-transaction-views">
-// V7.8.204: Home transaction cards open only the matching records/actions.
+// V7.8.206: Home transaction cards open only the matching records/actions.
 function hcResetFocusedPage(rootId){
   const root=document.getElementById(rootId); if(!root)return;
   [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
@@ -5523,7 +5535,7 @@ async function openHomeTransaction(page,encodedTitle){
   const title=decodeURIComponent(encodedTitle||'');
   const role=currentUser&&currentUser.role;
   if(page==='shipping'){
-    if(role==='traveler'){await goTravelerShipSection('requests');hcAfterShowFocus('shipping',['travelerDecisionRequests','travelerShipRequests','shippingItemRequests'],'Shipping Requests / Open Shipping');return;}
+    if(role==='traveler'){await goTravelerShipSection('requests');return;}
     await show('shipping');hcAfterShowFocus('shipping',['travelerShipRequests','shippingItemRequests'],'My Shipping Transactions');return;
   }
   if(page==='rentals'){
@@ -5568,12 +5580,21 @@ async function openHomeTransaction(page,encodedTitle){
   await show(page);
 }
 // Focus Shipping quick-action buttons, not only personalized activity cards.
-const hcOldTravelerShipSection=goTravelerShipSection;
+// V7.8.206: Route each Traveler Shipping button directly to one focused view.
+// Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
 goTravelerShipSection=async function(section){
-  await hcOldTravelerShipSection(section);
-  if(section==='post')hcAfterShowFocus('shipping',['travelerPostTrip'],'Open Trip');
-  else if(section==='trips')hcAfterShowFocus('shipping',['travelerOpenTrips'],'My Open Trips');
-  else if(section==='requests')hcAfterShowFocus('shipping',['travelerDecisionRequests','travelerShipRequests','shippingItemRequests'],'Shipping Requests / Open Shipping');
+  travelerShippingView=section||'all';
+  await show('shipping');
+  const applyFocus=()=>{
+    if(section==='post')return hcFocusPage('shipping',['travelerPostTrip'],'Open Trip');
+    if(section==='trips')return hcFocusPage('shipping',['travelerOpenTrips'],'My Open Trips');
+    if(section==='requests')return hcFocusPage('shipping',['travelerDecisionRequests','travelerShipRequests'],'Shipping Requests / Open Shipping');
+    return false;
+  };
+  // Apply after rendering and again after the browser finishes its layout pass.
+  applyFocus();
+  requestAnimationFrame(()=>requestAnimationFrame(applyFocus));
+  setTimeout(applyFocus,220);
 };
 const hcOldSenderShipSection=goSenderShipSection;
 goSenderShipSection=async function(section){
