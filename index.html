@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.208">
+<meta name="app-version" content="V7.8.209">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -712,9 +712,13 @@ function travelerPriorityShippingRequests(){
  const requests=(data.shipments||[])
    .filter(x=>cleanEmail(x.travelerEmail)===email)
    .sort((a,b)=>hcHomeTime(b)-hcHomeTime(a));
- if(!requests.length)return '';
- const cards=requests.map(x=>`<div class="card" style="border-left:5px solid #dc2626"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">📦 Shipping Request</h3><span class="pill warn">${hcHomeEsc(x.status||'Requested')}</span></div><p>${hcHomeEsc((x.senderName||x.sender||'Sender')+' • '+(x.from||x.origin||'')+' to '+(x.to||x.destination||''))}</p><button class="btn primary" onclick="goTravelerShipSection('requests')">Open Shipping</button></div>`).join('');
- return `<div id="travelerPriorityShippingRequests" class="grid" style="margin-top:12px">${cards}</div>`;
+ const postedItems=(data.shippingItems||[])
+   .filter(x=>String(x.status||'')==='Open'&&!travelerDeclinedShippingItem(x))
+   .sort((a,b)=>hcHomeTime(b)-hcHomeTime(a));
+ if(!requests.length&&!postedItems.length)return '';
+ const requestCards=requests.map(x=>`<div class="card" style="border-left:5px solid #dc2626"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">📦 Shipping Request</h3><span class="pill warn">${hcHomeEsc(x.status||'Requested')}</span></div><p>${hcHomeEsc((x.senderName||x.sender||'Sender')+' • '+(x.from||x.origin||'')+' to '+(x.to||x.destination||''))}</p><button class="btn primary" onclick="goTravelerShipSection('requests')">Open Shipping</button></div>`).join('');
+ const itemCards=postedItems.map(x=>`<div class="card" style="border-left:5px solid #d97706"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">📦 Sender Posted Item</h3><span class="pill good">Open</span></div><p>${hcHomeEsc((x.itemDescription||'Item')+' • '+(x.route||'')+' • '+(x.weight||0)+' lb')}</p><button class="btn primary" onclick="goTravelerShipSection('requests')">Accept or Decline</button></div>`).join('');
+ return `<div id="travelerPriorityShippingRequests" class="grid" style="margin-top:12px">${requestCards}${itemCards}</div>`;
 }
 function travelerHomeActions(){
  if(!currentUser||currentUser.role!=='traveler')return '';
@@ -1236,7 +1240,7 @@ async function loadSupabaseTrips(){
   data.trips=[...dbTrips,...localOnly];
 }
 
-// V7.8.208 — one canonical shipping status flow used by creation, loading, actions, and focused views.
+// V7.8.209 — one canonical shipping status flow used by creation, loading, actions, and focused views.
 const SHIP_STATUS={
   REQUESTED:'Requested',
   ACCEPTED:'Accepted',
@@ -1362,6 +1366,14 @@ async function loadSupabaseShippingItems(){
   let remote=(rows||[]).map(mapDbShippingItem);
   let preserved=(data.shippingItems||[]).filter(x=>x.source==='shipments_fallback'||(x.source!=='supabase'&&!x.dbId));
   data.shippingItems=[...remote,...preserved];
+  // V7.8.209: each traveler may decline a sender-posted item without closing it for other travelers.
+  window.shippingItemDeclines=[];
+  if(currentUser&&currentUser.email){
+    try{
+      const res=await hcSupabase.from('community_matches').select('parent_id,initiator_email,status').eq('flow_type','shipping_item_decline').eq('record_type','match').eq('initiator_email',currentUser.email);
+      if(!res.error)window.shippingItemDeclines=res.data||[];
+    }catch(e){console.warn('Shipping item decline preferences could not load',e);}
+  }
 }
 
 function recalcTripSpacesFromShipments(){
@@ -1393,7 +1405,7 @@ let travelerShippingView='all';
 async function goTravelerShipSection(section){
   travelerShippingView=section||'all';
   await show('shipping');
-  const targetId=section==='post'?'travelerPostTrip':(section==='requests'?'travelerShipRequests':'travelerOpenTrips');
+  const targetId=section==='post'?'travelerPostTrip':(section==='requests'?'travelerOpenShipping':'travelerOpenTrips');
   const openTarget=()=>{
     // Open Trip must begin at the dashboard top so How It Works stays above the form.
     if(section==='post'){
@@ -1422,6 +1434,39 @@ function travelerShippingDashboardCards(){
  return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
+// V7.8.209: sender-posted items are offered to every traveler after Admin approval.
+function shippingItemRef(it){return String(it?.dbId||it?.id||'');}
+function travelerDeclinedShippingItem(it){
+  if(!currentUser||currentUser.role!=='traveler')return false;
+  const ref=shippingItemRef(it), email=cleanEmail(currentUser.email);
+  const shared=(window.shippingItemDeclines||[]).some(x=>String(x.parent_id||'')===ref&&cleanEmail(x.initiator_email)===email&&String(x.status||'')==='Declined');
+  const local=JSON.parse(localStorage.getItem('hc_shipping_item_declines_'+email)||'[]').includes(ref);
+  return shared||local;
+}
+async function travelerDeclineShippingItem(id){
+  if(!requireLogin())return;
+  if(currentUser.role!=='traveler')return alert('Only travelers can decline posted shipping items.');
+  const it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  if(!it||String(it.status)!=='Open')return alert('This item is no longer available.');
+  const ref=shippingItemRef(it), email=cleanEmail(currentUser.email);
+  if(!confirm('Decline this item? It will be hidden only from your traveler account and will remain available to other travelers.'))return;
+  let savedShared=false;
+  if(authReady()){
+    const row={id:'SID-'+String(currentUser.id||email).replace(/[^a-zA-Z0-9]/g,'').slice(-16)+'-'+ref.replace(/[^a-zA-Z0-9]/g,'').slice(-20),flow_type:'shipping_item_decline',record_type:'match',parent_id:ref,poster_name:it.sender||'Sender',poster_email:it.senderEmail||'',poster_phone:'',initiator_name:currentUser.name||'Traveler',initiator_email:currentUser.email,initiator_phone:currentUser.phone||'',title:it.itemDescription||'Shipping item',city:it.route||'',details:'Traveler declined this item',status:'Declined'};
+    try{
+      const res=await hcSupabase.from('community_matches').upsert(row,{onConflict:'id'});
+      if(!res.error){savedShared=true;window.shippingItemDeclines=window.shippingItemDeclines||[];window.shippingItemDeclines.push(row);}
+    }catch(e){console.warn('Could not save shared shipping decline',e);}
+  }
+  if(!savedShared){
+    let list=JSON.parse(localStorage.getItem('hc_shipping_item_declines_'+email)||'[]');
+    if(!list.includes(ref))list.push(ref);
+    localStorage.setItem('hc_shipping_item_declines_'+email,JSON.stringify(list));
+  }
+  addNote(currentUser.email,'You declined the posted shipping item '+(it.tracking||it.id)+'. It remains available to other travelers.');
+  await shipping();
+}
+
 // V7.8.181: Paid requests approved by Admin appear directly below How It Works for Traveler Accept/Decline.
 async function shipping(){
  let role=currentUser?currentUser.role:null;
@@ -1442,7 +1487,7 @@ async function shipping(){
    return (s.senderEmail===currentUser.email || s.travelerEmail===currentUser.email);
  });
  let myTrips=data.trips.filter(t=>{let mine=currentUser&&(String(t.travelerId||'')===String(currentUser.id||'')||t.travelerEmail===currentUser.email);let status=String(t.status||'Open');return mine&&!['Closed','Cancelled','Canceled','Completed','Delivered','Flown'].includes(status);}).sort(activeTripSort);
- let shippingItems=(data.shippingItems||[]).filter(it=>{if(role==='admin')return true;let itemStatus=String(it.status||'');if(['Delivered','Completed'].includes(itemStatus))return false;if(!currentUser)return ['Open'].includes(itemStatus);if(role==='traveler')return ['Open','Accepted','Payment Pending Admin Review','Approved'].includes(itemStatus)&&(!it.travelerEmail||it.travelerEmail===currentUser.email||String(it.travelerId||'')===String(currentUser.id||''));if(role==='sender'||role==='customer')return (it.senderEmail===currentUser.email||String(it.senderId||'')===String(currentUser.id||''));return false;});
+ let shippingItems=(data.shippingItems||[]).filter(it=>{if(role==='admin')return true;let itemStatus=String(it.status||'');if(['Delivered','Completed'].includes(itemStatus))return false;if(!currentUser)return ['Open'].includes(itemStatus);if(role==='traveler')return ['Open','Accepted','Payment Pending Admin Review','Approved'].includes(itemStatus)&&(!it.travelerEmail||it.travelerEmail===currentUser.email||String(it.travelerId||'')===String(currentUser.id||''))&&!travelerDeclinedShippingItem(it);if(role==='sender'||role==='customer')return (it.senderEmail===currentUser.email||String(it.senderId||'')===String(currentUser.id||''));return false;});
  let statsHtml='';
  if(role==='admin'){
    statsHtml=`<h3>Shipping Connect</h3><div class="grid"><div class="card"><p>Total Trips</p><div class="stat">${data.trips.length}</div></div><div class="card"><p>Total Shipments</p><div class="stat">${data.shipments.length}</div></div><div class="card"><p>Paid Shipments</p><div class="stat">${data.shipments.filter(x=>x.paid).length}</div></div></div>`;
@@ -1465,7 +1510,7 @@ async function shipping(){
    // Render the selected Traveler workspace at the source. Later Supabase refreshes
    // cannot reveal unrelated sections such as the Post Trip form inside Open Shipping.
    if(view==='requests'){
-     $('shipping').innerHTML=`<h2>📦 Shipping Requests / Open Shipping</h2>${categoryIntro('shipping')}${travelerDecisionHtml}${shipmentRequestsHtml}`;
+     $('shipping').innerHTML=`<h2>📦 Shipping Requests / Open Shipping</h2>${categoryIntro('shipping')}<section id="travelerOpenShipping">${shippingItemsHtml}${travelerDecisionHtml}${shipmentRequestsHtml}</section>`;
    } else if(view==='post'){
      $('shipping').innerHTML=`<h2>✈️ Open Trip</h2>${categoryIntro('shipping')}${tripBox}`;
    } else if(view==='trips'){
@@ -1568,7 +1613,7 @@ function shippingItemCard(it,role){
    actions += ['Approved'].includes(st)?`<button class="btn ghost" onclick="adminMarkShippingItemDelivered('${it.id}')">Mark Delivered</button>`:'';
    actions += `<button class="btn bad" onclick="adminDeclineShippingItem('${it.id}')">Decline</button><button class="btn bad" onclick="deleteShippingItem('${it.id}')">Delete</button>`;
  } else if(role==='traveler'){
-   actions += st==='Open'?`<button class="btn primary" onclick="travelerAcceptShippingItem('${it.id}')">Accept Item</button>`:'';
+   actions += st==='Open'?`<button class="btn primary" onclick="travelerAcceptShippingItem('${it.id}')">Accept Item</button><button class="btn bad" onclick="travelerDeclineShippingItem('${it.id}')">Decline</button>`:'';
  } else {
    actions += st==='Accepted'&&!it.paid?`<button class="btn primary" onclick="payShippingItem('${it.id}')">Confirm Agreement</button>`:'';
  }
@@ -5536,7 +5581,7 @@ async function adminApproveTrailerPayment(id){
 
 
 <script id="v78204-focused-transaction-views">
-// V7.8.208: Home transaction cards open only the matching records/actions.
+// V7.8.209: Home transaction cards open only the matching records/actions.
 function hcResetFocusedPage(rootId){
   const root=document.getElementById(rootId); if(!root)return;
   [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
@@ -5612,7 +5657,7 @@ async function openHomeTransaction(page,encodedTitle){
   await show(page);
 }
 // Focus Shipping quick-action buttons, not only personalized activity cards.
-// V7.8.208: Route each Traveler Shipping button directly to one focused view.
+// V7.8.209: Route each Traveler Shipping button directly to one focused view.
 // Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
 goTravelerShipSection=async function(section){
   travelerShippingView=section||'all';
