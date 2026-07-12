@@ -1,21 +1,5 @@
-create table if not exists public.community_matches (
-  id text primary key,
-  flow_type text not null,
-  record_type text not null default 'post',
-  parent_id text,
-  poster_name text,
-  poster_email text,
-  poster_phone text,
-  initiator_name text,
-  initiator_email text,
-  initiator_phone text,
-  title text,
-  city text,
-  details text,
-  status text not null default 'Pending Admin Approval',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+-- V7.8.200: secure the shared two-way communication table.
+-- Run after v7_8_199_two_way_communication.sql.
 
 alter table public.community_matches enable row level security;
 
