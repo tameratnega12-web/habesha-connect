@@ -5794,3 +5794,54 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.209';
 })();
 </script>
+
+<script id="v78210-trailer-owner-requester-agree-button-fix">
+/* V7.8.210 — Targeted trailer-rental UI fix only.
+   Shows the existing renter Agree action in the Trucking dashboard when a truck owner
+   requests another owner's trailer and the trailer owner has accepted. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function sameEmail(a,b){return norm(a)===norm(b);}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function eligibleRequests(){
+    if(!window.currentUser)return [];
+    return (data.trailerRentals||[]).filter(t=>
+      sameEmail(t.renterEmail,currentUser.email) &&
+      String(t.status||'')==='Owner Accepted - Waiting Renter Agreement'
+    );
+  }
+  function agreementPanel(){
+    const rows=eligibleRequests();
+    if(!rows.length)return '';
+    return `<section id="trailerOwnerRequesterAgreeV78210" class="card" style="margin-top:18px;border:2px solid #16a34a">
+      <h2>🚚 Trailer Owner Accepted — Agree to Continue</h2>
+      <p class="muted">The trailer owner accepted your request. Click Agree to confirm and receive the trailer owner information.</p>
+      <div class="grid">${rows.map(t=>`<div class="card">
+        <h3>${esc(t.trailerType||'Trailer')}</h3>
+        <p>${esc(t.location||'')}</p>
+        <p><b>Trailer Owner:</b> ${esc(t.ownerName||'Trailer Owner')}</p>
+        <button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>
+      </div>`).join('')}</div>
+    </section>`;
+  }
+  function placeAgreementPanel(){
+    if(!currentUser)return;
+    const host=document.getElementById('truck');
+    if(!host)return;
+    const existing=document.getElementById('trailerOwnerRequesterAgreeV78210');
+    if(existing)existing.remove();
+    const html=agreementPanel();
+    if(!html)return;
+    const intro=host.querySelector('.category-intro');
+    if(intro)intro.insertAdjacentHTML('afterend',html);
+    else host.insertAdjacentHTML('afterbegin',html);
+  }
+  const priorTruck=window.truck;
+  window.truck=async function(){
+    const out=await priorTruck.apply(this,arguments);
+    placeAgreementPanel();
+    return out;
+  };
+  window.__hcVersion='V7.8.210';
+})();
+</script>

@@ -1,23 +1,8 @@
 # Habesha Agenagn V7.8.210
 
-## Shipping status and Traveler action correction
+Targeted trailer-rental fix based on V7.8.209.
 
-- Uses one canonical shipping status flow for request creation, Supabase loading, focused views, Accept/Decline, payment, approval, and delivery.
-- Open Shipping renders new sender requests with Accept and Decline buttons.
-- Supports legacy status labels by normalizing them to the current status flow.
-- Sender payment is available only after Traveler accepts.
-- Open Trip remains separate from Open Shipping.
-- No SQL is required.
-
-
-## V7.8.210
-- After Admin approves a sender-posted shipping item, every traveler sees it in Open Shipping and on the traveler home page.
-- Each traveler can Accept or Decline. Accept assigns the item to that traveler. Decline hides it only for that traveler and leaves it available to other travelers.
-- No new SQL is required because the existing community_matches table stores per-traveler declines.
-
-
-## V7.8.210
-- Fixed traveler acceptance of sender-posted shipping items when the app uses the shared shipments fallback table.
-- The fallback update now writes only existing columns: status, paid, and traveler_id.
-- Traveler name, email, and phone continue to load securely from the linked profile.
-- No SQL required.
+- Shows the existing **Agree** button in the Trucking dashboard when a truck owner requests another owner's trailer and the trailer owner accepts.
+- Uses the existing `renterAgreeTrailer` action and existing status flow.
+- No database or SQL changes.
+- No other module or transaction flow changed.
