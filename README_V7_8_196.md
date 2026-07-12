@@ -1,4 +1,4 @@
-# Habesha Agenagn V7.8.196
+# Habesha Agenagn V7.8.197
 
 ## Signed-in home page mobile cleanup
 - Keeps the full Habesha Connect introduction card on the public/sign-in home page.
@@ -8,7 +8,7 @@
 - No SQL is required.
 
 
-## V7.8.196 fix
+## V7.8.197 fix
 - Fixed Truck Driver Agree flow so Truck Owner information opens immediately after agreement.
 - Made the View Owner Information button use safe owner contact fallbacks.
 - No SQL required.

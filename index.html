@@ -5178,5 +5178,46 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.194';
 })();
 </script>
+
+<script id="v78197-truck-owner-home-hired-cleanup">
+/* V7.8.197 — Keep completed/hired driver job controls off the Truck Owner home page.
+   Driver-side agreement and owner-contact access remain unchanged. */
+(function(){
+  const oldPersonalizedHomeItems = window.personalizedHomeItems;
+  window.personalizedHomeItems = function(){
+    const items = typeof oldPersonalizedHomeItems === 'function' ? oldPersonalizedHomeItems() : [];
+    if(!window.currentUser || currentUser.role !== 'truck_owner') return items;
+    return (items||[]).filter(item=>{
+      const title=String(item?.title||'').toLowerCase();
+      const status=String(item?.status||'').toLowerCase();
+      if(title.includes('truck job agreed') || title.includes('view owner information')) return false;
+      if(title==='my truck job' && /(filled|hired|driver agreed|completed|closed)/i.test(status)) return false;
+      return true;
+    });
+  };
+
+  const oldTruckOwnerHomeActions = window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions = function(){
+    const html = typeof oldTruckOwnerHomeActions === 'function' ? oldTruckOwnerHomeActions() : '';
+    if(!html) return html;
+    const template=document.createElement('template');
+    template.innerHTML=html;
+    template.content.querySelectorAll('.card').forEach(card=>{
+      const text=String(card.textContent||'').toLowerCase();
+      if(text.includes('truck job agreed') || text.includes('view owner information') ||
+         (text.includes('my truck job') && text.includes('open trucking'))){
+        card.remove();
+      }
+    });
+    template.content.querySelectorAll('section').forEach(section=>{
+      const grid=section.querySelector('.grid');
+      if(grid && !grid.querySelector('.card')) section.remove();
+    });
+    return template.innerHTML;
+  };
+
+  window.__hcVersion='V7.8.197';
+})();
+</script>
 </body>
 </html>
