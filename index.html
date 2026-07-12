@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.212">
+<meta name="app-version" content="V7.8.213">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -1281,7 +1281,7 @@ async function loadSupabaseTrips(){
   data.trips=[...dbTrips,...localOnly];
 }
 
-// V7.8.212 — one canonical shipping status flow used by creation, loading, actions, and focused views.
+// V7.8.213 — one canonical shipping status flow used by creation, loading, actions, and focused views.
 const SHIP_STATUS={
   REQUESTED:'Requested',
   ACCEPTED:'Accepted',
@@ -1407,7 +1407,7 @@ async function loadSupabaseShippingItems(){
   let remote=(rows||[]).map(mapDbShippingItem);
   let preserved=(data.shippingItems||[]).filter(x=>x.source==='shipments_fallback'||(x.source!=='supabase'&&!x.dbId));
   data.shippingItems=[...remote,...preserved];
-  // V7.8.212: each traveler may decline a sender-posted item without closing it for other travelers.
+  // V7.8.213: each traveler may decline a sender-posted item without closing it for other travelers.
   window.shippingItemDeclines=[];
   if(currentUser&&currentUser.email){
     try{
@@ -1475,7 +1475,7 @@ function travelerShippingDashboardCards(){
  return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
-// V7.8.212: sender-posted items are offered to every traveler after Admin approval.
+// V7.8.213: sender-posted items are offered to every traveler after Admin approval.
 function shippingItemRef(it){return String(it?.dbId||it?.id||'');}
 function travelerDeclinedShippingItem(it){
   if(!currentUser||currentUser.role!=='traveler')return false;
@@ -5408,189 +5408,6 @@ async function adminApproveTrailerPayment(id){
 })();
 </script>
 
-<script>
-/* V7.8.198 Reverse Rental Matching
-   Targeted addition only: rent seekers can post a Rental Wanted request, Admin approves it,
-   property owners can offer one of their approved properties, and each side separately agrees
-   before seeing the other person's contact information. Existing property-listing flow remains unchanged.
-*/
-(function(){
-  const norm=v=>String(v||'').trim().toLowerCase();
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const WANTED_TYPE='Rental Wanted';
-  const META='|WANTED:';
-  const baseStatus=s=>String(s||'').split(META)[0];
-  const wantedIdFromStatus=s=>String(s||'').includes(META)?String(s).split(META)[1]:'';
-  const withWanted=(status,wantedId)=>status+META+String(wantedId||'');
-  const isWanted=r=>String(r?.propertyType||'').toLowerCase()===WANTED_TYPE.toLowerCase()||String(r?.title||'').startsWith('Rental Wanted:');
-  const findReq=id=>(data.rentalRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
-  const findRental=id=>(data.rentals||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
-  const ownerIsCurrent=q=>norm(q?.ownerEmail)===norm(currentUser?.email)||String(q?.ownerId||'')===String(currentUser?.id||'');
-  const seekerIsCurrent=q=>norm(q?.seekerEmail)===norm(currentUser?.email)||String(q?.seekerId||'')===String(currentUser?.id||'');
-  const wantedPosts=()=> (data.rentals||[]).filter(isWanted);
-  const openWantedPosts=()=>wantedPosts().filter(r=>['Approved','Available'].includes(String(r.status||'')));
-  const ownerProperties=()=> (data.rentals||[]).filter(r=>!isWanted(r)&&norm(r.ownerEmail)===norm(currentUser?.email)&&['Approved','Available'].includes(String(r.status||'')));
-
-  window.submitRentalWanted=async function(){
-    if(!requireLogin())return;
-    if(currentUser.role!=='rent_seeker')return alert('Only rent seekers can post what they need to rent.');
-    if(!authReady())return alert('Supabase is required. Please refresh and log in again.');
-    const type=($('wantedType')?.value||'Home').trim();
-    const city=($('wantedCity')?.value||'').trim();
-    const budget=Number($('wantedBudget')?.value||0);
-    const bedrooms=Number($('wantedBedrooms')?.value||0);
-    const moveDate=$('wantedMoveDate')?.value||'';
-    const details=($('wantedDetails')?.value||'').trim();
-    if(!city||!budget)return alert('Please enter the city and your maximum monthly budget.');
-    if(moveDate&&moveDate<addDaysIso(0))return alert('Please choose today or a future move-in date.');
-    const title=`Rental Wanted: ${type} in ${city}`;
-    const utilities=`SEEKER NEEDS: ${details||'No additional details'}${bedrooms?` | Bedrooms: ${bedrooms}`:''}`;
-    const payload={owner_id:currentUser.id||null,title,city,property_type:WANTED_TYPE,bedrooms, bathrooms:0,monthly_rent:budget,security_deposit:0,move_in_date:moveDate||null,lease_term:'Wanted by seeker',pets_allowed:'Ask seeker',parking:'Ask seeker',furnished:false,utilities_included:utilities,photos:[],owner_paid:true,status:'Pending'};
-    let res=await hcSupabase.from('properties').insert(payload).select('*').single();
-    if(res.error)return alert('Rental Wanted request could not be saved: '+res.error.message);
-    const item={id:res.data.id,dbId:res.data.id,title,propertyType:WANTED_TYPE,city,price:budget,deposit:0,bed:bedrooms,bath:0,moveDate,leaseTerm:'Wanted by seeker',pets:'Ask seeker',parking:'Ask seeker',furnished:'No',utilities,photos:[],owner:currentUser.name,ownerPhone:currentUser.phone||'',ownerEmail:currentUser.email,ownerId:currentUser.id||'',status:'Pending',ownerPaid:true,source:'supabase'};
-    data.rentals.unshift(item);persistOnly();
-    sendAdminEmailNotice('Rental Wanted request needs approval','A rent seeker posted what they need to rent. Approve it in the Admin Verification Center so property owners can see it.',{Seeker:currentUser.name,Email:currentUser.email,Type:type,City:city,Maximum_Budget:money(budget),Move_In:moveDate||'Flexible'},'admin');
-    addNote(currentUser.email,'Your Rental Wanted request was submitted for admin approval.');
-    alert('Your Rental Wanted request was submitted. Property owners will see it after Admin approval.');
-    home();show('home');
-  };
-
-  window.offerPropertyToSeeker=async function(wantedId,selectId){
-    if(!requireLogin())return;
-    if(currentUser.role!=='owner')return alert('Only property owners can offer a property.');
-    const wanted=findRental(wantedId);if(!wanted||!isWanted(wanted))return alert('Rental Wanted request not found. Please refresh.');
-    const propertyId=$(selectId)?.value||'';const property=findRental(propertyId);
-    if(!property||isWanted(property)||!ownerProperties().includes(property))return alert('Choose one of your approved properties first.');
-    const existing=(data.rentalRequests||[]).find(q=>String(q.rentalId)===String(property.dbId||property.id)&&norm(q.seekerEmail)===norm(wanted.ownerEmail)&&!['Owner Offer Declined','Rental Match Closed'].includes(baseStatus(q.status)));
-    if(existing)return alert('You already offered this property to this seeker.');
-    const status=withWanted('Owner Offered Property - Waiting Seeker Review',wanted.dbId||wanted.id);
-    const payload={property_id:property.dbId||property.id,seeker_id:wanted.ownerId||null,paid:true,status};
-    let res=await hcSupabase.from('rental_requests').insert(payload).select('*').single();
-    if(res.error)return alert('The property offer could not be saved: '+res.error.message);
-    const q={id:res.data.id,dbId:res.data.id,rentalId:property.dbId||property.id,propertyTitle:property.title,seekerName:wanted.owner,seekerPhone:wanted.ownerPhone||'',seekerEmail:wanted.ownerEmail,seekerId:wanted.ownerId||'',ownerName:currentUser.name,ownerPhone:currentUser.phone||'',ownerEmail:currentUser.email,ownerId:currentUser.id||'',status,paymentStatus:'Offer Sent',paid:true,amountPaid:0,time:new Date().toISOString(),source:'supabase'};
-    data.rentalRequests.unshift(q);persistOnly();
-    addNote(wanted.ownerEmail,`${currentUser.name} offered a property for your Rental Wanted request. Accept or decline from your home page.`);
-    sendEmailNotice({to:wanted.ownerEmail,name:wanted.owner,subject:'A property owner offered you a rental',summary:'A property owner responded to your Rental Wanted request. Open your home page to accept or decline the offer. Contact information remains protected until each side agrees.',buttonText:'Open Home Page',page:'home',details:{Property:property.title,City:property.city,Monthly_Rent:money(property.price),Status:'Waiting for your decision'}});
-    alert('Property offer sent to the rent seeker.');home();
-  };
-
-  async function updateOffer(q,status){
-    const raw=withWanted(status,wantedIdFromStatus(q.status));
-    if(authReady()&&(q.dbId||q.id)){
-      const {error}=await hcSupabase.from('rental_requests').update({status:raw}).eq('id',q.dbId||q.id);
-      if(error)return {error};
-    }
-    q.status=raw;persistOnly();return {error:null};
-  }
-
-  window.seekerRespondRentalOffer=async function(id,accept){
-    if(!requireLogin())return;const q=findReq(id);if(!q)return alert('Rental offer not found.');
-    if(!seekerIsCurrent(q))return alert('Only the rent seeker who received this offer can respond.');
-    if(baseStatus(q.status)!=='Owner Offered Property - Waiting Seeker Review')return alert('This offer is no longer waiting for your response.');
-    const next=accept?'Seeker Accepted - Waiting Owner Agreement':'Owner Offer Declined';
-    const r=await updateOffer(q,next);if(r.error)return alert('Could not update the offer: '+r.error.message);
-    if(accept){
-      sendAdminEmailNotice('Rent seeker accepted a property offer','A rent seeker accepted a property owner offer. The owner must click Agree next.',{Property:q.propertyTitle,Owner:q.ownerName,Owner_Email:q.ownerEmail,Seeker:q.seekerName,Seeker_Email:q.seekerEmail},'admin');
-      sendEmailNotice({to:q.ownerEmail,name:q.ownerName,subject:'Rent seeker accepted your property offer',summary:'The rent seeker accepted your offer. Open your home page and click Agree to release the seeker information to you.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Seeker:q.seekerName,Status:'Waiting for your agreement'}});
-      alert('Offer accepted. The property owner must click Agree next.');
-    }else{
-      sendEmailNotice({to:q.ownerEmail,name:q.ownerName,subject:'Rent seeker declined your property offer',summary:'The rent seeker declined your property offer.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Declined'}});
-      alert('Offer declined.');
-    }
-    home();
-  };
-
-  window.ownerAgreeRentalMatch=async function(id){
-    if(!requireLogin())return;const q=findReq(id);if(!q)return alert('Rental match not found.');
-    if(!ownerIsCurrent(q))return alert('Only the property owner can agree.');
-    if(baseStatus(q.status)!=='Seeker Accepted - Waiting Owner Agreement')return alert('The seeker must accept first.');
-    const r=await updateOffer(q,'Owner Agreed - Waiting Seeker Agreement');if(r.error)return alert('Could not save your agreement: '+r.error.message);
-    addNote(q.seekerEmail,'The property owner agreed. Click Agree on your home page to release the owner information to you.');
-    sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Property owner agreed — your agreement is next',summary:'The property owner agreed. Open your home page and click Agree to release the property owner information to you.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Waiting for your agreement'}});
-    alert('Agreed. The seeker information is now available to you. The seeker must agree separately to see your information.');home();
-  };
-
-  window.seekerAgreeRentalMatch=async function(id){
-    if(!requireLogin())return;const q=findReq(id);if(!q)return alert('Rental match not found.');
-    if(!seekerIsCurrent(q))return alert('Only the rent seeker can agree.');
-    if(baseStatus(q.status)!=='Owner Agreed - Waiting Seeker Agreement')return alert('The property owner must agree first.');
-    const r=await updateOffer(q,'Rental Match Complete');if(r.error)return alert('Could not save your agreement: '+r.error.message);
-    const wanted=findRental(wantedIdFromStatus(q.status));
-    if(wanted){wanted.status='Matched';if(authReady()&&(wanted.dbId||wanted.id))await hcSupabase.from('properties').update({status:'Matched'}).eq('id',wanted.dbId||wanted.id);}
-    addNote(q.ownerEmail,'The rent seeker agreed. Both sides can now view the appropriate contact information.');
-    sendEmailNotice({to:q.ownerEmail,name:q.ownerName,subject:'Rental match completed',summary:'The rent seeker agreed. Both sides have completed the agreement steps.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Seeker:q.seekerName,Status:'Rental Match Complete'}});
-    alert('Agreed. The property owner information is now available to you.');persistOnly();home();
-  };
-
-  window.viewRentalMatchSeekerInfo=function(id){const q=findReq(id);if(!q||!ownerIsCurrent(q))return alert('Rental match not found.');if(!['Owner Agreed - Waiting Seeker Agreement','Rental Match Complete'].includes(baseStatus(q.status)))return alert('Click Agree first.');alert(`Rent Seeker Information\n\nName: ${q.seekerName||''}\nPhone: ${q.seekerPhone||'Not provided'}\nEmail: ${q.seekerEmail||'Not provided'}`);};
-  window.viewRentalMatchOwnerInfo=function(id){const q=findReq(id);if(!q||!seekerIsCurrent(q))return alert('Rental match not found.');if(baseStatus(q.status)!=='Rental Match Complete')return alert('Click Agree first.');alert(`Property Owner Information\n\nName: ${q.ownerName||''}\nPhone: ${q.ownerPhone||'Not provided'}\nEmail: ${q.ownerEmail||'Not provided'}`);};
-
-  function seekerWantedAndOffersPanel(){
-    if(!currentUser||currentUser.role!=='rent_seeker')return '';
-    const mine=wantedPosts().filter(r=>norm(r.ownerEmail)===norm(currentUser.email));
-    const offers=(data.rentalRequests||[]).filter(q=>seekerIsCurrent(q)&&wantedIdFromStatus(q.status));
-    const offerCards=offers.map(q=>{
-      const st=baseStatus(q.status);let actions='';let note='';
-      if(st==='Owner Offered Property - Waiting Seeker Review'){actions=`<button class="btn good" onclick="seekerRespondRentalOffer('${esc(q.id)}',true)">Accept</button> <button class="btn bad" onclick="seekerRespondRentalOffer('${esc(q.id)}',false)">Decline</button>`;note='A property owner offered this property. Contact information is still protected.';}
-      else if(st==='Seeker Accepted - Waiting Owner Agreement'){actions='<span class="pill warn">Accepted — waiting for owner agreement</span>';note='You accepted. The property owner must click Agree next.';}
-      else if(st==='Owner Agreed - Waiting Seeker Agreement'){actions=`<button class="btn good" onclick="seekerAgreeRentalMatch('${esc(q.id)}')">Agree</button>`;note='The property owner agreed. Click Agree to release the owner information to you.';}
-      else if(st==='Rental Match Complete'){actions=`<button class="btn primary" onclick="viewRentalMatchOwnerInfo('${esc(q.id)}')">View Property Owner Information</button>`;note='Both agreement steps are complete.';}
-      else {actions=`<span class="pill">${esc(st)}</span>`;note='This offer is closed.';}
-      return `<div class="card" style="border:2px solid ${st==='Rental Match Complete'?'#16a34a':'#d97706'}"><h3>🏠 ${esc(q.propertyTitle)}</h3><p class="muted">${esc(note)}</p><div class="actions">${actions}</div></div>`;
-    }).join('');
-    const mineCards=mine.map(r=>`<div class="card"><h3>${esc(r.title)}</h3><p>${esc(r.city)} • Maximum ${money(r.price)}/month</p><p><b>Status:</b> ${esc(r.status)}</p></div>`).join('')||'<div class="card"><p>You have not posted a Rental Wanted request yet.</p></div>';
-    return `<section id="rentalWantedSeekerHome" style="margin-top:20px"><div class="card"><h2 style="margin:0">🔍 Post What You Need to Rent</h2><p class="muted">After Admin approves your request, all property owners can see it and offer an approved property.</p><div class="grid"><label>Property Type<select id="wantedType"><option>Home</option><option>Apartment</option><option>Room</option><option>Basement</option><option>Town House</option></select></label><label>City<input id="wantedCity" placeholder="Atlanta, GA"></label><label>Maximum Monthly Budget<input id="wantedBudget" type="number" min="1" placeholder="1500"></label><label>Bedrooms Needed<input id="wantedBedrooms" type="number" min="0" placeholder="2"></label><label>Move-in Date<input id="wantedMoveDate" type="date"></label><label>Other Needs<textarea id="wantedDetails" placeholder="Neighborhood, pets, parking, lease length, accessibility, or other needs"></textarea></label></div><button class="btn primary" onclick="submitRentalWanted()">Post Rental Wanted</button></div>${offerCards?`<div class="card"><h2 style="margin:0">🏠 Property Offers Requiring Your Action</h2></div><div class="grid">${offerCards}</div>`:''}<div class="card"><h2 style="margin:0">📋 My Rental Wanted Posts</h2></div><div class="grid">${mineCards}</div></section>`;
-  }
-
-  function ownerWantedPanel(){
-    if(!currentUser||currentUser.role!=='owner')return '';
-    const wanted=openWantedPosts().filter(r=>norm(r.ownerEmail)!==norm(currentUser.email));
-    const props=ownerProperties();
-    const myOffers=(data.rentalRequests||[]).filter(q=>ownerIsCurrent(q)&&wantedIdFromStatus(q.status));
-    const actionCards=myOffers.filter(q=>['Seeker Accepted - Waiting Owner Agreement','Owner Agreed - Waiting Seeker Agreement','Rental Match Complete'].includes(baseStatus(q.status))).map(q=>{
-      const st=baseStatus(q.status);let actions='';let note='';
-      if(st==='Seeker Accepted - Waiting Owner Agreement'){actions=`<button class="btn good" onclick="ownerAgreeRentalMatch('${esc(q.id)}')">Agree</button>`;note='The seeker accepted your offer. Click Agree to release the seeker information to you.';}
-      else {actions=`<button class="btn primary" onclick="viewRentalMatchSeekerInfo('${esc(q.id)}')">View Rent Seeker Information</button>`;note=st==='Rental Match Complete'?'Both sides agreed.':'You agreed. The seeker must agree separately to see your information.';}
-      return `<div class="card" style="border:2px solid ${st==='Rental Match Complete'?'#16a34a':'#d97706'}"><h3>🏠 ${esc(q.propertyTitle)}</h3><p><b>Rent Seeker:</b> ${esc(q.seekerName)}</p><p class="muted">${esc(note)}</p><div class="actions">${actions}</div></div>`;
-    }).join('');
-    const wantedCards=wanted.map((r,i)=>{
-      const selectId='wantedOfferProperty_'+i+'_'+String(r.id).replace(/[^a-zA-Z0-9]/g,'');
-      const opts=props.map(p=>`<option value="${esc(p.dbId||p.id)}">${esc(p.title)} — ${esc(p.city)} — ${money(p.price)}/month</option>`).join('');
-      const existing=myOffers.find(q=>wantedIdFromStatus(q.status)===String(r.dbId||r.id)&&!['Owner Offer Declined','Rental Match Closed'].includes(baseStatus(q.status)));
-      let action=existing?`<span class="pill">${esc(baseStatus(existing.status))}</span>`:(opts?`<label>Choose one of your approved properties<select id="${selectId}">${opts}</select></label><button class="btn primary" onclick="offerPropertyToSeeker('${esc(r.dbId||r.id)}','${selectId}')">Offer Property</button>`:'<p class="muted">Add and receive Admin approval for a property before making an offer.</p>');
-      return `<div class="card"><h3>🔍 ${esc(r.owner||'Rent Seeker')}</h3><p><b>Needs:</b> ${esc(String(r.title||'').replace('Rental Wanted: ',''))}</p><p><b>Maximum Budget:</b> ${money(r.price)}/month</p><p><b>Move-in:</b> ${esc(r.moveDate||'Flexible')}</p><p><b>Bedrooms:</b> ${esc(r.bed||'Flexible')}</p><p class="muted">The seeker's phone and email remain hidden until you agree after the seeker accepts.</p><div class="actions" style="display:block">${action}</div></div>`;
-    }).join('')||'<div class="card"><p>No Admin-approved Rental Wanted requests are available right now.</p></div>';
-    return `<section id="rentSeekersLookingForHomes" style="margin-top:20px">${actionCards?`<div class="card"><h2 style="margin:0">🤝 Rental Matches Requiring Your Action</h2></div><div class="grid">${actionCards}</div>`:''}<div class="card"><h2 style="margin:0">🔍 Rent Seekers Looking for Properties</h2><p class="muted">Offer one of your approved properties. Contact information remains protected until each person clicks their own Agree button.</p></div><div class="grid">${wantedCards}</div></section>`;
-  }
-
-  const oldOwnerHome=window.propertyOwnerHomeActions;
-  window.propertyOwnerHomeActions=function(){return (oldOwnerHome?oldOwnerHome():'')+ownerWantedPanel();};
-  const oldSeekerHome=window.rentSeekerHomeActions;
-  window.rentSeekerHomeActions=function(){return seekerWantedAndOffersPanel()+(oldSeekerHome?oldSeekerHome():'');};
-
-  // Keep Rental Wanted records out of the ordinary public property cards while preserving Admin approval cards.
-  const oldRentalCards=window.rentalCards;
-  window.rentalCards=function(list,role){
-    list=list||[];
-    if(role==='admin')return oldRentalCards?oldRentalCards(list,role):'';
-    return oldRentalCards?oldRentalCards(list.filter(r=>!isWanted(r)),role):'';
-  };
-
-  // Give Admin and the seeker the correct approval message for Rental Wanted posts.
-  const oldApproveRental=window.approveRental;
-  window.approveRental=async function(id){
-    const r=findRental(id);
-    if(!r||!isWanted(r))return oldApproveRental(id);
-    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
-    r.status='Approved';
-    if(authReady()&&(r.dbId||r.id)){const {error}=await hcSupabase.from('properties').update({status:'Approved'}).eq('id',r.dbId||r.id);if(error)return alert('Could not approve Rental Wanted request: '+error.message);}
-    addNote(r.ownerEmail,'Your Rental Wanted request was approved. Property owners can now see it and offer a property.');
-    sendEmailNotice({to:r.ownerEmail,name:r.owner,subject:'Your Rental Wanted request was approved',summary:'Admin approved what you need to rent. Property owners can now see it and offer one of their approved properties.',buttonText:'Open Home Page',page:'home',details:{Request:r.title,City:r.city,Maximum_Budget:money(r.price),Status:'Approved'}});
-    persistOnly();adminSuccess();
-  };
-})();
-</script>
 
 <script id="v78199-all-category-two-way-communication">
 /* V7.8.199 — Missing reverse communication flows.
@@ -5669,7 +5486,7 @@ async function adminApproveTrailerPayment(id){
 
 
 <script id="v78204-focused-transaction-views">
-// V7.8.212: Home transaction cards open only the matching records/actions.
+// V7.8.213: Home transaction cards open only the matching records/actions.
 function hcResetFocusedPage(rootId){
   const root=document.getElementById(rootId); if(!root)return;
   [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
@@ -5745,7 +5562,7 @@ async function openHomeTransaction(page,encodedTitle){
   await show(page);
 }
 // Focus Shipping quick-action buttons, not only personalized activity cards.
-// V7.8.212: Route each Traveler Shipping button directly to one focused view.
+// V7.8.213: Route each Traveler Shipping button directly to one focused view.
 // Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
 goTravelerShipSection=async function(section){
   travelerShippingView=section||'all';
@@ -5777,89 +5594,74 @@ goRentalSection=async function(section){
 };
 </script>
 
-<script id="v78212-rent-seeker-home-priority-layout">
-/* V7.8.212 — Rent Seeker home organization only.
-   Rental Quick Actions stays at the top, new rental opportunities and rental actions
-   appear inside it, and the Rental Wanted form opens only from its button. */
-(function(){
-  const safe=v=>typeof hcHomeEsc==='function'?hcHomeEsc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const norm=v=>String(v||'').trim().toLowerCase();
-  const baseStatus=s=>String(s||'').split('|WANTED:')[0];
-  const isWanted=r=>String(r?.propertyType||'').toLowerCase()==='rental wanted'||String(r?.title||'').startsWith('Rental Wanted:');
-  const isAvailable=r=>!isWanted(r)&&['approved','available','open','published','active'].includes(norm(r?.status));
-  const seekerOwns=q=>norm(q?.seekerEmail)===norm(currentUser?.email)||String(q?.seekerId||'')===String(currentUser?.id||'');
 
-  window.toggleRentalWantedForm=function(){
-    const panel=document.getElementById('rentalWantedFormPanel');
-    const btn=document.getElementById('postRentalWantedHomeBtn');
-    if(!panel)return;
-    const opening=panel.hidden;
-    panel.hidden=!opening;
-    if(btn)btn.textContent=opening?'Close Rental Wanted Form':'Post Rental Wanted';
-    if(opening)setTimeout(()=>document.getElementById('wantedType')?.focus(),50);
+
+<script id="v78213-rental-single-flow-cleanup">
+/* V7.8.213 — Rentals returned to the original one-way flow only.
+   Property owner posts -> Admin approves -> seeker requests -> Admin approves -> owner responds -> seeker requests/views owner information.
+   Reverse Rental Wanted and property-offer matching are disabled and hidden. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const safe=v=>typeof hcHomeEsc==='function'?hcHomeEsc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const isWanted=r=>norm(r?.propertyType)==='rental wanted'||String(r?.title||'').startsWith('Rental Wanted:');
+
+  // Keep any old Rental Wanted rows out of every current rental listing and admin rental card.
+  const oldRentalCards=window.rentalCards;
+  if(typeof oldRentalCards==='function')window.rentalCards=function(list,role){
+    return oldRentalCards((list||[]).filter(r=>!isWanted(r)),role);
   };
 
-  function rentalOfferActionCards(){
-    const offers=(data.rentalRequests||[]).filter(q=>seekerOwns(q)&&String(q.status||'').includes('|WANTED:'));
-    return offers.filter(q=>!['Owner Offer Declined','Rental Match Closed'].includes(baseStatus(q.status))).map(q=>{
-      const st=baseStatus(q.status);let actions='';let note='';
-      if(st==='Owner Offered Property - Waiting Seeker Review'){
-        actions=`<button class="btn good" onclick="seekerRespondRentalOffer('${safe(q.id)}',true)">Accept</button> <button class="btn bad" onclick="seekerRespondRentalOffer('${safe(q.id)}',false)">Decline</button>`;
-        note='A property owner offered this property. Review and respond.';
-      }else if(st==='Seeker Accepted - Waiting Owner Agreement'){
-        actions='<span class="pill warn">Waiting for owner agreement</span>';
-        note='You accepted. The property owner must agree next.';
-      }else if(st==='Owner Agreed - Waiting Seeker Agreement'){
-        actions=`<button class="btn good" onclick="seekerAgreeRentalMatch('${safe(q.id)}')">Agree</button>`;
-        note='The owner agreed. Click Agree to release the owner information to you.';
-      }else if(st==='Rental Match Complete'){
-        actions=`<button class="btn primary" onclick="viewRentalMatchOwnerInfo('${safe(q.id)}')">View Property Owner Information</button>`;
-        note='Both sides agreed.';
-      }else{
-        actions=`<span class="pill">${safe(st)}</span>`;
-        note='Rental offer status.';
-      }
-      return `<div class="card" style="border-left:5px solid ${st==='Rental Match Complete'?'#16a34a':'#d97706'}"><h3 style="margin:0">🏠 Rental Offer</h3><p><b>${safe(q.propertyTitle||'Property')}</b></p><p class="muted">${safe(note)}</p><div class="actions">${actions}</div></div>`;
-    }).join('');
-  }
-
-  function wantedPostsHtml(){
-    const mine=(data.rentals||[]).filter(r=>isWanted(r)&&norm(r.ownerEmail)===norm(currentUser?.email));
-    if(!mine.length)return '<p class="muted">You have not posted a Rental Wanted request yet.</p>';
-    return `<div class="grid">${mine.map(r=>`<div class="card"><h3>${safe(r.title)}</h3><p>${safe(r.city||'')} • Maximum ${typeof money==='function'?money(r.price):safe(r.price)}/month</p><p><b>Status:</b> ${safe(r.status)}</p></div>`).join('')}</div>`;
-  }
-
+  // Rent seeker home: only original rental flow actions.
   window.rentSeekerHomeActions=function(){
     if(!currentUser||currentUser.role!=='rent_seeker')return '';
     const email=norm(currentUser.email);
-    const approved=(data.rentals||[]).filter(isAvailable).sort((a,b)=>(hcHomeTime?.(b)||0)-(hcHomeTime?.(a)||0));
-    const seekerReqs=(data.rentalRequests||[]).filter(q=>norm(q.seekerEmail)===email);
+    const approved=(data.rentals||[]).filter(r=>!isWanted(r)&&['approved','available','open','published','active'].includes(norm(r.status)));
+    const seekerReqs=(data.rentalRequests||[]).filter(q=>norm(q.seekerEmail)===email&&!String(q.status||'').includes('|WANTED:'));
     const ownerInfo=typeof seekerOwnerInformationPanel==='function'?seekerOwnerInformationPanel(seekerReqs):'';
-    const offerCards=rentalOfferActionCards();
-    const newRentalCard=`<div class="card" style="border-left:5px solid #d97706"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">🏠 New Rental Available</h3><span class="pill good">${approved.length} Available</span></div><p>${approved.length?`${safe(approved[0].propertyType||'Property')} • ${safe(approved[0].city||approved[0].location||'')} ${approved.length>1?`• +${approved.length-1} more`:''}`:'No approved rentals are available right now.'}</p><button class="btn primary" onclick="goRentalSection('available')">Open Rentals</button></div>`;
+    const pending=seekerReqs.filter(q=>!['Completed','Declined','Rejected','Cancelled'].includes(String(q.status||'')));
+    const activity=pending.map(q=>{
+      const title=q.propertyTitle||q.propertyName||q.address||'Rental Request';
+      let action='';
+      if(String(q.status||'')==='Owner Accepted' || String(q.status||'')==='Rented' || String(q.status||'')==='Approved - Rented'){
+        action=`<button class="btn primary" onclick="requestOwnerInformation('${safe(q.id)}')">Request Owner Information</button>`;
+      }
+      return `<div class="card" style="border-left:5px solid #d97706"><h3 style="margin:0">🏠 ${safe(title)}</h3><p><b>Status:</b> ${safe(q.status||'Pending')}</p>${action?`<div class="actions">${action}</div>`:''}</div>`;
+    }).join('');
+    const newRentalCard=`<div class="card" style="border-left:5px solid #d97706"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">🏠 New Rental Available</h3><span class="pill good">${approved.length} Available</span></div><p>${approved.length?`${safe(approved[0].propertyType||'Property')} • ${safe(approved[0].city||approved[0].location||'')}${approved.length>1?` • +${approved.length-1} more`:''}`:'No approved rentals are available right now.'}</p><button class="btn primary" onclick="goRentalSection('available')">Open Rentals</button></div>`;
     return `<section id="rentSeekerHomeActions" style="margin-top:20px">
-      <div class="card"><h2 style="margin:0">🔍 Rental Quick Actions</h2><p class="muted">New rentals, offers, agreements, and rental requests appear here first.</p></div>
-      <div id="rentSeekerPriorityActivity" class="grid" style="margin-top:12px">${newRentalCard}${offerCards}</div>
+      <div class="card"><h2 style="margin:0">🔍 Rental Quick Actions</h2><p class="muted">New rentals and your active rental requests appear here first.</p></div>
+      <div id="rentSeekerPriorityActivity" class="grid" style="margin-top:12px">${newRentalCard}${activity}</div>
       ${ownerInfo}
-      <div class="grid" style="margin-top:12px">
-        <div class="card"><h3>🏠 Open Rentals</h3><p class="muted">Browse all Admin-approved properties and request a rental.</p><button class="btn primary" onclick="goRentalSection('available')">Open Rentals</button></div>
-        <div class="card"><h3>🔍 Post Rental Wanted</h3><p class="muted">Tell property owners what you need to rent.</p><button id="postRentalWantedHomeBtn" class="btn primary" onclick="toggleRentalWantedForm()">Post Rental Wanted</button></div>
-      </div>
-      <div id="rentalWantedFormPanel" hidden>
-        <div class="card" style="margin-top:12px"><h2 style="margin:0">🔍 Post What You Need to Rent</h2><p class="muted">After Admin approves your request, property owners can offer an approved property.</p><div class="grid"><label>Property Type<select id="wantedType"><option>Home</option><option>Apartment</option><option>Room</option><option>Basement</option><option>Town House</option></select></label><label>City<input id="wantedCity" placeholder="Atlanta, GA"></label><label>Maximum Monthly Budget<input id="wantedBudget" type="number" min="1" placeholder="1500"></label><label>Bedrooms Needed<input id="wantedBedrooms" type="number" min="0" placeholder="2"></label><label>Move-in Date<input id="wantedMoveDate" type="date"></label><label>Other Needs<textarea id="wantedDetails" placeholder="Neighborhood, pets, parking, lease length, accessibility, or other needs"></textarea></label></div><button class="btn primary" onclick="submitRentalWanted()">Submit Rental Wanted</button></div>
-        <div class="card"><h2 style="margin:0">📋 My Rental Wanted Posts</h2>${wantedPostsHtml()}</div>
-      </div>
+      <div class="grid" style="margin-top:12px"><div class="card"><h3>🏠 Open Rentals</h3><p class="muted">Browse Admin-approved properties and request a rental.</p><button class="btn primary" onclick="goRentalSection('available')">Open Rentals</button></div></div>
     </section>`;
   };
 
-  // The same approved rentals are now shown inside Rental Quick Actions, so do not duplicate
-  // them later in the generic "Your New Activity" section for rent seekers.
-  const oldItems=window.personalizedHomeItems;
-  if(typeof oldItems==='function')window.personalizedHomeItems=function(){
-    const items=oldItems();
-    if(currentUser?.role!=='rent_seeker')return items;
-    return items.filter(x=>x.title!=='New Rental Available');
+  // Property owner home: original property and seeker-request actions only.
+  const originalOwnerHome=window.propertyOwnerHomeActions;
+  if(typeof originalOwnerHome==='function')window.propertyOwnerHomeActions=function(){
+    const html=originalOwnerHome();
+    const temp=document.createElement('div');temp.innerHTML=html;
+    temp.querySelectorAll('#rentSeekersLookingForHomes,[id*="Wanted"],button').forEach(el=>{
+      if(el.tagName==='BUTTON'&&/offer property|rental wanted/i.test(el.textContent||''))el.remove();
+      else if(el.id==='rentSeekersLookingForHomes'||/rental wanted/i.test(el.textContent||''))el.remove();
+    });
+    return temp.innerHTML;
   };
+
+  // Disable old reverse-rental functions if stale buttons or cached markup remain.
+  ['submitRentalWanted','offerPropertyToSeeker','seekerRespondRentalOffer','ownerAgreeRentalMatch','seekerAgreeRentalMatch','viewRentalMatchOwnerInfo','viewRentalMatchSeekerInfo','toggleRentalWantedForm'].forEach(name=>{
+    window[name]=function(){alert('Rental Wanted has been removed. Please use Open Rentals to request an approved property.');};
+  });
+
+  // Remove stale reverse-rental cards after any home/admin rerender.
+  function cleanRentalWantedUi(){
+    document.querySelectorAll('#rentalWantedSeekerHome,#rentSeekersLookingForHomes,#rentalWantedFormPanel').forEach(x=>x.remove());
+    document.querySelectorAll('button').forEach(b=>{if(/post rental wanted|offer property/i.test(b.textContent||''))b.remove();});
+  }
+  const oldHome=window.home;
+  if(typeof oldHome==='function')window.home=function(){const r=oldHome.apply(this,arguments);cleanRentalWantedUi();requestAnimationFrame(cleanRentalWantedUi);return r;};
+  const oldAdmin=window.admin;
+  if(typeof oldAdmin==='function')window.admin=function(){const r=oldAdmin.apply(this,arguments);cleanRentalWantedUi();requestAnimationFrame(cleanRentalWantedUi);return r;};
 })();
 </script>
 
