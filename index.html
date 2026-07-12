@@ -879,7 +879,7 @@ function taxiOwnerHomeActions(){
 }
 function taxiDriverHomeActions(){
  if(!currentUser||!['taxi_limo_driver','taxi_driver'].includes(currentUser.role))return '';
- return `<section id="taxiDriverHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚖 Taxi/Limo Driver Quick Actions</h2><p class="muted">Apply as a driver, find Taxi/Limo jobs, open customer rides, and review your ride activity.</p></div><div class="grid"><div class="card"><h3>📝 Apply as Taxi/Limo Driver</h3><p class="muted">Submit or review your Taxi/Limo driver application and availability profile.</p><button class="btn primary" onclick="goTaxiSection('applyDriver')">Apply as Taxi/Limo Driver</button></div><div class="card"><h3>🚕 Available Taxi/Limo Jobs</h3><p class="muted">Review Taxi/Limo owner hire requests and available job connections.</p><button class="btn primary" onclick="goTaxiSection('availableJobs')">Available Taxi/Limo Jobs</button></div><div class="card"><h3>🚖 Open Customer Rides</h3><p class="muted">See approved customer ride requests available to accept.</p><button class="btn primary" onclick="goTaxiSection('openRides')">Open Customer Ride</button></div><div class="card"><h3>📨 Ride Requests</h3><p class="muted">Review customer ride requests and their current status.</p><button class="btn primary" onclick="goTaxiSection('rideRequests')">Ride Requests</button></div><div class="card"><h3>📋 My Ride Activity</h3><p class="muted">Review your accepted and completed ride activity.</p><button class="btn primary" onclick="goTaxiSection('rideActivity')">My Ride Activity</button></div></div></section>`;
+ return `<section id="taxiDriverHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚖 Taxi/Limo Driver Quick Actions</h2><p class="muted">Apply as a driver, find Taxi/Limo jobs, open customer rides, and review your ride activity.</p></div><div class="grid"><div class="card"><h3>📝 Apply as Taxi/Limo Driver</h3><p class="muted">Submit or review your Taxi/Limo driver application and availability profile.</p><button class="btn primary" onclick="goTaxiSection('applyDriver')">Apply as Taxi/Limo Driver</button></div><div class="card"><h3>🚕 Available Taxi/Limo Jobs</h3><p class="muted">Review Taxi/Limo owner hire requests and available job connections.</p><button class="btn primary" onclick="goTaxiSection('availableJobs')">Available Taxi/Limo Jobs</button></div><div class="card"><h3>🚖 Open Customer Rides</h3><p class="muted">See approved customer ride requests available to accept.</p><button class="btn primary" onclick="goTaxiSection('openRides')">Open Customer Ride</button></div><div class="card"><h3>📋 My Ride Activity</h3><p class="muted">Review your accepted and completed ride activity.</p><button class="btn primary" onclick="goTaxiSection('rideActivity')">My Ride Activity</button></div></div></section>`;
 }
 let homeServiceProviderView='post';
 async function goHomeServiceProviderSection(section){
@@ -921,7 +921,7 @@ function marketplaceHomeActions(){
 }
 function customerHomeActions(){
  if(!currentUser||currentUser.role!=='customer')return '';
- return `<section id="customerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🧭 Customer Quick Actions</h2><p class="muted">Choose the service you need.</p></div><div class="grid"><div class="card"><h3>🚕 Request Ride</h3><p class="muted">Submit a Taxi/Limo ride request.</p><button class="btn primary" onclick="customerAction('taxi','customer','taxiRequestRide')">Request Ride</button></div><div class="card"><h3>🛠️ Request Home Service</h3><p class="muted">Request help from an approved home service provider.</p><button class="btn primary" onclick="customerAction('home_services','customer','homeServicesList')">Request Home Service</button></div><div class="card"><h3>🛒 Browse Marketplace</h3><p class="muted">Browse approved community items for sale.</p><button class="btn primary" onclick="customerAction('marketplace','customer','marketAvailableTitle')">Browse Marketplace</button></div><div class="card"><h3>🏢 Find Business</h3><p class="muted">Find approved community businesses and services.</p><button class="btn primary" onclick="customerAction('business','customer','publicBusinessDirectory')">Find Business</button></div><div class="card"><h3>📅 Find Events</h3><p class="muted">Browse approved community events.</p><button class="btn primary" onclick="customerAction('events','customer','upcomingEvents')">Find Events</button></div></div></section>`;
+ return `<section id="customerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🧭 Customer Quick Actions</h2><p class="muted">Choose the service you need.</p></div><div class="grid"><div class="card"><h3>🚕 Request Ride</h3><p class="muted">Submit a Taxi/Limo ride request.</p><button class="btn primary" onclick="requestTaxiRideFromHome()">Request Ride</button></div><div class="card"><h3>🛠️ Request Home Service</h3><p class="muted">Request help from an approved home service provider.</p><button class="btn primary" onclick="customerAction('home_services','customer','homeServicesList')">Request Home Service</button></div><div class="card"><h3>🛒 Browse Marketplace</h3><p class="muted">Browse approved community items for sale.</p><button class="btn primary" onclick="customerAction('marketplace','customer','marketAvailableTitle')">Browse Marketplace</button></div><div class="card"><h3>🏢 Find Business</h3><p class="muted">Find approved community businesses and services.</p><button class="btn primary" onclick="customerAction('business','customer','publicBusinessDirectory')">Find Business</button></div><div class="card"><h3>📅 Find Events</h3><p class="muted">Browse approved community events.</p><button class="btn primary" onclick="customerAction('events','customer','upcomingEvents')">Find Events</button></div></div></section>`;
 }
 function jobSeekerHomeActions(){
  if(!currentUser||currentUser.role!=='job_seeker')return '';
@@ -941,7 +941,7 @@ async function goJobSeekerJobs(){
  const openTarget=()=>{const el=$('jobsList');if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
  if(!openTarget())setTimeout(openTarget,120);
 }
-function home(){$('home').innerHTML=`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${customerHomeActions()}${jobSeekerHomeActions()}${eventOrganizerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
+function home(){const publicIntro=!currentUser?`<div class="hero"><h1>Habesha Connect</h1><p><b>Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and transportation.</b></p>${roleWelcome()}<div class="actions">${homeQuickActions()}</div></div>`:'';$('home').innerHTML=`${publicIntro}${travelerHomeActions()}${senderHomeActions()}${propertyOwnerHomeActions()}${rentSeekerHomeActions()}${truckOwnerHomeActions()}${truckDriverHomeActions()}${taxiOwnerHomeActions()}${taxiDriverHomeActions()}${homeServiceProviderHomeActions()}${businessOwnerHomeActions()}${marketplaceHomeActions()}${customerHomeActions()}${jobSeekerHomeActions()}${eventOrganizerHomeActions()}${personalizedHomeFeed()}<h2 style="margin-top:22px">Available Services</h2><div class="grid">${roleServices()}</div>`}
 
 
 
@@ -950,6 +950,13 @@ function customerAction(page,role,sectionId){
   Promise.resolve(chooseServiceRole(page,role)).then(()=>{
     if(sectionId){setTimeout(()=>jumpToSection(sectionId),260);}
   });
+}
+async function requestTaxiRideFromHome(){
+  if(!requireLogin())return;
+  taxiDashboardView='requestRide';
+  await chooseServiceRole('taxi','customer');
+  const openForm=()=>{const el=$('taxiRequestRide');if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
+  if(!openForm())setTimeout(openForm,120);
 }
 function customer(){
   if(!currentUser){
@@ -4865,5 +4872,304 @@ async function adminApproveTrailerPayment(id){
 })();
 </script>
 
+
+
+<script id="v78191-trucking-agreement-contact-flow">
+/* V7.8.191 — Truck job and trailer renter agreement/contact release.
+   Contact details remain private until the accepted driver/renter clicks Agree. */
+(function(){
+  const oldOwnerActions = window.truckOwnerHomeActions;
+  const oldDriverActions = window.truckDriverHomeActions;
+
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function sameEmail(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();}
+  function appById(id){return (data.truckApplications||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));}
+  function trailerById(id){return (data.trailerRentals||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));}
+  function jobForApp(a){return (data.truckJobs||[]).find(j=>String(j.id)===String(a?.jobId)||String(j.dbId||'')===String(a?.jobDbId||''));}
+  function contactAlert(name,phone,email,label){alert(`${label}\n\nName: ${name||'Not provided'}\nPhone: ${phone||'Not provided'}\nEmail: ${email||'Not provided'}`);}
+
+  function truckAgreementHomeCards(role){
+    if(!currentUser)return '';
+    const email=currentUser.email;
+    let cards=[];
+    if(role==='driver'){
+      (data.truckApplications||[]).filter(a=>sameEmail(a.driverEmail,email)&&['Owner Accepted - Waiting Driver Agreement','Driver Agreed'].includes(a.status)).forEach(a=>{
+        const j=jobForApp(a)||{};
+        const agreed=a.status==='Driver Agreed';
+        cards.push(`<div class="card" style="border:2px solid #16a34a"><h3>🚛 Truck Job ${agreed?'Agreed':'Accepted'}</h3><p><b>${esc(a.jobTitle||'Truck Driver Job')}</b></p><p class="muted">${agreed?'Your agreement is complete. Truck owner information is available.':'The truck owner accepted your application. Click Agree to release the owner information.'}</p><div class="actions">${agreed?`<button class="btn primary" type="button" onclick="viewTruckOwnerInformation('${esc(a.id)}')">View Owner Information</button>`:`<button class="btn good" type="button" onclick="driverAgreeTruckJob('${esc(a.id)}')">Agree</button>`}</div></div>`);
+      });
+      (data.trailerRentals||[]).filter(t=>sameEmail(t.renterEmail,email)&&['Owner Accepted - Waiting Renter Agreement','Renter Agreed'].includes(t.status)).forEach(t=>{
+        const agreed=t.status==='Renter Agreed';
+        cards.push(`<div class="card" style="border:2px solid #16a34a"><h3>🚚 Trailer Rental ${agreed?'Agreed':'Accepted'}</h3><p><b>${esc(t.trailerType||'Trailer')}</b> • ${esc(t.location||'')}</p><p class="muted">${agreed?'Your agreement is complete. Trailer owner information is available.':'The trailer owner accepted your request. Click Agree to release the trailer owner information.'}</p><div class="actions">${agreed?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${esc(t.id)}')">View Trailer Owner Information</button>`:`<button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>`}</div></div>`);
+      });
+    }
+    if(role==='truck_owner'){
+      (data.trailerRentals||[]).filter(t=>sameEmail(t.renterEmail,email)&&['Owner Accepted - Waiting Renter Agreement','Renter Agreed'].includes(t.status)).forEach(t=>{
+        const agreed=t.status==='Renter Agreed';
+        cards.push(`<div class="card" style="border:2px solid #16a34a"><h3>🚚 Trailer Rental ${agreed?'Agreed':'Accepted'}</h3><p><b>${esc(t.trailerType||'Trailer')}</b> • ${esc(t.location||'')}</p><p class="muted">${agreed?'Your agreement is complete. Trailer owner information is available.':'The trailer owner accepted your request. Click Agree to release the trailer owner information.'}</p><div class="actions">${agreed?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${esc(t.id)}')">View Trailer Owner Information</button>`:`<button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>`}</div></div>`);
+      });
+    }
+    return cards.length?`<section class="card" style="margin-top:18px"><h2>✅ Agreement Needed / Contact Information</h2><p class="muted">Accepted trucking transactions appear here below How It Works.</p><div class="grid">${cards.join('')}</div></section>`:'';
+  }
+
+  window.truckOwnerHomeActions=function(){
+    let base=typeof oldOwnerActions==='function'?oldOwnerActions():'';
+    base=base.replace('</div></section>',`<div class="card"><h3>📨 See Trailer Requests for Rent</h3><p class="muted">Review requests for your posted trailers and accept or decline them.</p><button class="btn primary" onclick="goTruckSection('trailerRequests')">See Trailer Requests for Rent</button></div></div></section>`);
+    return base+truckAgreementHomeCards('truck_owner');
+  };
+  window.truckDriverHomeActions=function(){
+    return (typeof oldDriverActions==='function'?oldDriverActions():'')+truckAgreementHomeCards('driver');
+  };
+
+  const oldGoTruckSection=window.goTruckSection;
+  window.goTruckSection=function(section){
+    if(section==='trailerRequests'){
+      show('truck');
+      setTimeout(()=>{
+        const el=document.getElementById('trailerRentalsTable');
+        if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+      },80);
+      return;
+    }
+    return oldGoTruckSection(section);
+  };
+
+  window.approveTruckApp=async function(id){
+    const a=appById(id); if(!a)return alert('Application not found.');
+    if(!currentUser||(!sameEmail(a.ownerEmail,currentUser.email)&&currentUser.role!=='admin'))return alert('Only the truck owner can accept this application.');
+    if(a.status!=='Pending Owner Review')return alert('This application is not waiting for truck owner review.');
+    const old={...a};
+    a.status='Owner Accepted - Waiting Driver Agreement';
+    a.ownerAcceptedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:a.status});
+    if(r&&r.error){Object.assign(a,old);return alert('Could not accept the driver application: '+r.error.message);}
+    addNote(a.driverEmail,'The truck owner accepted your application. Open your home page and click Agree to receive the owner information.');
+    addNote('admin.habeshaconnect@gmail.com','Truck owner accepted '+a.driverName+' for '+a.jobTitle+'. Waiting for driver agreement.');
+    try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck owner accepted your application',summary:'The truck owner accepted your application. Open your home page and click Agree to release the owner contact information.',buttonText:'Open Home Page',page:'home',details:{Job:a.jobTitle,Owner:a.ownerName,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Truck owner accepted driver application','A truck owner accepted a driver application. The driver must now click Agree before owner contact information is released.',{Job:a.jobTitle,TruckOwner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:a.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly();
+    alert('Driver accepted. Admin and the driver were notified. The driver must now click Agree.');
+    truck();
+  };
+
+  window.driverAgreeTruckJob=async function(id){
+    const a=appById(id); if(!a)return alert('Application not found.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only the accepted driver can agree.');
+    if(a.status!=='Owner Accepted - Waiting Driver Agreement')return alert('This application is not waiting for your agreement.');
+    const old={...a}; a.status='Driver Agreed'; a.driverAgreedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:a.status});
+    if(r&&r.error){Object.assign(a,old);return alert('Could not save your agreement: '+r.error.message);}
+    const j=jobForApp(a)||{};
+    addNote(a.ownerEmail,a.driverName+' agreed to the truck driver job.');
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver agreed to your truck job',summary:'The accepted driver agreed to the job. Your contact information is now available to the driver.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Driver:a.driverName,DriverEmail:a.driverEmail,Status:'Driver Agreed'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Truck driver agreed','The accepted truck driver clicked Agree. Truck owner contact information was released to the driver.',{Job:a.jobTitle,Owner:a.ownerName,Driver:a.driverName,Status:'Driver Agreed'},'admin'));}catch(e){console.warn(e);}
+    persistOnly(); home();
+    contactAlert(a.ownerName,j.ownerPhone||a.ownerPhone,a.ownerEmail,'Truck Owner Information');
+  };
+
+  window.viewTruckOwnerInformation=function(id){
+    const a=appById(id); if(!a||!currentUser||!sameEmail(a.driverEmail,currentUser.email)||a.status!=='Driver Agreed')return alert('Owner information is not available.');
+    const j=jobForApp(a)||{}; contactAlert(a.ownerName,j.ownerPhone||a.ownerPhone,a.ownerEmail,'Truck Owner Information');
+  };
+
+  window.approveTrailerRental=async function(id){
+    const item=trailerById(id); if(!item)return alert('Trailer rental not found.');
+    if(!currentUser||(!sameEmail(item.ownerEmail,currentUser.email)&&currentUser.role!=='admin'))return alert('Only the trailer owner can accept this request.');
+    if(item.status!=='Pending Owner Review')return alert('This trailer request is not waiting for owner review.');
+    const old={...item}; item.status='Owner Accepted - Waiting Renter Agreement'; item.ownerAcceptedAt=new Date().toLocaleString();
+    const r=await updateTrailerRentalDb(item,{status:item.status});
+    if(r&&r.error){Object.assign(item,old);return alert('Could not accept trailer rental: '+r.error.message);}
+    addNote(item.renterEmail,'The trailer owner accepted your request. Open your home page and click Agree to receive owner information.');
+    try{await Promise.resolve(sendEmailNotice({to:item.renterEmail,name:item.renterName,subject:'Trailer owner accepted your request',summary:'The trailer owner accepted your rental request. Open your home page and click Agree to release the trailer owner contact information.',buttonText:'Open Home Page',page:'home',details:{Trailer:item.trailerType,Location:item.location,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Trailer owner accepted rental request','A trailer owner accepted a rental request. The renter must now click Agree before trailer owner information is released.',{Owner:item.ownerName,OwnerEmail:item.ownerEmail,Renter:item.renterName,RenterEmail:item.renterEmail,Trailer:item.trailerType,Status:item.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly(); alert('Request accepted. Admin and the renter were notified. The renter must now click Agree.'); truck();
+  };
+
+  window.renterAgreeTrailer=async function(id){
+    const item=trailerById(id); if(!item)return alert('Trailer rental not found.');
+    if(!currentUser||!sameEmail(item.renterEmail,currentUser.email))return alert('Only the accepted renter can agree.');
+    if(item.status!=='Owner Accepted - Waiting Renter Agreement')return alert('This trailer request is not waiting for your agreement.');
+    const old={...item}; item.status='Renter Agreed'; item.renterAgreedAt=new Date().toLocaleString();
+    const r=await updateTrailerRentalDb(item,{status:item.status});
+    if(r&&r.error){Object.assign(item,old);return alert('Could not save your agreement: '+r.error.message);}
+    addNote(item.ownerEmail,item.renterName+' agreed to rent your trailer.');
+    try{await Promise.resolve(sendEmailNotice({to:item.ownerEmail,name:item.ownerName,subject:'Trailer renter agreed',summary:'The accepted renter agreed to rent your trailer. Your contact information is now available to the renter.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Trailer:item.trailerType,Renter:item.renterName,RenterEmail:item.renterEmail,Status:'Renter Agreed'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Trailer renter agreed','The accepted trailer renter clicked Agree. Trailer owner contact information was released.',{Trailer:item.trailerType,Owner:item.ownerName,Renter:item.renterName,Status:'Renter Agreed'},'admin'));}catch(e){console.warn(e);}
+    persistOnly(); home();
+    contactAlert(item.ownerName,item.ownerPhone,item.ownerEmail,'Trailer Owner Information');
+  };
+
+  window.viewTrailerOwnerInformation=function(id){
+    const item=trailerById(id); if(!item||!currentUser||!sameEmail(item.renterEmail,currentUser.email)||item.status!=='Renter Agreed')return alert('Trailer owner information is not available.');
+    contactAlert(item.ownerName,item.ownerPhone,item.ownerEmail,'Trailer Owner Information');
+  };
+})();
+</script>
+
+<script id="v78193-home-service-marketplace-final-flow">
+/* V7.8.193
+   1) Home Services: provider accepts, customer agrees, then both parties can view contact information.
+   2) Marketplace seller listings are pinned in Admin Verification Center.
+   3) Marketplace: approved listing -> customer request -> seller accept/decline -> customer Agree on Home -> seller contact release.
+*/
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const findMarketItem=id=>(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  const findMarketReq=id=>(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  async function refreshMarketV193(){persistOnly();try{if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();}catch(e){console.warn(e)} if(currentPage==='home')home();else if(currentPage==='admin')adminSuccess();else marketplace();}
+
+  // Customer requests go directly to the seller after the listing itself has been approved by Admin.
+  window.marketRequestBuy=async function(id){
+    if(!requireLogin())return;
+    const m=findMarketItem(id);if(!m)return alert('Marketplace item not found.');
+    if(!['Approved','Available'].includes(m.status))return alert('This item is not available.');
+    if(norm(m.sellerEmail)===norm(currentUser.email))return alert('You cannot request your own item.');
+    const exists=(data.marketRequests||[]).find(r=>String(r.itemId)===String(m.dbId||m.id)&&norm(r.buyerEmail)===norm(currentUser.email)&&!['Cancelled','Admin Declined','Seller Declined','Connection Declined','Completed'].includes(r.status));
+    if(exists)return alert('You already requested this item.');
+    const r={id:'MR'+Date.now().toString().slice(-7),itemId:m.dbId||m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Admin Approved - Waiting Seller',createdAt:new Date().toLocaleString()};
+    const res=await insertMarketRequestDb(r);if(res.error)return alert('Marketplace request was not saved: '+res.error.message);
+    if(res.data){r.id=res.data.id;r.dbId=res.data.id;}
+    data.marketRequests.unshift(r);
+    addNote(r.sellerEmail,'New marketplace request for '+r.itemTitle+'. Please accept or decline.');
+    try{await Promise.resolve(sendEmailNotice({to:r.sellerEmail,name:r.sellerName,subject:'New marketplace customer request',summary:'A customer requested your approved marketplace item. Please accept or decline the request.',buttonText:'Review Marketplace Request',page:'marketplace',details:{Item:r.itemTitle,Customer:r.buyerName,Status:'Waiting for Seller'}}));}catch(e){console.warn('Seller request email failed',e)}
+    persistOnly();marketplace();alert('Request sent to the seller.');
+  };
+
+  window.marketSellerAcceptReq=async function(id){
+    const r=findMarketReq(id);if(!r||!currentUser||norm(r.sellerEmail)!==norm(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('This request is not waiting for your response.');
+    r.status='Connection Approved';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not accept the request: '+res.error.message);
+    addNote(r.buyerEmail,'Seller accepted your request for '+r.itemTitle+'. Open your Home page and click Agree.');
+    try{await Promise.resolve(sendEmailNotice({to:r.buyerEmail,name:r.buyerName,subject:'Marketplace seller accepted — your agreement is required',summary:'The seller accepted your marketplace request. Open your Home page and click Agree to release the seller information.',buttonText:'Open Home Page',page:'home',details:{Item:r.itemTitle,Seller:r.sellerName,Status:'Seller Accepted'}}));}catch(e){console.warn('Buyer accept email failed',e)}
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace seller accepted customer request','The seller accepted the marketplace request. The customer must now click Agree.',{Item:r.itemTitle,Seller:r.sellerName,Customer:r.buyerName,Status:'Waiting for Customer Agreement'},'marketplace'));}catch(e){}
+    await refreshMarketV193();alert('Accepted. The customer was notified to click Agree.');
+  };
+
+  // Put marketplace agreement/contact cards directly on the customer home page.
+  const oldCustomerHomeActions=window.customerHomeActions;
+  window.customerHomeActions=function(){
+    let base=oldCustomerHomeActions?oldCustomerHomeActions():'';
+    if(!currentUser||currentUser.role!=='customer')return base;
+    const email=norm(currentUser.email);
+    const agree=(data.marketRequests||[]).filter(r=>norm(r.buyerEmail)===email&&r.status==='Connection Approved');
+    const complete=(data.marketRequests||[]).filter(r=>norm(r.buyerEmail)===email&&r.status==='Completed');
+    let cards='';
+    agree.forEach(r=>{cards+=`<div class="card" style="border:2px solid #16a34a"><h3>✅ Marketplace Seller Accepted</h3><p><b>${esc(r.itemTitle)}</b></p><p class="muted">Click Agree to confirm. Seller information stays private until you agree.</p><button class="btn primary" onclick="marketBuyerAgree('${r.id}')">Agree</button></div>`});
+    complete.forEach(r=>{const msg=`Seller: ${String(r.sellerName||'Seller').replace(/'/g,"\\'")}\\nPhone: ${String(r.sellerPhone||'Not provided').replace(/'/g,"\\'")}\\nEmail: ${String(r.sellerEmail||'').replace(/'/g,"\\'")}`;cards+=`<div class="card" style="border:2px solid #16a34a"><h3>📞 Marketplace Seller Information</h3><p><b>${esc(r.itemTitle)}</b></p><button class="btn primary" onclick="alert('${msg}')">View Seller Information</button></div>`});
+    return base+(cards?`<section id="marketplaceCustomerAgreementHome" style="margin-top:20px"><div class="card"><h2 style="margin:0">🛒 Marketplace Agreements</h2><p class="muted">Accepted marketplace requests requiring your action appear here.</p></div><div class="grid">${cards}</div></section>`:'');
+  };
+
+  // Home Services contact release cards. Provider acceptance is the provider's agreement;
+  // the customer's Agree completes mutual agreement and unlocks both contacts.
+  const oldHomeServices=window.homeServices;
+  window.homeServices=function(){
+    oldHomeServices();
+    if(!currentUser)return;
+    const email=norm(currentUser.email), root=document.getElementById('home_services');if(!root)return;
+    const jobs=(data.homeServiceCustomerJobs||[]).filter(j=>j.status==='Customer Agreed'&&(norm(j.customerEmail)===email||norm(j.providerEmail)===email));
+    const reqs=(data.homeServiceRequests||[]).filter(r=>r.status==='Customer Agreed'&&(norm(r.customerEmail)===email||norm(r.providerEmail)===email));
+    const all=[...jobs.map(x=>({...x,_kind:'job',_title:x.title||x.category||'Home Service'})),...reqs.map(x=>({...x,_kind:'request',_title:x.serviceTitle||'Home Service'}))];
+    if(!all.length)return;
+    const box=document.createElement('section');box.id='homeServiceMutualContactRelease';box.style.margin='12px 0 18px';
+    box.innerHTML=`<div class="card" style="border:2px solid #16a34a"><h3>✅ Both Parties Agreed — Contact Information Available</h3><p class="muted">Contact details are released only after the provider accepts and the customer clicks Agree.</p>${all.map(x=>{const isCustomer=norm(x.customerEmail)===email;const name=isCustomer?x.providerName:x.customerName;const phone=isCustomer?x.providerPhone:x.customerPhone;const mail=isCustomer?x.providerEmail:x.customerEmail;const msg=`${isCustomer?'Provider':'Customer'}: ${String(name||'Not provided').replace(/'/g,"\\'")}\\nPhone: ${String(phone||'Not provided').replace(/'/g,"\\'")}\\nEmail: ${String(mail||'Not provided').replace(/'/g,"\\'")}`;return `<div class="item"><b>${esc(x._title)}</b><p>${isCustomer?'Provider':'Customer'} information is ready.</p><button class="btn primary" onclick="alert('${msg}')">View ${isCustomer?'Provider':'Customer'} Information</button></div>`}).join('')}</div>`;
+    const intro=root.querySelector('.card');if(intro&&intro.parentNode)intro.parentNode.insertBefore(box,intro.nextSibling);else root.prepend(box);
+  };
+
+  // Add pending marketplace seller listings to the top Admin Verification Center even though Marketplace uses cards, not table rows.
+  const oldBuildAdminPendingQueue=window.buildAdminPendingQueue;
+  window.buildAdminPendingQueue=function(){
+    oldBuildAdminPendingQueue();
+    const grid=document.getElementById('adminPendingQueueGrid'),badge=document.getElementById('adminPendingQueueCount');if(!grid||!badge)return;
+    const pending=(data.market||[]).filter(m=>m.status==='Pending Admin Approval');
+    pending.forEach(m=>{const card=document.createElement('div');card.className='adminPendingCard marketplacePendingAdminCard';card.innerHTML=`<h4>🛒 Marketplace Listing Approval</h4><div class="adminPendingField"><b>Seller</b><div>${esc(m.seller||'Seller')}<br><span class="small">${esc(m.sellerEmail||'')}</span></div></div><div class="adminPendingField"><b>Item</b><div>${esc(m.title||'Item')} • ${money(m.price||0)} • ${esc(m.city||'')}</div></div><div class="adminPendingActions"><button class="btn primary" onclick="marketAdminApproveListing('${m.id}')">Approve</button><button class="btn bad" onclick="marketAdminDeclineListing('${m.id}')">Decline</button></div>`;grid.prepend(card);});
+    const total=Number(badge.textContent||0)+pending.length;badge.textContent=String(total);
+    if(total&&grid.querySelector('.notice'))grid.querySelector('.notice').remove();
+  };
+
+  const style=document.createElement('style');style.textContent='@media(max-width:700px){#marketplaceCustomerAgreementHome .btn,#homeServiceMutualContactRelease .btn,.marketplacePendingAdminCard .btn{width:100%;min-height:48px;margin-top:7px}}';document.head.appendChild(style);
+  window.__hcVersion='V7.8.193';
+})();
+</script>
+
+
+<script id="v78194-job-seeker-home-agreement-contact-flow">
+/* V7.8.194 — Accepted business job applications require Job Seeker agreement on Home.
+   Business contact information stays private until the accepted seeker clicks Agree. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const findApp=id=>(data.jobApplications||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const findJob=a=>(data.jobs||[]).find(j=>String(j.id)===String(a?.jobId)||String(j.dbId||'')===String(a?.jobDbId||''))||{};
+  const oldJobSeekerHomeActions=window.jobSeekerHomeActions;
+
+  function businessContact(a){
+    const j=findJob(a);
+    return {
+      name:a.employerName||j.employerName||j.company||'Business Owner',
+      phone:j.contactPhone||a.employerPhone||'Not provided',
+      email:j.contactEmail||a.employerEmail||'Not provided'
+    };
+  }
+
+  window.viewAcceptedJobOwnerInformation=function(id){
+    const a=findApp(id);if(!a)return alert('Application not found.');
+    if(!currentUser||norm(a.applicantEmail)!==norm(currentUser.email))return alert('Only the accepted job seeker can view this information.');
+    if(a.status!=='Applicant Agreed')return alert('Please click Agree first.');
+    const c=businessContact(a);
+    alert(`Business Owner Information\n\nName: ${c.name}\nPhone: ${c.phone}\nEmail: ${c.email}`);
+  };
+
+  window.jobSeekerHomeActions=function(){
+    const base=typeof oldJobSeekerHomeActions==='function'?oldJobSeekerHomeActions():'';
+    if(!currentUser||currentUser.role!=='job_seeker')return base;
+    const email=norm(currentUser.email);
+    const waiting=(data.jobApplications||[]).filter(a=>norm(a.applicantEmail)===email&&['Accepted','Accepted - Waiting Applicant Agreement'].includes(a.status));
+    const agreed=(data.jobApplications||[]).filter(a=>norm(a.applicantEmail)===email&&a.status==='Applicant Agreed');
+    let cards='';
+    waiting.forEach(a=>{
+      cards+=`<div class="card" style="border:2px solid #16a34a"><h3>💼 Business Accepted Your Application</h3><p><b>${esc(a.jobTitle||'Job')}</b></p><p>${esc(a.employerName||'Business')}</p><p class="muted">Click Agree to confirm. The business owner information stays private until you agree.</p><div class="actions"><button class="btn good" type="button" onclick="applicantAgreeJob('${esc(a.id)}')">Agree</button></div></div>`;
+    });
+    agreed.forEach(a=>{
+      cards+=`<div class="card" style="border:2px solid #16a34a"><h3>📞 Business Owner Information Available</h3><p><b>${esc(a.jobTitle||'Job')}</b></p><p class="muted">You agreed to the accepted application. You may now view the business owner information.</p><div class="actions"><button class="btn primary" type="button" onclick="viewAcceptedJobOwnerInformation('${esc(a.id)}')">View Owner Information</button></div></div>`;
+    });
+    return base+(cards?`<section id="jobSeekerAgreementHome" style="margin-top:20px"><div class="card"><h2 style="margin:0">✅ Accepted Job Agreement</h2><p class="muted">Accepted applications requiring your agreement appear here on your home page.</p></div><div class="grid">${cards}</div></section>`:'');
+  };
+
+  const originalEmployerAccept=window.employerAcceptJobApp;
+  window.employerAcceptJobApp=async function(id){
+    const a=findApp(id);if(!a)return alert('Application not found.');
+    if(!currentUser||norm(a.employerEmail)!==norm(currentUser.email))return alert('Only the employer can accept this application.');
+    a.status='Accepted - Waiting Applicant Agreement';
+    a.acceptedAt=new Date().toLocaleString();
+    const res=await syncJobAppToSupabase(a);if(res.error)return alert('Could not update application: '+res.error.message);
+    addNote(a.applicantEmail,'Business accepted your job application for '+a.jobTitle+'. Open your home page and click Agree to release the owner information.');
+    try{await Promise.resolve(sendEmailNotice({to:a.applicantEmail,name:a.applicantName,subject:'Business accepted your job application',summary:'The business accepted your application. Open your home page and click Agree to release the business owner contact information.',buttonText:'Open Home Page',page:'home',details:{Job:a.jobTitle,Business:a.employerName,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e)}
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Business accepted job seeker application','A business owner accepted a job seeker application. The seeker must click Agree before owner contact information is released.',{Job:a.jobTitle,Business:a.employerName,Applicant:a.applicantName,ApplicantEmail:a.applicantEmail,Status:a.status},'admin'));}catch(e){console.warn(e)}
+    persistOnly();
+    alert('Application accepted. The job seeker and Admin were notified. The job seeker must click Agree on the home page.');
+    if(currentPage==='business'&&typeof business==='function')business();else jobs();
+  };
+
+  window.applicantAgreeJob=async function(id){
+    const a=findApp(id);if(!a)return alert('Application not found.');
+    if(!currentUser||norm(a.applicantEmail)!==norm(currentUser.email))return alert('Only the accepted job seeker can agree.');
+    if(!['Accepted','Accepted - Waiting Applicant Agreement'].includes(a.status))return alert('This application is not waiting for your agreement.');
+    const old={...a};a.status='Applicant Agreed';a.applicantAgreedAt=new Date().toLocaleString();
+    const res=await syncJobAppToSupabase(a);if(res.error){Object.assign(a,old);return alert('Could not save your agreement: '+res.error.message);}
+    addNote(a.employerEmail,a.applicantName+' agreed to the accepted job application for '+a.jobTitle+'.');
+    try{await Promise.resolve(sendEmailNotice({to:a.employerEmail,name:a.employerName,subject:'Job seeker agreed to your accepted application',summary:'The job seeker agreed after you accepted the application. Your contact information is now available to that seeker.',buttonText:'Open Jobs',page:'jobs',details:{Job:a.jobTitle,Applicant:a.applicantName,Status:'Applicant Agreed'}}));}catch(e){console.warn(e)}
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Job seeker agreed to accepted job','The job seeker agreed after the business accepted the application.',{Job:a.jobTitle,Business:a.employerName,Applicant:a.applicantName,ApplicantEmail:a.applicantEmail},'admin'));}catch(e){console.warn(e)}
+    persistOnly();
+    const c=businessContact(a);
+    alert(`Agreement completed.\n\nBusiness Owner Information\nName: ${c.name}\nPhone: ${c.phone}\nEmail: ${c.email}`);
+    home();
+  };
+
+  const style=document.createElement('style');style.textContent='@media(max-width:700px){#jobSeekerAgreementHome .btn{width:100%;min-height:48px;margin-top:7px}}';document.head.appendChild(style);
+  window.__hcVersion='V7.8.194';
+})();
+</script>
 </body>
 </html>

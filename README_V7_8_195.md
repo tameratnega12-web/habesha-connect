@@ -1,0 +1,8 @@
+# Habesha Agenagn V7.8.195
+
+## Signed-in home page mobile cleanup
+- Keeps the full Habesha Connect introduction card on the public/sign-in home page.
+- Removes that large introduction card after a user signs in.
+- Signed-in role quick actions and pending transactions now appear closer to the top, especially on phones.
+- No workflows, forms, approvals, emails, database tables, or role buttons were changed.
+- No SQL is required.
