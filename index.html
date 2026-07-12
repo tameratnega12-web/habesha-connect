@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.209">
+<meta name="app-version" content="V7.8.210">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -1240,7 +1240,7 @@ async function loadSupabaseTrips(){
   data.trips=[...dbTrips,...localOnly];
 }
 
-// V7.8.209 — one canonical shipping status flow used by creation, loading, actions, and focused views.
+// V7.8.210 — one canonical shipping status flow used by creation, loading, actions, and focused views.
 const SHIP_STATUS={
   REQUESTED:'Requested',
   ACCEPTED:'Accepted',
@@ -1366,7 +1366,7 @@ async function loadSupabaseShippingItems(){
   let remote=(rows||[]).map(mapDbShippingItem);
   let preserved=(data.shippingItems||[]).filter(x=>x.source==='shipments_fallback'||(x.source!=='supabase'&&!x.dbId));
   data.shippingItems=[...remote,...preserved];
-  // V7.8.209: each traveler may decline a sender-posted item without closing it for other travelers.
+  // V7.8.210: each traveler may decline a sender-posted item without closing it for other travelers.
   window.shippingItemDeclines=[];
   if(currentUser&&currentUser.email){
     try{
@@ -1434,7 +1434,7 @@ function travelerShippingDashboardCards(){
  return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
-// V7.8.209: sender-posted items are offered to every traveler after Admin approval.
+// V7.8.210: sender-posted items are offered to every traveler after Admin approval.
 function shippingItemRef(it){return String(it?.dbId||it?.id||'');}
 function travelerDeclinedShippingItem(it){
   if(!currentUser||currentUser.role!=='traveler')return false;
@@ -1661,7 +1661,7 @@ async function updateShippingItemDb(it,patch){
  if(!authReady()||!it.dbId)return {error:null};
  if(it.source==='shipments_fallback'||it.fallbackDb){
    const allowed={};
-   ['status','paid','traveler_id','traveler_name','traveler_phone'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
+   ['status','paid','traveler_id'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(patch,k))allowed[k]=patch[k]});
    if(allowed.status&&!String(allowed.status).includes('Sender Item')&&allowed.status==='Pending Admin Approval')allowed.status+=' - Sender Item';
    return await hcSupabase.from('shipments').update(allowed).eq('id',it.dbId);
  }
@@ -1669,7 +1669,7 @@ async function updateShippingItemDb(it,patch){
 }
 async function adminApproveShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Open'});if(r.error)return alert('Could not approve item: '+r.error.message);it.status='Open';addNote(it.senderEmail,'Your item to ship was approved. Travelers can now accept it.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Shipping item approved',summary:'Your item to ship was approved. Travelers can now see and accept it.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Route:it.route,Weight:it.weight+' lb',Status:'Open'}});persistOnly();adminSuccess();}
 async function adminDeclineShippingItem(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Declined'});if(r.error)return alert('Could not decline item: '+r.error.message);it.status='Declined';addNote(it.senderEmail,'Your posted shipping item was declined.');persistOnly();adminSuccess();}
-async function travelerAcceptShippingItem(id){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can accept posted shipping items.');let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.status!=='Open')return alert('This item is not available to accept.');let patch={status:'Accepted',traveler_id:currentUser.id||null,traveler_name:currentUser.name,traveler_email:currentUser.email,traveler_phone:currentUser.phone||''};let r=await updateShippingItemDb(it,patch);if(r.error)return alert('Could not accept item: '+r.error.message);Object.assign(it,{status:'Accepted',travelerId:currentUser.id||'',traveler:currentUser.name,travelerEmail:currentUser.email,travelerPhone:currentUser.phone||'',travelerVerified:!!currentUser.verified});addNote(it.senderEmail,'A traveler accepted your posted shipping item. Please confirm the agreement.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Traveler accepted your posted item',summary:'A traveler accepted your item to ship. Please open Shipping and confirm the agreement so admin can approve.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Traveler:currentUser.name,Route:it.route,Weight:it.weight+' lb',Status:'Accepted'}});persistOnly();shipping();}
+async function travelerAcceptShippingItem(id){if(!requireLogin())return;if(currentUser.role!=='traveler'&&currentUser.role!=='admin')return alert('Only travelers can accept posted shipping items.');let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.status!=='Open')return alert('This item is not available to accept.');let patch={status:'Accepted',traveler_id:currentUser.id||null};let r=await updateShippingItemDb(it,patch);if(r.error)return alert('Could not accept item: '+r.error.message);Object.assign(it,{status:'Accepted',travelerId:currentUser.id||'',traveler:currentUser.name,travelerEmail:currentUser.email,travelerPhone:currentUser.phone||'',travelerVerified:!!currentUser.verified});addNote(it.senderEmail,'A traveler accepted your posted shipping item. Please confirm the agreement.');sendEmailNotice({to:it.senderEmail,name:it.sender,subject:'Traveler accepted your posted item',summary:'A traveler accepted your item to ship. Please open Shipping and confirm the agreement so admin can approve.',buttonText:'Open Shipping',page:'shipping',details:{Tracking:it.tracking,Traveler:currentUser.name,Route:it.route,Weight:it.weight+' lb',Status:'Accepted'}});persistOnly();shipping();}
 async function payShippingItem(id){if(!requireLogin())return;let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(it.senderEmail!==currentUser.email&&String(it.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can confirm agreement.');if(it.status!=='Accepted')return alert('Please wait for a traveler to accept.');pay('Shipping',Number(it.weight||0)*settings().shippingRatePerLb,'Posted item '+it.id+' agreement');let r=await updateShippingItemDb(it,{status:'Payment Pending Admin Review',paid:true});if(r.error)return alert('Agreement recorded locally, but Supabase update failed: '+r.error.message);it.status='Payment Pending Admin Review';it.paid=true;addNote('admin.habeshaconnect@gmail.com','Posted shipping item payment needs approval: '+it.tracking);sendAdminEmailNotice('Posted shipping item payment needs approval','A sender confirmed agreement for a posted shipping item.',{Sender:it.sender,Traveler:it.traveler,Tracking:it.tracking,Amount:money(Number(it.weight||0)*settings().shippingRatePerLb)},'shipping');persistOnly();shipping();}
 async function adminApproveShippingItemPayment(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Approved',paid:true});if(r.error)return alert('Could not approve payment: '+r.error.message);it.status='Approved';it.paid=true;addNote(it.senderEmail,'Your posted item payment was approved. Contact is now available.');addNote(it.travelerEmail,'Posted item was approved by admin. Contact is now available.');persistOnly();adminSuccess();}
 async function adminMarkShippingItemDelivered(id){let it=(data.shippingItems||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!it)return;if(currentUser?.role!=='admin')return alert('Admin only.');let r=await updateShippingItemDb(it,{status:'Delivered'});if(r.error)return alert('Could not mark delivered: '+r.error.message);it.status='Delivered';addNote(it.senderEmail,'Your posted shipping item was marked delivered.');addNote(it.travelerEmail,'Posted shipping item was marked delivered.');persistOnly();adminSuccess();}
@@ -5581,7 +5581,7 @@ async function adminApproveTrailerPayment(id){
 
 
 <script id="v78204-focused-transaction-views">
-// V7.8.209: Home transaction cards open only the matching records/actions.
+// V7.8.210: Home transaction cards open only the matching records/actions.
 function hcResetFocusedPage(rootId){
   const root=document.getElementById(rootId); if(!root)return;
   [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
@@ -5657,7 +5657,7 @@ async function openHomeTransaction(page,encodedTitle){
   await show(page);
 }
 // Focus Shipping quick-action buttons, not only personalized activity cards.
-// V7.8.209: Route each Traveler Shipping button directly to one focused view.
+// V7.8.210: Route each Traveler Shipping button directly to one focused view.
 // Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
 goTravelerShipSection=async function(section){
   travelerShippingView=section||'all';
