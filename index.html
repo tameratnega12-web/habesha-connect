@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.201">
+<meta name="app-version" content="V7.8.202">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -647,10 +647,8 @@ function personalizedHomeItems(){
    (data.trailerRentals||[]).filter(t=>cleanEmail(t.ownerEmail)===email&&t.renterEmail&&pending(t.status)).forEach(t=>add(hcHomeItem('New Trailer Rental Request',`${t.renterName||'Requester'} requested ${t.trailerType||'your trailer'}`,t.status,'truck','🔔',hcHomeTime(t),0)));
    (data.truckJobs||[]).filter(j=>cleanEmail(j.ownerEmail)===email).forEach(j=>add(hcHomeItem('My Truck Job',`${j.title||'Driver job'} • ${j.route||''}`,j.status,'truck','🚛',hcHomeTime(j),pending(j.status)?0:2)));
  }
- // Shipping.
- if(role==='traveler'){
-   (data.shipments||[]).filter(x=>cleanEmail(x.travelerEmail)===email).forEach(x=>add(hcHomeItem('Shipping Request',`${x.senderName||'Sender'} • ${x.from||x.origin||''} to ${x.to||x.destination||''}`,x.status,'shipping','📦',hcHomeTime(x),pending(x.status)?0:2)));
- }
+ // Shipping. Traveler shipping requests are rendered directly below
+ // Traveler Quick Actions so they stay above Open Trip / View Requests.
  if(role==='sender'){
    (data.trips||[]).filter(t=>available(t.status)).forEach(t=>add(hcHomeItem('Traveler Trip Available',`${t.from||t.origin||''} to ${t.to||t.destination||''} • ${t.date||''}`,t.status,'shipping','✈️',hcHomeTime(t),1)));
    (data.shipments||[]).filter(x=>cleanEmail(x.senderEmail)===email).forEach(x=>add(hcHomeItem('My Shipping Transaction',`${x.tracking||x.item||'Shipment'} • ${x.from||''} to ${x.to||''}`,x.status,'shipping','📦',hcHomeTime(x),pending(x.status)?0:2)));
@@ -708,9 +706,19 @@ function personalizedHomeFeed(){
  const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="show('${x.page}')">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
  return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${items.length?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
 }
+function travelerPriorityShippingRequests(){
+ if(!currentUser||currentUser.role!=='traveler')return '';
+ const email=cleanEmail(currentUser.email);
+ const requests=(data.shipments||[])
+   .filter(x=>cleanEmail(x.travelerEmail)===email)
+   .sort((a,b)=>hcHomeTime(b)-hcHomeTime(a));
+ if(!requests.length)return '';
+ const cards=requests.map(x=>`<div class="card" style="border-left:5px solid #dc2626"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">📦 Shipping Request</h3><span class="pill warn">${hcHomeEsc(x.status||'Requested')}</span></div><p>${hcHomeEsc((x.senderName||x.sender||'Sender')+' • '+(x.from||x.origin||'')+' to '+(x.to||x.destination||''))}</p><button class="btn primary" onclick="goTravelerShipSection('requests')">Open Shipping</button></div>`).join('');
+ return `<div id="travelerPriorityShippingRequests" class="grid" style="margin-top:12px">${cards}</div>`;
+}
 function travelerHomeActions(){
  if(!currentUser||currentUser.role!=='traveler')return '';
- return `<section id="travelerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">✈️ Traveler Quick Actions</h2><p class="muted">Open a trip or review sender requests immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div></section>`;
+ return `<section id="travelerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">✈️ Traveler Quick Actions</h2><p class="muted">Open a trip or review sender requests immediately after signing in.</p></div>${travelerPriorityShippingRequests()}<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div></section>`;
 }
 function senderHomeActions(){
  if(!currentUser||currentUser.role!=='sender')return '';
