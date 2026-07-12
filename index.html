@@ -5323,5 +5323,25 @@ async function adminApproveTrailerPayment(id){
 })();
 </script>
 
+<script id="v78199-hide-completed-truck-jobs-home">
+/* V7.8.199 — Completed trucking hires stay in Trucking history, not Home activity. */
+(function(){
+  const previousPersonalizedHomeItems = window.personalizedHomeItems;
+  window.personalizedHomeItems = function(){
+    const items = typeof previousPersonalizedHomeItems === 'function' ? previousPersonalizedHomeItems() : [];
+    if(!window.currentUser || !['truck_owner','driver'].includes(currentUser.role)) return items;
+    const terminal = /^(filled|hired|closed|completed|declined)$/i;
+    return (items||[]).filter(item=>{
+      const title=String(item&&item.title||'').trim().toLowerCase();
+      const status=String(item&&item.status||'').trim();
+      if(currentUser.role==='truck_owner' && title==='my truck job' && terminal.test(status)) return false;
+      if(currentUser.role==='driver' && title==='truck job application' && terminal.test(status)) return false;
+      return true;
+    });
+  };
+  window.__hcVersion='V7.8.199';
+})();
+</script>
+
 </body>
 </html>
