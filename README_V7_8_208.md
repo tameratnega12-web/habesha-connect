@@ -1,10 +1,26 @@
-# Habesha Agenagn V7.8.208
+# Habesha Agenagn V7.8.208 — Full Trucking Job Flow Consolidation
 
-## Shipping status and Traveler action correction
+Base: V7.8.207
 
-- Uses one canonical shipping status flow for request creation, Supabase loading, focused views, Accept/Decline, payment, approval, and delivery.
-- Open Shipping renders new sender requests with Accept and Decline buttons.
-- Supports legacy status labels by normalizing them to the current status flow.
-- Sender payment is available only after Traveler accepts.
-- Open Trip remains separate from Open Shipping.
-- No SQL is required.
+Changed only the trucking driver-job transaction flow.
+
+Flow:
+1. Truck owner posts job.
+2. Admin approves job; job becomes Open.
+3. Driver applies; application stays Pending Admin Approval.
+4. Admin approves application; it becomes Pending Owner Review.
+5. Correct truck owner sees Accept / Decline immediately.
+6. Owner accepts; status becomes Owner Accepted - Waiting Driver Agreement.
+7. Driver clicks Agree; status becomes Pending Final Admin Approval.
+8. Admin final approves; selected driver becomes Hired, job becomes Filled, other open applications close.
+
+Additional trucking-only protections:
+- Owner matching falls back to the related job record when an old application has missing/mismatched owner fields.
+- Local IDs and Supabase IDs are both accepted.
+- Owner fields are backfilled during admin approval.
+- Trucking data reloads before rendering the Trucking page.
+- Duplicate active applications are blocked.
+- Completed jobs are not offered as available.
+
+No SQL change is required.
+No non-trucking category was changed.

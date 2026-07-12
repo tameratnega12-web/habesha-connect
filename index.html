@@ -2430,7 +2430,7 @@ function truck(){
  let myTruckRecords=(data.trucks||[]).filter(t=>role==='admin'||t.ownerEmail===currentUser.email||t.driverEmail===currentUser.email);
  let myJobs=(data.truckJobs||[]).filter(j=>role==='admin'||j.ownerEmail===currentUser.email);
  let availableJobs=(data.truckJobs||[]).filter(j=>j.status==='Open');
- let myApps=(data.truckApplications||[]).filter(a=>role==='admin'||a.driverEmail===currentUser.email||(a.ownerEmail===currentUser.email&&a.status!=='Pending Admin Approval'));
+ let myApps=(data.truckApplications||[]).filter(a=>role==='admin'||cleanEmail(a.driverEmail)===cleanEmail(currentUser.email)||(cleanEmail(a.ownerEmail)===cleanEmail(currentUser.email)&&a.status!=='Pending Admin Approval'));
  let driverProfile=(data.truckDriverProfiles||[]).find(p=>p.driverEmail===currentUser.email);
  let driverProfiles=(data.truckDriverProfiles||[]).filter(p=>role==='admin'||role==='truck_owner'||p.driverEmail===currentUser.email);
  let trailerRentals=(data.trailerRentals||[]).filter(t=>role==='admin'||t.status==='Available'||t.ownerEmail===currentUser.email||t.renterEmail===currentUser.email);
@@ -2443,7 +2443,7 @@ function truck(){
  let driverPanel=`<div class="card" id="driverProfileCard"><h3>👤 Driver Job Profile</h3><label>Full Name</label><input id="dpName" value="${driverProfile?.name||currentUser.name||''}"><label>Phone</label><input id="dpPhone" value="${driverProfile?.phone||currentUser.phone||''}"><label>City</label><input id="dpCity" value="${driverProfile?.city||currentUser.city||''}"><label>CDL / License Type</label><input id="dpLicense" value="${driverProfile?.license||''}" placeholder="CDL A, CDL B, Box truck"><label>Experience</label><input id="dpExperience" value="${driverProfile?.experience||''}" placeholder="5 years, local, OTR"><label>Looking For</label><select id="dpLooking"><option ${driverProfile?.looking==='Full Time'?'selected':''}>Full Time</option><option ${driverProfile?.looking==='Part Time'?'selected':''}>Part Time</option><option ${driverProfile?.looking==='Owner Operator'?'selected':''}>Owner Operator</option><option ${driverProfile?.looking==='Box Truck'?'selected':''}>Box Truck</option></select><label>Skills / Notes</label><textarea id="dpNotes" placeholder="Routes, languages, availability, safety record">${driverProfile?.notes||''}</textarea><button class="btn primary" onclick="saveDriverProfile()">Save Driver Profile</button></div>`;
  let jobsTable=`<h3 id="availableTruckJobs">🚛 Available Truck Jobs</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Schedule</th><th>Requirements</th><th>Status</th><th>Action</th></tr>${availableJobs.map(j=>{let already=(data.truckApplications||[]).find(a=>a.jobId===j.id&&a.driverEmail===currentUser.email);let action=role==='driver'?(already?`<span class="pill good">Applied</span><br><span class="small">${already.status}</span>`:`<button class="btn primary" onclick="applyTruckJob('${j.id}')">Apply This Job</button>`):(role==='truck_owner'&&j.ownerEmail===currentUser.email?`<span class="pill good">Owner Post</span>`:'-');return `<tr><td>${j.ownerName}<br><span class="small">${j.ownerPhone||''}</span></td><td>${j.title}<br><span class="small">${j.truckDetails||''}</span></td><td>${j.route}</td><td>${j.schedule}</td><td>${j.requirements}</td><td><span class="pill good">Published</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No approved truck owner hiring posts yet.</td></tr>'}</table>`;
  let driverProfilesTable=`<h3 id="driverProfilesTable">👤 Drivers Looking for Truck Driving Jobs</h3><table><tr><th>Driver</th><th>Phone</th><th>City</th><th>License</th><th>Experience</th><th>Looking For</th><th>Skills / Notes</th><th>Updated</th></tr>${driverProfiles.map(p=>`<tr><td>${p.name||p.driverName||'Driver'}<br><span class="small">${p.driverEmail||''}</span></td><td>${p.phone||''}</td><td>${p.city||''}</td><td>${p.license||''}</td><td>${p.experience||''}</td><td>${p.looking||''}</td><td>${p.notes||''}</td><td>${p.updatedAt||''}</td></tr>`).join('')||'<tr><td colspan="8">No driver looking-for-job posts yet.</td></tr>'}</table>`;
- let appsTable=`<h3 id="truckApplicationsTable">Driver Applications / Hiring Records</h3><table><tr><th>Job</th><th>Driver</th><th>Phone</th><th>License</th><th>Experience</th><th>Looking For / Notes</th><th>Status</th><th>Action</th></tr>${myApps.map(a=>{let canManage=role==='truck_owner'&&a.ownerEmail===currentUser.email&&a.status==='Pending Owner Review';return `<tr><td>${a.jobTitle}</td><td>${a.driverName}<br><span class="small">${a.driverEmail}</span></td><td>${a.driverPhone}</td><td>${a.license}</td><td>${a.experience}</td><td>${a.looking||''}<br><span class="small">${a.notes||''}</span></td><td><span class="pill ${(a.status==='Approved'||a.status==='Hired')?'good':a.status==='Declined'?'bad':'warn'}">${a.status}</span></td><td>${canManage?`<button class="btn primary" onclick="approveTruckApp('${a.id}')">Accept Driver</button> <button class="btn bad" onclick="declineTruckApp('${a.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No applications yet.</td></tr>'}</table>`;
+ let appsTable=`<h3 id="truckApplicationsTable">Driver Applications / Hiring Records</h3><table><tr><th>Job</th><th>Driver</th><th>Phone</th><th>License</th><th>Experience</th><th>Looking For / Notes</th><th>Status</th><th>Action</th></tr>${myApps.map(a=>{let canManage=role==='truck_owner'&&cleanEmail(a.ownerEmail)===cleanEmail(currentUser.email)&&a.status==='Pending Owner Review';return `<tr><td>${a.jobTitle}</td><td>${a.driverName}<br><span class="small">${a.driverEmail}</span></td><td>${a.driverPhone}</td><td>${a.license}</td><td>${a.experience}</td><td>${a.looking||''}<br><span class="small">${a.notes||''}</span></td><td><span class="pill ${(a.status==='Approved'||a.status==='Hired')?'good':a.status==='Declined'?'bad':'warn'}">${a.status}</span></td><td>${canManage?`<button class="btn primary" onclick="approveTruckApp('${a.id}')">Accept Driver</button> <button class="btn bad" onclick="declineTruckApp('${a.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No applications yet.</td></tr>'}</table>`;
  let recordsTable=`<h3>Truck Owner / Driver Records</h3><table><tr><th>Truck</th><th>Plate</th><th>Driver</th><th>Status</th><th>Insurance</th><th>Registration</th><th>Income</th><th>Expenses</th><th>Profit</th><th>Mileage</th><th>Maintenance</th></tr>${myTruckRecords.map(t=>`<tr><td>${t.truck}<br><span class="small">VIN: ${t.vin||''}</span></td><td>${t.plate||''}</td><td>${t.driver}<br><span class="small">${t.driverEmail||''}</span></td><td>${t.status||'Available'}</td><td>${t.insurance||''}<br>${expiryBadge(t.insurance,'Insurance')}</td><td>${t.registration||''}<br>${expiryBadge(t.registration,'Registration')}</td><td>${money(t.income)}</td><td>${money(t.expenses)}</td><td>${money((+t.income||0)-(+t.expenses||0))}</td><td>${t.mileage}</td><td>${t.maintenance||''}</td></tr>`).join('')||'<tr><td colspan="11">No truck records yet.</td></tr>'}</table>`;
  let trailerTable=`<h3 id="trailerRentalsTable">🚛 Trailer Rentals</h3><table><tr><th>Owner</th><th>Trailer</th><th>Location</th><th>Price</th><th>Available</th><th>Status</th><th>Action</th></tr>${trailerRentals.map(t=>{let mine=t.ownerEmail===currentUser.email;let requested=t.renterEmail===currentUser.email;let ownerManage=mine&&t.status==='Pending Owner Review';let action=ownerManage?`<span class="pill warn">Action shown at top</span>`:(t.status==='Available'&&!mine&&(role==='driver'||role==='truck_owner')?`<button class="btn primary" onclick="requestTrailerRental('${t.id}')">Request Trailer</button>`:(requested?`<span class="pill warn">${t.status}</span>`:(mine?(t.status==='Pending Admin Approval'?'<span class="pill warn">Waiting Admin Approval</span>':'<span class="pill good">Your Trailer</span>'):'-')));return `<tr><td>${t.ownerName||''}<br><span class="small">${t.ownerEmail||''}</span></td><td>${t.trailerType||''}<br><span class="small">${t.description||''}</span></td><td>${t.location||''}</td><td>${t.price||''}<br><span class="small">Deposit: ${t.deposit||''}</span></td><td>${t.availability||''}</td><td><span class="pill ${t.status==='Available'?'good':t.status==='Rented'?'bad':'warn'}">${t.status||'Available'}</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No trailer rentals posted yet.</td></tr>'}</table>`;
 
@@ -5603,5 +5603,194 @@ async function adminApproveTrailerPayment(id){
   };
 
   window.__hcVersion='V7.8.205';
+})();
+</script>
+
+
+<script id="v78207-truck-owner-approved-application-action-fix">
+/* V7.8.207 — Show admin-approved driver applications immediately to the correct truck owner. */
+(function(){
+  function sameEmail(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function pendingOwnerApplications(){
+    if(!currentUser)return [];
+    return (data.truckApplications||[]).filter(a=>sameEmail(a.ownerEmail,currentUser.email)&&a.status==='Pending Owner Review');
+  }
+  function ownerApplicationActionPanel(){
+    const rows=pendingOwnerApplications();
+    if(!rows.length)return '';
+    return `<section class="card" id="truckOwnerApplicationActions" style="margin-top:18px;border:2px solid #f59e0b">
+      <h2>🔔 Driver Applications — Accept or Decline</h2>
+      <p class="muted">Admin approved these driver requests. Review each application below.</p>
+      <div class="grid">${rows.map(a=>`<div class="card">
+        <h3>${esc(a.jobTitle||'Truck Driver Job')}</h3>
+        <p><b>Driver:</b> ${esc(a.driverName||'Driver')}</p>
+        <p><b>Phone:</b> ${esc(a.driverPhone||'Not provided')}</p>
+        <p><b>License:</b> ${esc(a.license||'Not provided')}</p>
+        <p><b>Experience:</b> ${esc(a.experience||'Not provided')}</p>
+        <p><b>Looking For / Notes:</b> ${esc(a.looking||'')} ${esc(a.notes||'')}</p>
+        <p><span class="pill warn">Waiting for Your Decision</span></p>
+        <div class="actions">
+          <button class="btn primary" type="button" onclick="approveTruckApp('${esc(a.id)}')">Accept Driver</button>
+          <button class="btn bad" type="button" onclick="declineTruckApp('${esc(a.id)}')">Decline</button>
+        </div>
+      </div>`).join('')}</div>
+    </section>`;
+  }
+
+  const previousOwnerHomeActions=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    const base=typeof previousOwnerHomeActions==='function'?previousOwnerHomeActions():'';
+    return ownerApplicationActionPanel()+base;
+  };
+
+  const previousTruck=window.truck;
+  window.truck=async function(){
+    const result=await previousTruck.apply(this,arguments);
+    if(currentUser&&currentUser.role==='truck_owner'){
+      const host=document.getElementById('truck');
+      if(host&&!document.getElementById('truckOwnerApplicationActions')){
+        const panel=ownerApplicationActionPanel();
+        if(panel){
+          const intro=host.querySelector('.category-intro');
+          if(intro)intro.insertAdjacentHTML('afterend',panel);
+          else host.insertAdjacentHTML('afterbegin',panel);
+        }
+      }
+    }
+    return result;
+  };
+
+  window.__hcVersion='V7.8.207';
+})();
+</script>
+
+<script id="v78209-trucking-job-flow-consolidation">
+/* V7.8.209 — Consolidated trucking job transaction controller with safe non-empty ID matching.
+   Trucking jobs only: Owner post -> Admin approve -> Driver apply -> Admin approve ->
+   Owner accept/decline -> Driver agree -> Admin final approve -> Hired. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const sameNonEmptyId=(a,b)=>{const x=String(a||'').trim(),y=String(b||'').trim();return !!x&&!!y&&x===y;};
+  const appById=id=>(data.truckApplications||[]).find(a=>sameNonEmptyId(a.id,id)||sameNonEmptyId(a.dbId,id));
+  const jobById=id=>(data.truckJobs||[]).find(j=>sameNonEmptyId(j.id,id)||sameNonEmptyId(j.dbId,id));
+  const jobForApp=a=>(data.truckJobs||[]).find(j=>sameNonEmptyId(j.id,a&&a.jobId)||sameNonEmptyId(j.dbId,a&&a.jobDbId));
+  function appOwnerEmail(a){const j=jobForApp(a);return norm((a&&a.ownerEmail)||(j&&j.ownerEmail));}
+  function isOwnerOf(a){return !!currentUser&&currentUser.role==='truck_owner'&&appOwnerEmail(a)===norm(currentUser.email);}
+  function backfillOwner(a){const j=jobForApp(a);if(j){a.ownerEmail=a.ownerEmail||j.ownerEmail||'';a.ownerName=a.ownerName||j.ownerName||'';a.jobTitle=a.jobTitle||j.title||'';a.jobId=a.jobId||j.id||'';a.jobDbId=a.jobDbId||j.dbId||'';}return j;}
+  function persistAndRefresh(){persistOnly();setTimeout(()=>{if(currentPage==='admin'&&typeof adminSuccess==='function')adminSuccess();else if(currentPage==='truck'&&typeof truck==='function')truck();else if(currentPage==='home'&&typeof home==='function')home();},0);}
+
+  window.applyTruckJob=async function(id){
+    if(!requireLogin())return;
+    if(currentUser.role!=='driver')return alert('Only truck drivers can apply for truck driving jobs.');
+    const j=jobById(id);if(!j)return alert('Job not found.');
+    if(j.status!=='Open')return alert('This job is waiting for admin approval or is closed.');
+    const duplicate=(data.truckApplications||[]).some(a=>
+      (sameNonEmptyId(a.jobId,j.id)||sameNonEmptyId(a.jobDbId,j.dbId))&&
+      sameEmail(a.driverEmail,currentUser.email)&&!['Declined','Closed','Closed - Position Filled'].includes(a.status));
+    if(duplicate)return alert('You already applied for this job.');
+    const p=(data.truckDriverProfiles||[]).find(x=>sameEmail(x.driverEmail,currentUser.email))||{};
+    if(!p.license||!p.experience)return alert('Please complete your Driver Job Profile before applying.');
+    const app={id:'TA'+Date.now().toString().slice(-6),jobId:j.id,jobDbId:j.dbId||'',jobTitle:j.title,ownerName:j.ownerName,ownerEmail:j.ownerEmail,driverName:p.name||currentUser.name,driverEmail:currentUser.email,driverPhone:p.phone||currentUser.phone||'',city:p.city||'',license:p.license||'',experience:p.experience||'',looking:p.looking||'',notes:p.notes||'',status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+    const res=await syncTruckApplicationToSupabase(app,j);
+    if(res&&res.error)return alert('Application was not sent to Admin: '+res.error.message);
+    data.truckApplications.unshift(app);
+    addNote(currentUser.email,'Application submitted for '+j.title+'. Waiting for admin approval.');
+    addNote('admin.habeshaconnect@gmail.com','Truck driver application waiting for approval: '+app.driverName+' applied for '+j.title+'.');
+    try{await Promise.resolve(sendAdminEmailNotice('New Truck Driver Application','A truck driver submitted a job application for admin approval.',{Driver:app.driverName,DriverEmail:app.driverEmail,Job:j.title,Owner:j.ownerName,OwnerEmail:j.ownerEmail},'admin'));}catch(e){console.warn(e);}
+    persistAndRefresh();alert('Applied. Admin approval is required before the truck owner can review your application.');
+  };
+
+  window.adminApproveTruckApplication=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const a=appById(id);if(!a)return alert('Application not found.');
+    if(a.status!=='Pending Admin Approval')return alert('This application is not waiting for admin approval.');
+    backfillOwner(a);
+    if(!a.ownerEmail)return alert('The truck owner could not be matched to this application.');
+    const old={...a}, now=new Date().toISOString();
+    a.status='Pending Owner Review';a.adminApprovedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:a.status,owner_name:a.ownerName,owner_email:a.ownerEmail,job_title:a.jobTitle,job_local_ref:a.jobId,admin_approved_at:now});
+    if(r&&r.error){Object.assign(a,old);return alert('Could not approve application in Supabase: '+r.error.message);}
+    addNote(a.ownerEmail,'Admin approved '+a.driverName+' for your review. Accept or decline from your Trucking page.');
+    addNote(a.driverEmail,'Your application for '+a.jobTitle+' was approved by admin and sent to the truck owner.');
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver application ready for your review',summary:'Admin approved a driver application. Open Trucking to accept or decline.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Driver:a.driverName,Job:a.jobTitle,Status:'Pending Owner Review'}}));}catch(e){console.warn(e);}
+    persistAndRefresh();alert('Application approved and sent to the truck owner.');
+  };
+
+  window.approveTruckApp=async function(id){
+    const a=appById(id);if(!a)return alert('Application not found.');backfillOwner(a);
+    if(currentUser&&currentUser.role==='admin'){
+      if(a.status!=='Pending Final Admin Approval')return alert('Final approval is available only after the driver clicks Agree.');
+      const j=jobForApp(a), oldA={...a}, oldJ=j?{...j}:null, nowIso=new Date().toISOString(), nowText=new Date().toLocaleString();
+      a.status='Hired';a.hiredAt=nowText;
+      if(j){j.status='Filled';j.hiredDriverName=a.driverName;j.hiredDriverEmail=a.driverEmail;j.hiredAt=nowText;}
+      const others=(data.truckApplications||[]).filter(x=>x.id!==a.id&&(sameNonEmptyId(x.jobId,a.jobId)||sameNonEmptyId(x.jobDbId,a.jobDbId))&&!['Declined','Closed','Hired'].includes(x.status));
+      const r=await updateTruckApplicationDb(a,{status:'Hired',hired_at:nowIso});
+      if(r&&r.error){Object.assign(a,oldA);if(j&&oldJ)Object.assign(j,oldJ);return alert('Could not final approve the hire: '+r.error.message);}
+      if(j){const jr=await updateTruckJobDb(j,{status:'Filled',hired_driver_name:a.driverName,hired_driver_email:a.driverEmail,hired_at:nowIso});if(jr&&jr.error)console.warn(jr.error);}
+      for(const other of others){other.status='Closed';other.closedAt=nowText;const or=await updateTruckApplicationDb(other,{status:'Closed',closed_at:nowIso});if(or&&or.error)console.warn(or.error);}
+      addNote(a.driverEmail,'Admin final approved your hire for '+a.jobTitle+'.');addNote(a.ownerEmail,'Admin final approved '+a.driverName+' as hired for '+a.jobTitle+'.');
+      try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck job hire approved',summary:'Admin gave final approval. You are now Hired.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Owner:a.ownerName,Status:'Hired'}}));}catch(e){console.warn(e);}
+      persistAndRefresh();alert('Hire final approved. The selected driver is Hired and the job is closed.');return;
+    }
+    if(!isOwnerOf(a))return alert('Only the truck owner can accept this application.');
+    if(a.status!=='Pending Owner Review')return alert('This application is not waiting for truck owner review.');
+    const old={...a};a.status='Owner Accepted - Waiting Driver Agreement';a.ownerAcceptedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:a.status});if(r&&r.error){Object.assign(a,old);return alert('Could not accept the driver application: '+r.error.message);}
+    addNote(a.driverEmail,'The truck owner accepted your application. Open Home or Trucking and click Agree.');
+    try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck owner accepted your application',summary:'The truck owner accepted your application. Click Agree to continue.',buttonText:'Open Home Page',page:'home',details:{Job:a.jobTitle,Owner:a.ownerName,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    persistAndRefresh();alert('Driver accepted. The driver must now click Agree.');
+  };
+
+  window.declineTruckApp=async function(id){
+    const a=appById(id);if(!a)return alert('Application not found.');backfillOwner(a);
+    if(!(currentUser&&currentUser.role==='admin')&&!isOwnerOf(a))return alert('Only the truck owner can decline this application.');
+    if(['Hired','Closed','Declined'].includes(a.status))return alert('This application is already closed.');
+    const old={...a};a.status='Declined';a.closedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:'Declined',closed_at:new Date().toISOString()});if(r&&r.error){Object.assign(a,old);return alert('Could not decline application: '+r.error.message);}
+    addNote(a.driverEmail,'Your truck driving application for '+a.jobTitle+' was declined.');persistAndRefresh();alert('Application declined.');
+  };
+
+  window.driverAgreeTruckJob=async function(id){
+    const a=appById(id);if(!a)return alert('Application not found.');backfillOwner(a);
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only the accepted driver can agree.');
+    if(a.status==='Pending Final Admin Approval'||a.status==='Hired')return window.viewTruckOwnerInformation(id);
+    if(!['Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement','Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'].includes(a.status))return alert('This application is not waiting for your agreement.');
+    const old={...a};a.status='Pending Final Admin Approval';a.driverAgreedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:a.status,approved_at:new Date().toISOString()});if(r&&r.error){Object.assign(a,old);return alert('Could not save your agreement: '+r.error.message);}
+    addNote(a.ownerEmail,a.driverName+' agreed to the job. Final admin approval is pending.');addNote('admin.habeshaconnect@gmail.com','Final truck hire approval is needed for '+a.driverName+' and '+a.jobTitle+'.');
+    try{await Promise.resolve(sendAdminEmailNotice('Final truck hire approval needed','The accepted driver clicked Agree. Please final approve the hire.',{Job:a.jobTitle,Owner:a.ownerName,Driver:a.driverName,Status:a.status},'admin'));}catch(e){console.warn(e);}
+    persistAndRefresh();alert('Agreement saved. Admin must now give final approval.');
+  };
+
+  window.viewTruckOwnerInformation=function(id){
+    const a=appById(id);if(!a||!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Owner information is not available.');backfillOwner(a);
+    if(!['Pending Final Admin Approval','Hired'].includes(a.status))return alert('Please click Agree first.');
+    const j=jobForApp(a)||{};alert('Truck Owner Information\n\nName: '+(a.ownerName||j.ownerName||'Not provided')+'\nPhone: '+(j.ownerPhone||a.ownerPhone||'Not provided')+'\nEmail: '+(a.ownerEmail||j.ownerEmail||'Not provided'));
+  };
+
+  function ownerPendingApps(){
+    if(!currentUser||currentUser.role!=='truck_owner')return [];
+    return (data.truckApplications||[]).filter(a=>{backfillOwner(a);return a.status==='Pending Owner Review'&&appOwnerEmail(a)===norm(currentUser.email);});
+  }
+  function ownerPanel(){
+    const rows=ownerPendingApps();if(!rows.length)return '';
+    return `<section class="card" id="truckOwnerApplicationActionsV78208" style="margin-top:18px;border:2px solid #f59e0b"><h2>🔔 Driver Applications — Accept or Decline</h2><p class="muted">Admin-approved applications requiring your decision.</p><div class="grid">${rows.map(a=>`<div class="card"><h3>${esc(a.jobTitle||'Truck Driver Job')}</h3><p><b>Driver:</b> ${esc(a.driverName||'Driver')}</p><p><b>Phone:</b> ${esc(a.driverPhone||'Not provided')}</p><p><b>License:</b> ${esc(a.license||'Not provided')}</p><p><b>Experience:</b> ${esc(a.experience||'Not provided')}</p><div class="actions"><button class="btn primary" type="button" onclick="approveTruckApp('${esc(a.id)}')">Accept Driver</button><button class="btn bad" type="button" onclick="declineTruckApp('${esc(a.id)}')">Decline</button></div></div>`).join('')}</div></section>`;
+  }
+  const priorOwnerActions=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){const base=typeof priorOwnerActions==='function'?priorOwnerActions():'';return ownerPanel()+base;};
+  const priorTruck=window.truck;
+  window.truck=async function(){
+    if(typeof loadSupabaseTrucking==='function')try{await loadSupabaseTrucking();}catch(e){console.warn(e);}
+    const out=await priorTruck.apply(this,arguments);
+    if(currentUser&&currentUser.role==='truck_owner'){
+      document.querySelectorAll('#truckOwnerApplicationActions,#truckOwnerApplicationActionsV78208').forEach((el,i)=>{if(i>0)el.remove();});
+      const host=document.getElementById('truck');if(host&&!document.getElementById('truckOwnerApplicationActionsV78208')){const html=ownerPanel();if(html){const intro=host.querySelector('.category-intro');if(intro)intro.insertAdjacentHTML('afterend',html);else host.insertAdjacentHTML('afterbegin',html);}}
+    }
+    return out;
+  };
+  window.__hcVersion='V7.8.209';
 })();
 </script>
