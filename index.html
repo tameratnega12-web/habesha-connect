@@ -5401,33 +5401,6 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.204';
 })();
 </script>
-
-<script id="v78206-restore-owner-driver-application-actions">
-/* V7.8.206 — Restore Truck Owner Accept/Decline cards for admin-approved driver applications. */
-(function(){
-  const sameEmail=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
-  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
-  function pendingDriverApplicationCards(){
-    if(!window.currentUser||currentUser.role!=='truck_owner')return '';
-    const pending=(data.truckApplications||[]).filter(a=>
-      sameEmail(a.ownerEmail,currentUser.email) &&
-      String(a.status||'').trim()==='Pending Owner Review'
-    );
-    if(!pending.length)return '';
-    const cards=pending.map(a=>`<div class="card" style="border:2px solid #f59e0b"><h3>🚚 New Driver Application</h3><p><b>${esc(a.driverName||'Driver')}</b> applied for <b>${esc(a.jobTitle||'your truck job')}</b>.</p><p><b>Phone:</b> ${esc(a.driverPhone||'Not provided')}</p><p><b>License:</b> ${esc(a.license||'Not provided')}</p><p><b>Experience:</b> ${esc(a.experience||'Not provided')}</p><p class="muted">Admin approved this application. Accept or decline it.</p><div class="actions"><button class="btn good" type="button" onclick="approveTruckApp('${esc(a.id)}')">Accept</button><button class="btn bad" type="button" onclick="declineTruckApp('${esc(a.id)}')">Decline</button></div></div>`).join('');
-    return `<section id="truckOwnerPendingDriverApplications" style="margin-top:18px"><div class="card"><h2 style="margin:0">🔔 Driver Applications Waiting for Your Decision</h2><p class="muted">Admin-approved applications that require your response appear here.</p></div><div class="grid">${cards}</div></section>`;
-  }
-
-  const priorOwnerActions=window.truckOwnerHomeActions;
-  window.truckOwnerHomeActions=function(){
-    const base=typeof priorOwnerActions==='function'?priorOwnerActions():'';
-    return base+pendingDriverApplicationCards();
-  };
-
-  window.__hcVersion='V7.8.206';
-})();
-</script>
 </body>
 </html>
 
@@ -5573,55 +5546,3 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.202';
 })();
 </script>
-
-<script id="v78205-remove-completed-truck-trailer-all-parties">
-/* V7.8.205 — Completed truck hires and rented trailers are removed from
-   all non-admin active Home and Trucking views. Admin keeps the records. */
-(function(){
-  const norm=v=>String(v||'').trim().toLowerCase();
-  const isParty=()=>window.currentUser&&['driver','truck_owner'].includes(currentUser.role);
-  const jobDone=s=>['hired','filled','completed','closed','closed - position filled'].includes(norm(s));
-  const appDone=s=>['hired','filled','completed','closed','closed - position filled','declined'].includes(norm(s));
-  const trailerDone=s=>['rented','completed','closed'].includes(norm(s));
-
-  // Remove terminal records from the general Home activity feed.
-  const priorItems=window.personalizedHomeItems;
-  window.personalizedHomeItems=function(){
-    const items=typeof priorItems==='function'?priorItems():[];
-    if(!isParty())return items;
-    return (items||[]).filter(item=>{
-      const title=norm(item&&item.title), status=norm(item&&item.status);
-      if((title.includes('truck job')||title.includes('driver application')) && (jobDone(status)||appDone(status)))return false;
-      if((title.includes('trailer')||title.includes('rental')) && trailerDone(status))return false;
-      return true;
-    });
-  };
-
-  // Generate role-specific Home sections without completed transaction data.
-  function withActiveData(render){
-    if(!isParty()||typeof render!=='function')return typeof render==='function'?render():'';
-    const jobs=data.truckJobs, apps=data.truckApplications, trailers=data.trailerRentals;
-    data.truckJobs=(jobs||[]).filter(x=>!jobDone(x.status));
-    data.truckApplications=(apps||[]).filter(x=>!appDone(x.status));
-    data.trailerRentals=(trailers||[]).filter(x=>!trailerDone(x.status));
-    try{return render();}
-    finally{data.truckJobs=jobs;data.truckApplications=apps;data.trailerRentals=trailers;}
-  }
-
-  const priorDriverActions=window.truckDriverHomeActions;
-  window.truckDriverHomeActions=function(){return withActiveData(()=>typeof priorDriverActions==='function'?priorDriverActions():'');};
-  const priorOwnerActions=window.truckOwnerHomeActions;
-  window.truckOwnerHomeActions=function(){return withActiveData(()=>typeof priorOwnerActions==='function'?priorOwnerActions():'');};
-
-  // Hide completed records from both parties inside the Trucking page.
-  const priorTruck=window.truck;
-  window.truck=function(){
-    if(!isParty()||typeof priorTruck!=='function')return typeof priorTruck==='function'?priorTruck.apply(this,arguments):undefined;
-    const args=arguments, self=this;
-    return withActiveData(()=>priorTruck.apply(self,args));
-  };
-
-  window.__hcVersion='V7.8.205';
-})();
-</script>
-
