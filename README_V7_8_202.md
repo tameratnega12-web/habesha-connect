@@ -1,9 +1,9 @@
 # Habesha Agenagn V7.8.202
 
-## Traveler home shipping request placement
+## Trailer requester Agree button fix
 
-- Shipping Request / Open Shipping cards now appear immediately below Traveler Quick Actions.
-- They appear above the Open Trip and View Requests buttons on desktop and mobile.
-- The duplicate traveler shipping request card was removed from the lower general activity feed.
-- No shipping workflow, approval, email, database, or other category logic was changed.
+- Restores the **Agree** button after a trailer owner accepts a rental request.
+- Works when the requester is a Truck Driver or another Truck Owner.
+- Supports existing accepted trailer records created under earlier status labels.
+- Does not change unrelated trucking, shipping, rental, or marketplace workflows.
 - No SQL is required.
