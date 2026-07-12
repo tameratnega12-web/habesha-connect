@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.213">
+<meta name="app-version" content="V7.8.214">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -1281,7 +1281,7 @@ async function loadSupabaseTrips(){
   data.trips=[...dbTrips,...localOnly];
 }
 
-// V7.8.213 — one canonical shipping status flow used by creation, loading, actions, and focused views.
+// V7.8.214 — one canonical shipping status flow used by creation, loading, actions, and focused views.
 const SHIP_STATUS={
   REQUESTED:'Requested',
   ACCEPTED:'Accepted',
@@ -1407,7 +1407,7 @@ async function loadSupabaseShippingItems(){
   let remote=(rows||[]).map(mapDbShippingItem);
   let preserved=(data.shippingItems||[]).filter(x=>x.source==='shipments_fallback'||(x.source!=='supabase'&&!x.dbId));
   data.shippingItems=[...remote,...preserved];
-  // V7.8.213: each traveler may decline a sender-posted item without closing it for other travelers.
+  // V7.8.214: each traveler may decline a sender-posted item without closing it for other travelers.
   window.shippingItemDeclines=[];
   if(currentUser&&currentUser.email){
     try{
@@ -1475,7 +1475,7 @@ function travelerShippingDashboardCards(){
  return `<div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new traveler trip for senders.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>🧳 My Open Trips</h3><p class="muted">Manage trips you already posted.</p><button class="btn primary" onclick="goTravelerShipSection('trips')">My Open Trips</button></div><div class="card"><h3>📦 Sender Requests</h3><p class="muted">Review requests and update space after accepting.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div><div class="card"><h3>💬 Messages</h3><p class="muted">Chat with senders.</p><button class="btn primary" onclick="show('messages')">Messages</button></div></div>`;
 }
 
-// V7.8.213: sender-posted items are offered to every traveler after Admin approval.
+// V7.8.214: sender-posted items are offered to every traveler after Admin approval.
 function shippingItemRef(it){return String(it?.dbId||it?.id||'');}
 function travelerDeclinedShippingItem(it){
   if(!currentUser||currentUser.role!=='traveler')return false;
@@ -5486,7 +5486,7 @@ async function adminApproveTrailerPayment(id){
 
 
 <script id="v78204-focused-transaction-views">
-// V7.8.213: Home transaction cards open only the matching records/actions.
+// V7.8.214: Home transaction cards open only the matching records/actions.
 function hcResetFocusedPage(rootId){
   const root=document.getElementById(rootId); if(!root)return;
   [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
@@ -5562,7 +5562,7 @@ async function openHomeTransaction(page,encodedTitle){
   await show(page);
 }
 // Focus Shipping quick-action buttons, not only personalized activity cards.
-// V7.8.213: Route each Traveler Shipping button directly to one focused view.
+// V7.8.214: Route each Traveler Shipping button directly to one focused view.
 // Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
 goTravelerShipSection=async function(section){
   travelerShippingView=section||'all';
@@ -5597,7 +5597,7 @@ goRentalSection=async function(section){
 
 
 <script id="v78213-rental-single-flow-cleanup">
-/* V7.8.213 — Rentals returned to the original one-way flow only.
+/* V7.8.214 — Rentals returned to the original one-way flow only.
    Property owner posts -> Admin approves -> seeker requests -> Admin approves -> owner responds -> seeker requests/views owner information.
    Reverse Rental Wanted and property-offer matching are disabled and hidden. */
 (function(){
@@ -5662,6 +5662,111 @@ goRentalSection=async function(section){
   if(typeof oldHome==='function')window.home=function(){const r=oldHome.apply(this,arguments);cleanRentalWantedUi();requestAnimationFrame(cleanRentalWantedUi);return r;};
   const oldAdmin=window.admin;
   if(typeof oldAdmin==='function')window.admin=function(){const r=oldAdmin.apply(this,arguments);cleanRentalWantedUi();requestAnimationFrame(cleanRentalWantedUi);return r;};
+})();
+</script>
+
+
+<script id="v78214-truck-owner-home-cleanup">
+/* V7.8.214 — Truck owner home cleanup.
+   Urgent transactions appear first. Long lists/forms open only from dedicated buttons.
+   Trailer requests use a focused Accept/Decline workspace. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const safe=v=>typeof hcHomeEsc==='function'?hcHomeEsc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const direct=a=>!!a&&(String(a.jobId||'').startsWith('DIRECT-')||String(a.notes||'').startsWith('DIRECT_HIRE:')||a.jobTitle==='Direct Driver Hire Request');
+  const ownerEmail=()=>norm(currentUser&&currentUser.email);
+  const mine=v=>norm(v)===ownerEmail();
+
+  function ownerUrgentCards(){
+    if(!currentUser||currentUser.role!=='truck_owner')return '';
+    const cards=[];
+    (data.truckApplications||[]).filter(a=>mine(a.ownerEmail)).forEach(a=>{
+      if(!direct(a)&&a.status==='Pending Owner Review'){
+        cards.push(`<div class="card" style="border-left:5px solid #d97706"><h3>👤 New Driver Application</h3><p><b>${safe(a.driverName||'Truck Driver')}</b> applied for ${safe(a.jobTitle||'your job')}.</p><p class="muted">Review the application and accept or decline.</p><div class="actions"><button class="btn good" onclick="approveTruckApp('${safe(a.id)}')">Accept</button><button class="btn bad" onclick="declineTruckApp('${safe(a.id)}')">Decline</button></div></div>`);
+      }
+      if(direct(a)&&a.status==='Waiting Owner Agreement'){
+        cards.push(`<div class="card" style="border-left:5px solid #16a34a"><h3>🤝 Driver Accepted Your Hire Request</h3><p><b>${safe(a.driverName||'Truck Driver')}</b></p><p class="muted">Click Agree to see the driver's information.</p><div class="actions"><button class="btn good" onclick="ownerAgreeDirectHire('${safe(a.id)}')">Agree</button></div></div>`);
+      }else if(direct(a)&&['Waiting Driver Agreement','Direct Hire Agreed'].includes(a.status)){
+        cards.push(`<div class="card" style="border-left:5px solid #16a34a"><h3>👤 Direct Hire Agreement</h3><p><b>${safe(a.driverName||'Truck Driver')}</b></p><p class="muted">${a.status==='Waiting Driver Agreement'?'You agreed. Waiting for the driver to agree.':'Both sides agreed. Driver information is available.'}</p><div class="actions"><button class="btn primary" onclick="viewDirectDriverInformation('${safe(a.id)}')">View Driver Information</button></div></div>`);
+      }
+    });
+    (data.trailerRentals||[]).filter(t=>mine(t.ownerEmail)&&t.renterEmail).forEach(t=>{
+      if(t.status==='Pending Owner Review'){
+        cards.push(`<div class="card" style="border-left:5px solid #d97706"><h3>🚚 New Trailer Rental Request</h3><p><b>${safe(t.trailerType||'Trailer')}</b> requested by ${safe(t.renterName||'Renter')}.</p><p class="muted">Accept or decline this request.</p><div class="actions"><button class="btn good" onclick="approveTrailerRental('${safe(t.id)}')">Accept</button><button class="btn bad" onclick="declineTrailerRental('${safe(t.id)}')">Decline</button></div></div>`);
+      }
+    });
+    const matches=(window.communityMatches||[]).filter(r=>r.flow_type==='trailer_needed'&&r.record_type==='match'&&mine(r.initiator_email));
+    matches.filter(r=>['Poster Accepted - Waiting Initiator Agreement','Initiator Agreed - Waiting Poster Agreement','Both Agreed'].includes(r.status)).forEach(r=>{
+      let action='';
+      if(r.status==='Poster Accepted - Waiting Initiator Agreement')action=`<button class="btn good" onclick="cmInitiatorAgree('${safe(r.id)}')">Agree</button>`;
+      else action=`<button class="btn primary" onclick="cmViewContact('${safe(r.id)}','initiator')">View Trailer Owner Information</button>`;
+      cards.push(`<div class="card" style="border-left:5px solid #16a34a"><h3>🚛 Trailer Offer</h3><p><b>${safe(r.title||'Trailer Needed')}</b></p><p class="muted">${safe(r.status)}</p><div class="actions">${action}</div></div>`);
+    });
+    return cards.length?`<section id="truckOwnerUrgentTransactions" style="margin-top:12px"><div class="card"><h2 style="margin:0">🔔 New Trucking Activity</h2><p class="muted">Transactions requiring your attention appear here first.</p></div><div class="grid">${cards.join('')}</div></section>`:'';
+  }
+
+  window.truckOwnerHomeActions=function(){
+    if(!currentUser||currentUser.role!=='truck_owner')return '';
+    return `<section id="truckOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚛 Truck Owner Quick Actions</h2><p class="muted">New activity appears first. Open a button below only when you need that form or list.</p></div>${ownerUrgentCards()}<div class="grid">
+      <div class="card"><h3>🚛 Truck Owner Record</h3><p class="muted">Manage truck, insurance, registration, income, expenses, and maintenance records.</p><button class="btn primary" onclick="goTruckSection('record')">Truck Owner Record</button></div>
+      <div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Post a truck driver hiring job.</p><button class="btn primary" onclick="goTruckSection('postJob')">Post Driver Job</button></div>
+      <div class="card"><h3>👥 Driver Applications</h3><p class="muted">Review applications for your posted jobs.</p><button class="btn primary" onclick="goTruckSection('applications')">See Driver Applications</button></div>
+      <div class="card"><h3>👤 Drivers Available for Hire</h3><p class="muted">Browse driver profiles and send a direct hire request.</p><button class="btn primary" onclick="goTruckSection('driversForHire')">Drivers Available for Hire</button></div>
+      <div class="card"><h3>🚚 Post Trailer for Rent</h3><p class="muted">Post your trailer for admin approval and rental.</p><button class="btn primary" onclick="goTruckSection('postTrailer')">Post Trailer for Rent</button></div>
+      <div class="card"><h3>📨 Trailer Rental Requests</h3><p class="muted">See only requests for trailers you posted and accept or decline them.</p><button class="btn primary" onclick="goTruckSection('trailerRequests')">See Trailer Requests</button></div>
+      <div class="card"><h3>🔎 Available Trailers</h3><p class="muted">Browse approved trailers available to request.</p><button class="btn primary" onclick="goTruckSection('trailers')">Available Trailers</button></div>
+      <div class="card"><h3>📝 Post Trailer Needed</h3><p class="muted">Post the trailer you need. The form opens only after you click.</p><button class="btn primary" onclick="goTruckSection('trailerNeededPost')">Post Trailer Needed</button></div>
+      <div class="card"><h3>🚛 Renters Looking for Trailers</h3><p class="muted">See approved Trailer Needed posts and make an offer.</p><button class="btn primary" onclick="goTruckSection('rentersLooking')">Renters Looking for Trailers</button></div>
+    </div></section>`;
+  };
+
+  function setTruckWorkspace(title,body){
+    const root=document.getElementById('truck');if(!root)return;
+    root.innerHTML=`<h2>🚛 Trucking & Trailer</h2><div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">${safe(title)}</h3><p class="muted" style="margin-bottom:0">Only this selected workspace is shown.</p></div><button class="btn ghost" onclick="show('home')">Back Home</button></div></div>${body}`;
+  }
+  function driverProfilesWorkspace(){
+    const reqs=(data.truckApplications||[]).filter(a=>direct(a)&&mine(a.ownerEmail));
+    const cards=(data.truckDriverProfiles||[]).filter(p=>p.driverEmail&&!mine(p.driverEmail)).map(p=>{
+      const active=reqs.find(a=>norm(a.driverEmail)===norm(p.driverEmail)&&!['Driver Declined','Direct Hire Closed'].includes(a.status));
+      let action=`<button class="btn primary" onclick="requestDirectTruckDriver('${safe(p.driverEmail)}')">Request to Hire</button>`;
+      if(active){
+        if(active.status==='Waiting Owner Agreement')action=`<button class="btn good" onclick="ownerAgreeDirectHire('${safe(active.id)}')">Agree</button>`;
+        else if(['Waiting Driver Agreement','Direct Hire Agreed'].includes(active.status))action=`<button class="btn primary" onclick="viewDirectDriverInformation('${safe(active.id)}')">View Driver Information</button>`;
+        else action=`<span class="pill">${safe(active.status)}</span>`;
+      }
+      return `<div class="card"><h3>👤 ${safe(p.name||p.driverName||'Truck Driver')}</h3><p><b>City:</b> ${safe(p.city||'')}</p><p><b>CDL / License:</b> ${safe(p.license||'')}</p><p><b>Experience:</b> ${safe(p.experience||'')}</p><p><b>Looking For:</b> ${safe(p.looking||'')}</p><p class="muted">${safe(p.notes||'')}</p><p class="small">Phone and email stay hidden until agreement.</p><div class="actions">${action}</div></div>`;
+    }).join('')||'<div class="card"><p>No truck driver profiles are available yet.</p></div>';
+    return `<div class="grid">${cards}</div>`;
+  }
+  function trailerRequestsWorkspace(){
+    const rows=(data.trailerRentals||[]).filter(t=>mine(t.ownerEmail)&&t.renterEmail);
+    const cards=rows.map(t=>{
+      let action='';
+      if(t.status==='Pending Owner Review')action=`<button class="btn good" onclick="approveTrailerRental('${safe(t.id)}')">Accept</button> <button class="btn bad" onclick="declineTrailerRental('${safe(t.id)}')">Decline</button>`;
+      else action=`<span class="pill">${safe(t.status||'')}</span>`;
+      return `<div class="card"><h3>🚚 ${safe(t.trailerType||'Trailer')}</h3><p><b>Requester:</b> ${safe(t.renterName||'')}</p><p><b>Location:</b> ${safe(t.location||'')}</p><p><b>Price:</b> ${safe(t.price||'')}</p><p class="muted">${safe(t.status||'')}</p><div class="actions">${action}</div></div>`;
+    }).join('')||'<div class="card"><p>No trailer rental requests yet.</p></div>';
+    return `<div class="grid">${cards}</div>`;
+  }
+  function trailerNeededPostWorkspace(){
+    return `<div class="card cmFlow"><p class="muted">Admin approves this request before trailer owners can see it.</p><div class="grid"><label>Trailer needed / title<input id="cmTitle_trailer_needed" placeholder="Example: 53-foot dry van needed"></label><label>City / area<input id="cmCity_trailer_needed" placeholder="Atlanta, GA"></label><label>Details<textarea id="cmDetails_trailer_needed" placeholder="Trailer type, dates, budget, route, and other requirements"></textarea></label></div><button class="btn primary" onclick="cmCreatePost('trailer_needed')">Post Trailer Needed</button></div>`;
+  }
+  function rentersLookingWorkspace(){
+    const posts=(window.communityMatches||[]).filter(x=>x.flow_type==='trailer_needed'&&x.record_type==='post'&&x.status==='Approved'&&!mine(x.poster_email));
+    const cards=posts.map(p=>`<div class="card"><h3>🚛 ${safe(p.title||'Trailer Needed')}</h3><p><b>City:</b> ${safe(p.city||'')}</p><p>${safe(p.details||'')}</p><p class="muted">Private contact information is hidden.</p><label>Your trailer offer<textarea id="cmOffer_${safe(p.id)}" placeholder="Describe your trailer, price, location, and availability"></textarea></label><button class="btn primary" onclick="cmSendOffer('${safe(p.id)}')">Offer Trailer</button></div>`).join('')||'<div class="card"><p>No approved Trailer Needed posts are available right now.</p></div>';
+    return `<div class="grid">${cards}</div>`;
+  }
+
+  const previousGo=window.goTruckSection;
+  window.goTruckSection=async function(section){
+    if(section==='driversForHire'){await show('truck');setTruckWorkspace('Drivers Available for Hire',driverProfilesWorkspace());return;}
+    if(section==='trailerRequests'){await show('truck');setTruckWorkspace('Trailer Rental Requests',trailerRequestsWorkspace());return;}
+    if(section==='trailerNeededPost'){await show('truck');setTruckWorkspace('Post Trailer Needed',trailerNeededPostWorkspace());return;}
+    if(section==='rentersLooking'){await show('truck');setTruckWorkspace('Renters Looking for Trailers',rentersLookingWorkspace());return;}
+    return previousGo(section);
+  };
+
+  window.__hcVersion='V7.8.214';
 })();
 </script>
 
