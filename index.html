@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.206">
+<meta name="app-version" content="V7.8.208">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -1236,6 +1236,36 @@ async function loadSupabaseTrips(){
   data.trips=[...dbTrips,...localOnly];
 }
 
+// V7.8.208 — one canonical shipping status flow used by creation, loading, actions, and focused views.
+const SHIP_STATUS={
+  REQUESTED:'Requested',
+  ACCEPTED:'Accepted',
+  PAYMENT_PENDING:'Payment Pending Admin Review',
+  APPROVED:'Approved',
+  READY:'Ready for Delivery',
+  IN_TRANSIT:'In Transit',
+  DELIVERED:'Delivered',
+  COMPLETED:'Completed',
+  DECLINED:'Declined'
+};
+function canonicalShipmentStatus(value){
+  const raw=String(value||'').trim();
+  const key=raw.toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
+  if(!key)return SHIP_STATUS.REQUESTED;
+  if(['requested','request','pending','pending traveler decision','waiting traveler decision','waiting for traveler decision','traveler decision pending'].includes(key))return SHIP_STATUS.REQUESTED;
+  if(['accepted','traveler accepted','accepted by traveler'].includes(key))return SHIP_STATUS.ACCEPTED;
+  if(['payment pending admin review','pending payment approval','waiting admin payment approval','paid pending admin review'].includes(key))return SHIP_STATUS.PAYMENT_PENDING;
+  if(['approved','payment approved'].includes(key))return SHIP_STATUS.APPROVED;
+  if(['ready for delivery','ready'].includes(key))return SHIP_STATUS.READY;
+  if(['in transit','transit'].includes(key))return SHIP_STATUS.IN_TRANSIT;
+  if(['delivered'].includes(key))return SHIP_STATUS.DELIVERED;
+  if(['completed','complete'].includes(key))return SHIP_STATUS.COMPLETED;
+  if(['declined','rejected','cancelled','canceled'].includes(key))return SHIP_STATUS.DECLINED;
+  return raw;
+}
+function shipmentNeedsTravelerDecision(s){return canonicalShipmentStatus(s&&s.status)===SHIP_STATUS.REQUESTED;}
+function shipmentIsActiveForTraveler(s){return ![SHIP_STATUS.DELIVERED,SHIP_STATUS.COMPLETED,SHIP_STATUS.DECLINED].includes(canonicalShipmentStatus(s&&s.status));}
+
 function mapDbShipment(row){
   let sender=row.sender||row.sender_profile||{};
   let traveler=row.traveler||row.traveler_profile||{};
@@ -1250,7 +1280,7 @@ function mapDbShipment(row){
     toCity:to,
     weight:Number(row.weight_lb||0),
     fee:Number(row.weight_lb||0)*settings().shippingRatePerLb,
-    status:row.status||'Requested',
+    status:canonicalShipmentStatus(row.status),
     tracking:row.tracking_number||('HC-'+String(sid).slice(0,6)),
     packagePhotos:row.package_photo?[row.package_photo]:[],
     sender:sender.name||row.sender_name||'Sender',
@@ -1313,7 +1343,7 @@ async function loadSupabaseShipments(){
   const normalRows=(rows||[]).filter(row=>!isShippingItemFallbackRow(row));
   let dbShips=normalRows.map(mapDbShipment);
   let localOnly=(data.shipments||[]).filter(x=>x.source!=='supabase'&&!x.dbId);
-  data.shipments=[...dbShips,...localOnly];
+  data.shipments=[...dbShips,...localOnly].map(x=>{x.status=canonicalShipmentStatus(x.status);return x;});
   const fallbackItems=fallbackRows.map(mapShipmentFallbackToShippingItem);
   const otherItems=(data.shippingItems||[]).filter(x=>x.source!=='shipments_fallback');
   data.shippingItems=[...fallbackItems,...otherItems];
@@ -1401,11 +1431,11 @@ async function shipping(){
  let senderItemBox = ((role==='sender'||role==='customer')) ? `<section id="senderPostItem" class="card"><h3>Post Item to Ship</h3><p class="muted">Post your item even when no traveler trip is available yet. You can post U.S. to Ethiopia or Ethiopia to U.S.</p>${routeSelects('itemShip')}<label>Needed By Date</label><input id="itemNeededBy" type="date" min="${addDaysIso(0)}"><label>Item Description</label><textarea id="itemDesc" placeholder="Example: clothes, documents, small box"></textarea><label>Weight lb</label><input id="itemWeight" type="number" min="1" value="25"><label>Sender Phone</label><input id="itemSenderPhone" inputmode="numeric" placeholder="4045551234" value="${(currentUser&&currentUser.phone)||''}"><label>Receiver Name</label><input id="itemReceiver" placeholder="Receiver full name"><label>Receiver Phone</label><input id="itemReceiverPhone" inputmode="numeric" placeholder="251911123456"><label>Notes</label><textarea id="itemNotes" placeholder="Pickup details or special notes"></textarea><button class="btn primary" onclick="submitShippingItem()">Submit Item to Admin</button></section>` : '';
  let shipFilter=($('shipSearch')&&$('shipSearch').value||'').toLowerCase();
  let visibleTrips=data.trips.filter(t=>{let openForBooking=role==='admin'||isTripBookable(t);let matches=!shipFilter||String(t.route||'').toLowerCase().includes(shipFilter)||String(t.travelDate||'').includes(shipFilter)||String(t.fromCity||'').toLowerCase().includes(shipFilter)||String(t.toCity||'').toLowerCase().includes(shipFilter);return openForBooking&&matches;}).sort(activeTripSort);
- let terminalStatuses=['Delivered','Completed'];
+ let terminalStatuses=[SHIP_STATUS.DELIVERED,SHIP_STATUS.COMPLETED];
  let shipments=data.shipments.filter(s=>{
    if(role==='admin')return true;
    // V7.8.185: once Admin marks a shipment delivered, close it from both Sender and Traveler dashboards.
-   if(terminalStatuses.includes(s.status||''))return false;
+   if(terminalStatuses.includes(canonicalShipmentStatus(s.status)))return false;
    if(!currentUser)return true;
    if(role==='traveler')return (String(s.travelerId||'')===String(currentUser.id||'') || (s.travelerEmail&&s.travelerEmail===currentUser.email));
    if(role==='sender'||role==='customer')return (String(s.senderId||'')===String(currentUser.id||'') || (s.senderEmail&&s.senderEmail===currentUser.email));
@@ -1423,9 +1453,9 @@ async function shipping(){
  }
  let searchBox=`<div class="card" id="shippingSearchPanel"><h3>Search Filters</h3><label>Search route, city, or date</label><input id="shipSearch" value="${shipFilter}" oninput="shipping()" placeholder="Atlanta, Addis Ababa, 2026-07"><button class="btn ghost" onclick="$('shipSearch').value='';shipping()">Show All</button></div>`;
  let availableTripsHtml=`<section id="shippingAvailableTrips"><h3>Available Traveler Trips</h3><div class="list">${visibleTrips.map(t=>tripCard(t,role)).join('')||'<div class="item">No traveler trips posted yet.</div>'}</div></section>`;
- let travelerDecisionRequests=shipments.filter(s=>s.status==='Waiting Traveler Decision');
- let travelerDecisionHtml=(role==='traveler'&&travelerDecisionRequests.length)?`<section id="travelerDecisionRequests" class="card" style="border:2px solid #f59e0b"><h3>Sender Requests Waiting for Your Decision</h3><p class="muted">Admin approved the sender payment. Accept or decline each request.</p><div class="list">${travelerDecisionRequests.map(s=>shipCard(s,role)).join('')}</div></section>`:'';
- let otherShipments=(role==='traveler')?shipments.filter(s=>s.status!=='Waiting Traveler Decision'):shipments;
+ let travelerDecisionRequests=shipments.filter(shipmentNeedsTravelerDecision);
+ let travelerDecisionHtml=(role==='traveler')?`<section id="travelerDecisionRequests" class="card" style="border:2px solid #f59e0b"><h3>Sender Requests Waiting for Your Decision</h3><p class="muted">Review each new sender request and use Accept or Decline. Payment follows only after acceptance.</p><div class="list">${travelerDecisionRequests.map(s=>shipCard(s,role)).join('')||'<div class="item">No new sender requests are waiting for your decision.</div>'}</div></section>`:'';
+ let otherShipments=(role==='traveler')?shipments.filter(s=>!shipmentNeedsTravelerDecision(s)):shipments;
  let shipmentRequestsHtml=`<section id="travelerShipRequests"><h3>Shipment Requests</h3><div class="list">${otherShipments.map(s=>shipCard(s,role)).join('')||'<div class="item">No shipment requests yet.</div>'}</div></section>`;
  let shippingItemsHtml=`<section id="shippingItemRequests"><h3>${role==='traveler'?'Available Items to Ship':(role==='admin'?'Sender Posted Items':'My Posted Items')}</h3><div class="list">${shippingItems.map(it=>shippingItemCard(it,role)).join('')||'<div class="item">No posted shipping items yet.</div>'}</div></section>`;
  let shippingDash=categoryDashboard('Shipping Dashboard','Choose what you want to do in Shipping.',[categoryButton('🔍 Find Traveler Trips','shippingAvailableTrips',true),(role==='sender'||role==='customer')?categoryButton('📦 Post Item to Ship','senderPostItem',false):'',categoryButton('📋 Posted Items','shippingItemRequests',false),categoryButton('📦 Shipment Requests','travelerShipRequests',false), role==='traveler'?categoryButton('✈️ Post Trip','travelerPostTrip',false):(!currentUser?signInButton('Sign In to Ship'):'' )]);
@@ -1459,7 +1489,9 @@ function tripCard(t,role){
  let showTripPhone=role==='admin'||(currentUser&&t.travelerEmail===currentUser.email);return `<div class="item"><div class="item-head"><b>${t.id} ${t.route}</b><span class="pill good">${t.availableSpace} lb available</span></div><p><b>Traveler:</b> ${t.traveler} ${verifiedBadge(t.travelerVerified)}</p><p><b>Phone:</b> ${showTripPhone?(t.travelerPhone||'Not entered'):'Shown after admin approval'} • <b>Date:</b> ${t.travelDate||'Ask traveler'}</p><p><b>Status:</b> <span class="pill ${String(t.status||'Open').includes('Pending')?'warn':(String(t.status||'Open')==='Declined'?'bad':'good')}">${t.status||'Open'}</span></p><p><b>Original space:</b> ${t.totalSpace} lb • <b>Remaining:</b> ${t.availableSpace} lb</p>${role==='admin'?`<p><b>Trip listing fee:</b> ${t.listingFeePaid?'<span class="pill good">Paid '+money(t.listingFeeAmount)+'</span>':'<span class="pill warn">Not paid</span>'} ${t.listingFeeRefunded?'<span class="pill good">Refunded in payout</span>':''}</p>`:''}<div class="actions">${request}${ownerActions}</div></div>`;
 }
 function shipCard(s,role){
- let statusClass=['Paid','Payment Pending Admin Review','Approved','Ready for Delivery'].includes(s.status)?'good':(s.status==='Declined'?'bad':'warn');
+ const shipStatus=canonicalShipmentStatus(s.status);
+ s.status=shipStatus;
+ let statusClass=['Paid',SHIP_STATUS.PAYMENT_PENDING,SHIP_STATUS.APPROVED,SHIP_STATUS.READY].includes(shipStatus)?'good':(shipStatus===SHIP_STATUS.DECLINED?'bad':'warn');
  let photos=(s.packagePhotos||[]).map(x=>`<span class="photoThumb">📷 ${x}</span>`).join('')||'<span class="small">No package photo yet</span>';
  let relatedTripForPayout=s.tripId?data.trips.find(t=>String(t.id)===String(s.tripId)):null;
  let refundEligible=relatedTripForPayout&&relatedTripForPayout.listingFeePaid&&!relatedTripForPayout.listingFeeRefunded;
@@ -1472,7 +1504,7 @@ function shipCard(s,role){
  let relatedTrip=s.tripId?data.trips.find(t=>String(t.id)===String(s.tripId)||String(t.dbId)===String(s.tripId)):null;let tripSpace=relatedTrip?`<p><b>Traveler space:</b> Original ${relatedTrip.totalSpace} lb • Remaining ${relatedTrip.availableSpace} lb</p>`:'';let senderCanSeeTraveler=['Approved','Ready for Delivery','In Transit'].includes(s.status||'') && !s.travelerPaid;let senderInfo = `<p><b>Tracking:</b> ${s.tracking||''}</p><div class="photoStrip">${photos}</div><p><b>Weight:</b> ${s.weight} lb ${s.paid?'<span class="pill good">✅ Agreement Confirmed</span>':''}</p>${verifiedBadge(s.senderVerified)} ${s.travelerEmail&&senderCanSeeTraveler?contactLine('Traveler',s.traveler,s.travelerPhone,'')+verifiedBadge(s.travelerVerified)+tripSpace:(s.travelerEmail?'<p class="muted">Traveler contact will show after admin approves payment.</p>':'')}`;
  let info = role==='admin' ? adminInfo : (role==='traveler' ? travelerInfo : senderInfo);
  let actions='';
- if(role==='traveler') actions=(s.status==='Waiting Traveler Decision'?`<button class="btn primary" onclick="acceptShip('${s.id}')">Accept</button><button class="btn bad" onclick="declineShip('${s.id}')">Decline</button>`:'')+`<button class="btn ghost" onclick="reviewUser('${s.senderEmail}','sender')">Review Sender</button>`;
+ if(role==='traveler') actions=(shipmentNeedsTravelerDecision(s)?`<button class="btn primary" type="button" onclick="acceptShip('${s.id}')">Accept</button><button class="btn bad" type="button" onclick="declineShip('${s.id}')">Decline</button>`:'')+`<button class="btn ghost" type="button" onclick="reviewUser('${s.senderEmail}','sender')">Review Sender</button>`;
  else if(role==='admin') actions=`<button class="btn primary" onclick="approveShipment('${s.id}')">Approve Payment</button><button class="btn ghost" onclick="markDelivered('${s.id}')">Mark Delivered</button><button class="btn ghost" onclick="payTraveler('${s.id}')">Pay Traveler</button><button class="btn bad" onclick="declineShip('${s.id}')">Decline</button>`;
  else actions=`${s.paid?'<button class="btn ghost" disabled>Payment sent - waiting for approval/decision</button>':(['Requested','Accepted'].includes(s.status)?`<button class="btn primary" onclick="payShipment('${s.id}')">Confirm Agreement / Payment</button>`:'<button class="btn ghost" disabled>Waiting for the next step</button>')}<button class="btn ghost" onclick="reviewUser('${s.travelerEmail||''}','traveler')">Review Traveler</button>`;
  return `<div class="item"><div class="item-head"><b>${s.id} ${s.route}</b><span class="pill ${statusClass}">${s.status}</span></div>${info}<div class="actions">${actions}</div></div>`;
@@ -1506,7 +1538,7 @@ async function requestTrip(id){
  if(!confirm(confirmMsg))return;
  const tracking='HC-'+Date.now().toString().slice(-6);
  if(authReady()&&currentUser.id&&t.dbId){
-   const payload={tracking_number:tracking,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),weight_lb:w,sender_name:senderName,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc,paid:false,status:'Requested'};
+   const payload={tracking_number:tracking,sender_id:currentUser.id,traveler_id:t.travelerId||null,trip_id:t.dbId,from_city:t.fromCity||((t.route||'').split('→')[0]||'Atlanta, GA').trim(),to_city:t.toCity||((t.route||'').split('→')[1]||'Addis Ababa').trim(),weight_lb:w,sender_name:senderName,sender_phone:senderPhone,receiver_name:receiver,receiver_phone:receiverPhone,package_description:desc,paid:false,status:SHIP_STATUS.REQUESTED};
    if(!payload.traveler_id)return alert('This trip is missing traveler_id. Please refresh the page and try again.');
    let inserted=await hcSupabase.from('shipments').insert(payload).select('*').single();
    if(inserted.error){const msg=String(inserted.error.message||'');if(msg.toLowerCase().includes('sender_name')||msg.toLowerCase().includes('sender_phone')||msg.toLowerCase().includes('package_description'))return alert('Supabase is missing sender shipment/package columns. Please run the latest Supabase SQL for this project, then try again.');return alert('Could not save request to Supabase: '+inserted.error.message);}
@@ -1519,7 +1551,7 @@ async function requestTrip(id){
    save();await loadSupabaseShipments();alert('Your request was entered correctly and submitted.');show('shipping');return;
  }
  let sid='S'+Date.now().toString().slice(-5);
- data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:'Requested',tracking:'HC-'+sid,packagePhotos:[],sender:senderName,senderPhone:senderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:receiver,receiverPhone:receiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
+ data.shipments.unshift({id:sid,route:t.route,weight:w,fee:w*settings().shippingRatePerLb,status:SHIP_STATUS.REQUESTED,tracking:'HC-'+sid,packagePhotos:[],sender:senderName,senderPhone:senderPhone,senderEmail:currentUser.email,senderId:currentUser.id||'',senderVerified:!!currentUser.verified,receiver:receiver,receiverPhone:receiverPhone,traveler:t.traveler,travelerPhone:t.travelerPhone,travelerEmail:t.travelerEmail,travelerId:t.travelerId||'',travelerVerified:t.travelerVerified,tripId:t.id,appFee:w*settings().appCommissionPerLb,paid:false,paymentStatus:'Unpaid'});
  addNote(t.travelerEmail,'New '+w+' lb space request from '+senderName+'.');addNote(currentUser.email,'Space request sent to '+t.traveler+'.');sendAdminEmailNotice('Sender requested luggage space','A sender requested traveler luggage space.',{Sender:senderName,SenderEmail:currentUser.email,Traveler:t.traveler,TravelerEmail:t.travelerEmail,Weight:w+' lb',Route:t.route},'admin');sendEmailNotice({to:t.travelerEmail,name:t.traveler,subject:'Someone requested your luggage space',summary:'A sender requested luggage space on your trip. Please open your Traveler Dashboard to review or accept the request.',buttonText:'Open Traveler Dashboard',page:'shipping',details:{Sender:senderName,SenderEmail:currentUser.email,Route:t.route,Weight:w+' lb',Receiver:receiver,Tracking:'HC-'+sid}});save();alert('Your request was entered correctly and submitted.');shipping()}
 
 
@@ -1605,22 +1637,22 @@ function addShipment(){
 }
 
 
-async function payShipment(id){if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;if(currentUser.role!=='admin'&&s.senderEmail!==currentUser.email&&String(s.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can pay for this shipment.');if(!['Requested','Accepted'].includes(s.status)&&currentUser.role!=='admin')return alert('This request is not ready for payment.');if(s.paid){alert('Agreement already sent. Waiting for admin approval.');shipping();return;}pay('Shipping',s.weight*settings().shippingRatePerLb,'Shipment '+s.id+' agreement');if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({paid:true,status:'Payment Pending Admin Review'}).eq('id',s.dbId);if(error)alert('Payment recorded locally, but Supabase update failed: '+error.message);}s.paid=true;s.paymentStatus='Paid';s.status='Payment Pending Admin Review';addNote('admin.habeshaconnect@gmail.com','Sender paid for shipment '+s.id+' tracking '+(s.tracking||'')+'. Admin approval is needed.');sendAdminEmailNotice('Payment requires admin approval','A shipping transaction/payment requires admin approval.',{Sender:s.sender||currentUser.name,Email:s.senderEmail||currentUser.email,Tracking:s.tracking||s.id,Amount:money(s.weight*settings().shippingRatePerLb)},'admin');addNote(s.senderEmail||currentUser.email,'Agreement confirmed. Waiting for admin approval.');save();shipping()}
+async function payShipment(id){if(!requireLogin())return;let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!s)return;if(currentUser.role!=='admin'&&s.senderEmail!==currentUser.email&&String(s.senderId||'')!==String(currentUser.id||''))return alert('Only the sender can pay for this shipment.');if(canonicalShipmentStatus(s.status)!==SHIP_STATUS.ACCEPTED&&currentUser.role!=='admin')return alert('Please wait for the traveler to accept this request before confirming payment.');if(s.paid){alert('Agreement already sent. Waiting for admin approval.');shipping();return;}pay('Shipping',s.weight*settings().shippingRatePerLb,'Shipment '+s.id+' agreement');if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({paid:true,status:'Payment Pending Admin Review'}).eq('id',s.dbId);if(error)alert('Payment recorded locally, but Supabase update failed: '+error.message);}s.paid=true;s.paymentStatus='Paid';s.status='Payment Pending Admin Review';addNote('admin.habeshaconnect@gmail.com','Sender paid for shipment '+s.id+' tracking '+(s.tracking||'')+'. Admin approval is needed.');sendAdminEmailNotice('Payment requires admin approval','A shipping transaction/payment requires admin approval.',{Sender:s.sender||currentUser.name,Email:s.senderEmail||currentUser.email,Tracking:s.tracking||s.id,Amount:money(s.weight*settings().shippingRatePerLb)},'admin');addNote(s.senderEmail||currentUser.email,'Agreement confirmed. Waiting for admin approval.');save();shipping()}
 async function acceptShip(id){
  if(!requireLogin())return;let s=data.shipments.find(x=>x.id===id);if(!s)return;
  if(currentUser.role!=='admin'&&s.travelerEmail&&s.travelerEmail!==currentUser.email&&String(s.travelerId||'')!==String(currentUser.id||''))return alert('This request belongs to another traveler.');
- if(s.status!=='Waiting Traveler Decision')return alert('This request is not waiting for your decision.');
+ if(!shipmentNeedsTravelerDecision(s))return alert('This request is not waiting for your decision.');
  let t=s.tripId?data.trips.find(x=>String(x.id)===String(s.tripId)||String(x.dbId)===String(s.tripId)):null;
  if(t&&!s.spaceDeducted&&s.weight>t.availableSpace)return alert('Not enough space left. Remaining: '+t.availableSpace+' lb');
  let oldTrip=t?{availableSpace:t.availableSpace,status:t.status}:null;
  if(t&&!s.spaceDeducted){t.availableSpace=Math.max(0,Number(t.availableSpace||0)-Number(s.weight||0));t.status=t.availableSpace===0?'Full':'Open';s.spaceDeducted=true;}
- if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Approved'}).eq('id',s.dbId);if(error){if(t&&oldTrip)Object.assign(t,oldTrip);s.spaceDeducted=false;return alert('Could not accept request: '+error.message);}}
+ if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:SHIP_STATUS.ACCEPTED}).eq('id',s.dbId);if(error){if(t&&oldTrip)Object.assign(t,oldTrip);s.spaceDeducted=false;return alert('Could not accept request: '+error.message);}}
  if(authReady()&&t&&t.dbId){let {error}=await hcSupabase.from('trips').update({remaining_space_lb:t.availableSpace,status:t.status}).eq('id',t.dbId);if(error)return alert('Request accepted, but trip space update failed: '+error.message);}
- s.status='Approved';s.traveler=currentUser.name;s.travelerPhone=currentUser.phone||'';s.travelerEmail=currentUser.email;s.travelerVerified=!!currentUser.verified;
- addNote(s.senderEmail||'all','Your paid shipment request was accepted by '+currentUser.name+'. The shipment is approved.');
- if(s.senderEmail)sendEmailNotice({to:s.senderEmail,name:s.sender||'Sender',subject:'Traveler accepted your paid shipping request',summary:'The traveler accepted your request after admin approved payment. The shipment is now approved.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Traveler:currentUser.name,Weight:(s.weight||0)+' lb',Status:'Approved'}});
+ s.status=SHIP_STATUS.ACCEPTED;s.traveler=currentUser.name;s.travelerPhone=currentUser.phone||'';s.travelerEmail=currentUser.email;s.travelerVerified=!!currentUser.verified;
+ addNote(s.senderEmail||'all','Your shipping request was accepted by '+currentUser.name+'. Please confirm agreement/payment next.');
+ if(s.senderEmail)sendEmailNotice({to:s.senderEmail,name:s.sender||'Sender',subject:'Traveler accepted your shipping request',summary:'The traveler accepted your request. Please open Shipping and confirm the agreement/payment next.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Traveler:currentUser.name,Weight:(s.weight||0)+' lb',Status:'Accepted'}});
  save();shipping()}
-async function declineShip(id){let s=data.shipments.find(x=>x.id===id);if(!s)return;if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Declined'}).eq('id',s.dbId);if(error)return alert('Could not decline request: '+error.message);}s.status='Declined';addNote(s.senderEmail||'all','Your shipment request was declined.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping request rejected',summary:'Your shipment request was declined.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Declined'}});save();shipping()}
+async function declineShip(id){let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));if(!s)return;if(currentUser?.role==='traveler'){if(s.travelerEmail&&cleanEmail(s.travelerEmail)!==cleanEmail(currentUser.email)&&String(s.travelerId||'')!==String(currentUser.id||''))return alert('This request belongs to another traveler.');if(!shipmentNeedsTravelerDecision(s))return alert('This request is not waiting for your decision.');}if(authReady()&&s.dbId){let {error}=await hcSupabase.from('shipments').update({status:'Declined'}).eq('id',s.dbId);if(error)return alert('Could not decline request: '+error.message);}s.status='Declined';addNote(s.senderEmail||'all','Your shipment request was declined.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping request rejected',summary:'Your shipment request was declined.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Declined'}});save();shipping()}
 function reviewUser(email,type){if(!requireLogin())return;if(!email)return alert('No user assigned yet to review.');let rating=prompt('Rating 1-5:','5');if(rating===null)return;let text=prompt('Write a short review:','Good service');data.reviews.unshift({type,target:email,from:currentUser.email,rating:+rating||5,text:text||'',time:new Date().toLocaleString()});addNote(email,'You received a new rating/review.');save();}
 
 function mapDbRental(row){
@@ -3482,12 +3514,12 @@ async function approveShipment(id){
   let s=data.shipments.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
   if(!s)return alert('Shipment not found.');
   let old={status:s.status,paid:s.paid,paymentStatus:s.paymentStatus,spaceDeducted:s.spaceDeducted};
-  s.status='Waiting Traveler Decision';s.paid=true;s.paymentStatus='Paid';
+  s.status='Approved';s.paid=true;s.paymentStatus='Paid';
   let res={error:null};
-  if(authReady()&&s.dbId){res=await hcSupabase.from('shipments').update({status:'Waiting Traveler Decision',paid:true}).eq('id',s.dbId);}
+  if(authReady()&&s.dbId){res=await hcSupabase.from('shipments').update({status:'Approved',paid:true}).eq('id',s.dbId);}
   if(res.error){Object.assign(s,old);return alert('Could not approve shipment payment in Supabase: '+res.error.message)}
-  addNote(s.senderEmail||'all','Admin approved your payment for shipment '+(s.tracking||id)+'. Waiting for the traveler to accept or decline.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping payment approved',summary:'Admin approved your payment. The request is now waiting for the traveler to accept or decline.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Waiting Traveler Decision'}});
-  if(s.travelerEmail){addNote(s.travelerEmail,'A paid shipment request '+(s.tracking||id)+' is waiting for your accept or decline decision.');sendEmailNotice({to:s.travelerEmail,name:s.traveler,subject:'Paid shipping request needs your decision',summary:'Admin approved the sender payment. Open your Traveler Shipping dashboard and accept or decline the request.',buttonText:'Review Shipping Request',page:'shipping',details:{Tracking:s.tracking||id,Sender:s.sender,Weight:(s.weight||0)+' lb',Status:'Waiting Traveler Decision'}});}
+  addNote(s.senderEmail||'all','Admin approved your payment for shipment '+(s.tracking||id)+'. The shipment is approved.');sendEmailNotice({to:s.senderEmail,name:s.sender,subject:'Shipping payment approved',summary:'Admin approved your payment. The shipment is now approved.',buttonText:'Open Shipping Dashboard',page:'shipping',details:{Tracking:s.tracking||id,Status:'Approved'}});
+  if(s.travelerEmail){addNote(s.travelerEmail,'Payment was approved for shipment '+(s.tracking||id)+'. The shipment is ready for the next delivery step.');sendEmailNotice({to:s.travelerEmail,name:s.traveler,subject:'Shipping payment approved',summary:'Admin approved the sender payment. The shipment is now approved for delivery.',buttonText:'Open Shipping Request',page:'shipping',details:{Tracking:s.tracking||id,Sender:s.sender,Weight:(s.weight||0)+' lb',Status:'Approved'}});}
   persistOnly(); await refreshAdminData(); adminSuccess();
 }
 async function markDelivered(id){
@@ -5504,7 +5536,7 @@ async function adminApproveTrailerPayment(id){
 
 
 <script id="v78204-focused-transaction-views">
-// V7.8.206: Home transaction cards open only the matching records/actions.
+// V7.8.208: Home transaction cards open only the matching records/actions.
 function hcResetFocusedPage(rootId){
   const root=document.getElementById(rootId); if(!root)return;
   [...root.children].forEach(el=>{if(el.dataset.hcFocusHidden==='1'){el.style.display='';delete el.dataset.hcFocusHidden;}});
@@ -5580,7 +5612,7 @@ async function openHomeTransaction(page,encodedTitle){
   await show(page);
 }
 // Focus Shipping quick-action buttons, not only personalized activity cards.
-// V7.8.206: Route each Traveler Shipping button directly to one focused view.
+// V7.8.208: Route each Traveler Shipping button directly to one focused view.
 // Do not call the older scrolling wrapper because it can leave the Open Trip form visible.
 goTravelerShipSection=async function(section){
   travelerShippingView=section||'all';
