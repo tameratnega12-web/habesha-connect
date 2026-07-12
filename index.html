@@ -5401,6 +5401,33 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.204';
 })();
 </script>
+
+<script id="v78206-restore-owner-driver-application-actions">
+/* V7.8.206 — Restore Truck Owner Accept/Decline cards for admin-approved driver applications. */
+(function(){
+  const sameEmail=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  function pendingDriverApplicationCards(){
+    if(!window.currentUser||currentUser.role!=='truck_owner')return '';
+    const pending=(data.truckApplications||[]).filter(a=>
+      sameEmail(a.ownerEmail,currentUser.email) &&
+      String(a.status||'').trim()==='Pending Owner Review'
+    );
+    if(!pending.length)return '';
+    const cards=pending.map(a=>`<div class="card" style="border:2px solid #f59e0b"><h3>🚚 New Driver Application</h3><p><b>${esc(a.driverName||'Driver')}</b> applied for <b>${esc(a.jobTitle||'your truck job')}</b>.</p><p><b>Phone:</b> ${esc(a.driverPhone||'Not provided')}</p><p><b>License:</b> ${esc(a.license||'Not provided')}</p><p><b>Experience:</b> ${esc(a.experience||'Not provided')}</p><p class="muted">Admin approved this application. Accept or decline it.</p><div class="actions"><button class="btn good" type="button" onclick="approveTruckApp('${esc(a.id)}')">Accept</button><button class="btn bad" type="button" onclick="declineTruckApp('${esc(a.id)}')">Decline</button></div></div>`).join('');
+    return `<section id="truckOwnerPendingDriverApplications" style="margin-top:18px"><div class="card"><h2 style="margin:0">🔔 Driver Applications Waiting for Your Decision</h2><p class="muted">Admin-approved applications that require your response appear here.</p></div><div class="grid">${cards}</div></section>`;
+  }
+
+  const priorOwnerActions=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    const base=typeof priorOwnerActions==='function'?priorOwnerActions():'';
+    return base+pendingDriverApplicationCards();
+  };
+
+  window.__hcVersion='V7.8.206';
+})();
+</script>
 </body>
 </html>
 
