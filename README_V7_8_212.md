@@ -1,8 +1,9 @@
 # Habesha Agenagn V7.8.212
 
-Rent seeker home-page layout update:
-- Rental Quick Actions is at the top.
-- New Rental Available / Open Rentals appears inside that section.
-- Rental offers, agreements, and owner-information actions appear there.
-- Post What You Need form opens only after clicking Post Rental Wanted.
-- No database or workflow changes.
+Taxi/Limo final recheck fix only.
+
+- Fixed Taxi/Limo assignment database status mapping for `Closed`.
+- Prevents old duplicate hire requests from returning as `Waiting Driver Acceptance` after another hire is approved.
+- Based on V7.8.211.
+- No SQL change required.
+- No other category was changed.

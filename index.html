@@ -2714,6 +2714,7 @@ function taxiAssignmentDbStatus(s){
   if(s==='Approved')return 'approved';
   if(s==='Driver Declined')return 'driver_declined';
   if(s==='Declined')return 'declined';
+  if(s==='Closed')return 'closed';
   if(s==='Ended')return 'ended';
   return 'waiting_driver_acceptance';
 }
@@ -5845,3 +5846,116 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.210';
 })();
 </script>
+
+<script id="v78211-taxi-limo-full-flow-audit-fix">
+/* V7.8.211 — Taxi/Limo flow consolidation only.
+   Keeps the current owner -> driver acceptance -> final admin approval flow active,
+   normalizes Taxi/Limo identity matching, and disables the obsolete direct-hire handler. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function sid(v){return String(v==null?'':v).trim();}
+  function sameEmail(a,b){return !!norm(a)&&norm(a)===norm(b);}
+  function byId(list,id){const key=sid(id);return (list||[]).find(x=>sid(x.id)===key||sid(x.dbId)===key);}
+  function prepareTaxiData(){
+    (data.taxiLimoOwners||[]).forEach(o=>{o.ownerEmail=norm(o.ownerEmail);o.id=sid(o.id);if(o.dbId!=null)o.dbId=sid(o.dbId);});
+    (data.taxiLimoVehicles||[]).forEach(v=>{v.ownerEmail=norm(v.ownerEmail);v.id=sid(v.id);if(v.dbId!=null)v.dbId=sid(v.dbId);v.ownerId=sid(v.ownerId);});
+    (data.taxiDriverApps||[]).forEach(d=>{d.email=norm(d.email);d.ownerEmail=norm(d.ownerEmail);d.id=sid(d.id);if(d.dbId!=null)d.dbId=sid(d.dbId);d.assignedVehicleId=sid(d.assignedVehicleId);});
+    (data.taxiLimoDriverAssignments||[]).forEach(a=>{a.ownerEmail=norm(a.ownerEmail);a.driverEmail=norm(a.driverEmail);a.id=sid(a.id);if(a.dbId!=null)a.dbId=sid(a.dbId);a.ownerId=sid(a.ownerId);a.vehicleId=sid(a.vehicleId);});
+    (data.taxiRideRequests||[]).forEach(r=>{r.riderEmail=norm(r.riderEmail);r.driverEmail=norm(r.driverEmail);r.id=sid(r.id);if(r.dbId!=null)r.dbId=sid(r.dbId);r.declinedBy=(r.declinedBy||[]).map(norm).filter(Boolean);});
+  }
+
+  const priorTaxiRenderOnly=window.taxiRenderOnly;
+  window.taxiRenderOnly=function(){prepareTaxiData();return priorTaxiRenderOnly.apply(this,arguments);};
+
+  window.findTaxiOwner=function(email){prepareTaxiData();return (data.taxiLimoOwners||[]).find(o=>sameEmail(o.ownerEmail,email));};
+  window.findTaxiVehicle=function(id){prepareTaxiData();return byId(data.taxiLimoVehicles,id);};
+  window.findTaxiApp=function(email){prepareTaxiData();return (data.taxiDriverApps||[]).find(a=>sameEmail(a.email,email)&&a.status==='Approved');};
+  window.findTaxiRide=function(id){prepareTaxiData();return byId(data.taxiRideRequests,id);};
+
+  window.assignTaxiDriverToVehicle=async function(){
+    prepareTaxiData();
+    if(!currentUser||currentUser.role!=='taxi_limo_owner')return alert('Taxi/Limo owner only.');
+    const owner=findTaxiOwner(currentUser.email);
+    if(!owner||owner.status!=='Approved')return alert('Admin must approve your Taxi/Limo owner application first.');
+    const driverEmail=norm(document.getElementById('taxiAssignDriver')?.value);
+    const vehicleId=sid(document.getElementById('taxiAssignVehicle')?.value);
+    if(!driverEmail||!vehicleId)return alert('Choose an approved driver and an approved vehicle.');
+    const d=(data.taxiDriverApps||[]).find(a=>sameEmail(a.email,driverEmail)&&a.status==='Approved'&&!norm(a.ownerEmail));
+    const v=findTaxiVehicle(vehicleId);
+    if(!d||!v)return alert('Driver or vehicle was not found.');
+    if(!sameEmail(v.ownerEmail,currentUser.email)||v.status!=='Approved')return alert('Choose one of your approved Taxi/Limo vehicles.');
+    const existing=(data.taxiLimoDriverAssignments||[]).find(x=>sameEmail(x.driverEmail,driverEmail)&&['Waiting Driver Acceptance','Pending Admin Approval','Approved'].includes(x.status));
+    if(existing)return alert('This driver already has an active hire request or job.');
+    const a={id:'TLA'+Date.now().toString().slice(-6),ownerId:owner.dbId||owner.id,ownerName:owner.ownerName,ownerEmail:norm(owner.ownerEmail),driverName:d.name,driverEmail:norm(d.email),vehicleId:v.dbId||v.id,vehicleLabel:`${v.year||''} ${v.make||''} ${v.model||''} - ${v.plate||''}`.trim(),status:'Waiting Driver Acceptance',createdAt:new Date().toLocaleString()};
+    const res=await insertTaxiAssignmentDb(a);
+    if(res.error)return alert('Hire request was not saved to Supabase. Please run the Taxi/Limo SQL, then try again. '+res.error.message);
+    if(res.data){a.id=sid(res.data.id);a.dbId=sid(res.data.id);}
+    data.taxiLimoDriverAssignments.unshift(a);
+    addNote(d.email,'Taxi/Limo owner wants to hire you: '+(owner.companyName||owner.ownerName)+' / '+a.vehicleLabel);
+    sendEmailNotice({to:d.email,name:d.name,subject:'Taxi/Limo owner hire request',summary:'A taxi/limo owner wants to hire you. Please accept or decline in your Taxi/Limo dashboard.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Owner:owner.ownerName,Company:owner.companyName,Vehicle:a.vehicleLabel,Status:a.status}});
+    persistOnly();
+    fireAndForget(loadSupabaseTaxiLimo(),'taxi/limo assignment refresh');
+    alert('Hire request sent to the driver. If the driver accepts, admin will approve the connection.');
+    taxi();
+  };
+
+  window.taxiDriverAcceptHire=async function(id){
+    prepareTaxiData();const a=byId(data.taxiLimoDriverAssignments,id);
+    if(!a)return alert('Hire request not found.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only this driver can accept the hire request.');
+    if(a.status!=='Waiting Driver Acceptance')return alert('This hire request is not waiting for driver acceptance.');
+    const res=await updateTaxiAssignmentDb(a,{status:'Pending Admin Approval',driver_responded_at:new Date().toISOString()});
+    if(res.error)return alert('Could not accept hire request: '+res.error.message);
+    a.status='Pending Admin Approval';a.driverAcceptedAt=new Date().toLocaleString();
+    addNote(a.ownerEmail,'Taxi/Limo driver accepted your hire request. Waiting for admin approval: '+a.driverName);
+    sendAdminEmailNotice('Taxi/Limo hire request accepted - waiting admin approval','A taxi/limo driver accepted an owner hire request. Admin approval is now required before they are connected.',{Owner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Vehicle:a.vehicleLabel},'admin');
+    persistOnly();fireAndForget(loadSupabaseTaxiLimo(),'taxi/limo hire refresh');alert('You accepted the hire request. Admin approval is now required.');taxi();
+  };
+
+  window.taxiDriverDeclineHire=async function(id){
+    prepareTaxiData();const a=byId(data.taxiLimoDriverAssignments,id);
+    if(!a)return alert('Hire request not found.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only this driver can decline the hire request.');
+    if(a.status!=='Waiting Driver Acceptance')return alert('This hire request is not waiting for driver acceptance.');
+    const res=await updateTaxiAssignmentDb(a,{status:'Driver Declined',driver_responded_at:new Date().toISOString()});
+    if(res.error)return alert('Could not decline hire request: '+res.error.message);
+    a.status='Driver Declined';a.driverDeclinedAt=new Date().toLocaleString();
+    addNote(a.ownerEmail,'Taxi/Limo driver declined your hire request: '+a.driverName);
+    sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Taxi/Limo driver declined hire request',summary:'The driver declined your hire request.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Driver:a.driverName,Vehicle:a.vehicleLabel,Status:a.status}});
+    persistOnly();fireAndForget(loadSupabaseTaxiLimo(),'taxi/limo hire refresh');alert('You declined the hire request.');taxi();
+  };
+
+  window.adminApproveTaxiAssignment=async function(id){
+    prepareTaxiData();const a=byId(data.taxiLimoDriverAssignments,id);
+    if(!a)return alert('Hire request not found.');
+    if(a.status!=='Pending Admin Approval')return alert('This hire request is not waiting for final admin approval.');
+    const d=(data.taxiDriverApps||[]).find(x=>sameEmail(x.email,a.driverEmail));
+    if(!d)return alert('Driver profile was not found.');
+    const res=await updateTaxiAssignmentDb(a,{status:'Approved',hired_at:new Date().toISOString()});
+    if(res.error)return alert('Could not approve hire: '+res.error.message);
+    const dr=await updateTaxiDriverDb(d,{ownerEmail:a.ownerEmail,assignedVehicleId:a.vehicleId,assignedVehicle:a.vehicleLabel,availabilityStatus:'Hired'});
+    if(dr.error){await updateTaxiAssignmentDb(a,{status:'Pending Admin Approval'});return alert('Driver availability was not updated, so the hire was not completed: '+dr.error.message);}
+    a.status='Approved';a.hiredAt=new Date().toLocaleString();d.ownerEmail=a.ownerEmail;d.assignedVehicleId=a.vehicleId;d.assignedVehicle=a.vehicleLabel;d.availabilityStatus='Hired';
+    (data.taxiLimoDriverAssignments||[]).filter(x=>x.id!==a.id&&sameEmail(x.driverEmail,a.driverEmail)&&['Waiting Driver Acceptance','Pending Admin Approval'].includes(x.status)).forEach(x=>{x.status='Closed';fireAndForget(updateTaxiAssignmentDb(x,{status:'Closed'}),'close duplicate taxi hire request');});
+    addNote(a.ownerEmail,'Taxi/Limo hire connection approved by admin: '+a.driverName);addNote(a.driverEmail,'Your Taxi/Limo hire connection was approved by admin. Vehicle: '+a.vehicleLabel);
+    persistOnly();fireAndForget(loadSupabaseTaxiLimo(),'taxi/limo admin refresh');adminSuccess();
+  };
+
+  // Obsolete V7.8.71-era direct-hire entry point: keep compatibility but route it through the current request flow.
+  window.ownerAssignTaxiDriver=function(driverEmail){
+    prepareTaxiData();
+    if(!currentUser||currentUser.role!=='taxi_limo_owner')return alert('Taxi/Limo owner only.');
+    const driverSelect=document.getElementById('taxiAssignDriver');
+    const vehicleSelect=document.getElementById('taxiAssignVehicle');
+    if(!driverSelect||!vehicleSelect)return alert('Open Post Driver Job, choose the driver and vehicle, then send the hire request.');
+    driverSelect.value=norm(driverEmail);
+    return assignTaxiDriverToVehicle();
+  };
+
+  const priorLoad=window.loadSupabaseTaxiLimo;
+  if(typeof priorLoad==='function')window.loadSupabaseTaxiLimo=async function(){const out=await priorLoad.apply(this,arguments);prepareTaxiData();return out;};
+  prepareTaxiData();
+  window.__hcVersion='V7.8.212';
+})();
+</script>
+
