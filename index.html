@@ -4963,13 +4963,20 @@ async function adminApproveTrailerPayment(id){
     addNote(a.ownerEmail,a.driverName+' agreed to the truck driver job.');
     try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver agreed to your truck job',summary:'The accepted driver agreed to the job. Your contact information is now available to the driver.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Driver:a.driverName,DriverEmail:a.driverEmail,Status:'Driver Agreed'}}));}catch(e){console.warn(e);}
     try{await Promise.resolve(sendAdminEmailNotice('Truck driver agreed','The accepted truck driver clicked Agree. Truck owner contact information was released to the driver.',{Job:a.jobTitle,Owner:a.ownerName,Driver:a.driverName,Status:'Driver Agreed'},'admin'));}catch(e){console.warn(e);}
-    persistOnly(); home();
-    contactAlert(a.ownerName,j.ownerPhone||a.ownerPhone,a.ownerEmail,'Truck Owner Information');
+    persistOnly();
+    const ownerName=a.ownerName||j.ownerName||'Not provided';
+    const ownerPhone=j.ownerPhone||a.ownerPhone||j.phone||'Not provided';
+    const ownerEmail=a.ownerEmail||j.ownerEmail||'Not provided';
+    contactAlert(ownerName,ownerPhone,ownerEmail,'Truck Owner Information');
+    try{home();}catch(e){console.warn('Home refresh after truck driver agreement failed',e);}
   };
 
   window.viewTruckOwnerInformation=function(id){
-    const a=appById(id); if(!a||!currentUser||!sameEmail(a.driverEmail,currentUser.email)||a.status!=='Driver Agreed')return alert('Owner information is not available.');
-    const j=jobForApp(a)||{}; contactAlert(a.ownerName,j.ownerPhone||a.ownerPhone,a.ownerEmail,'Truck Owner Information');
+    const a=appById(id);
+    if(!a||!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Owner information is not available.');
+    if(a.status!=='Driver Agreed')return alert('Please click Agree first.');
+    const j=jobForApp(a)||{};
+    contactAlert(a.ownerName||j.ownerName,j.ownerPhone||a.ownerPhone||j.phone,a.ownerEmail||j.ownerEmail,'Truck Owner Information');
   };
 
   window.approveTrailerRental=async function(id){
