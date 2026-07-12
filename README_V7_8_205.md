@@ -1,9 +1,19 @@
 # Habesha Agenagn V7.8.205
 
-## Completed Truck Job and Trailer Rental Cleanup
+## Trucking flow fix only
 
-- After Admin final-approves a truck hire, the Filled/Hired job and its completed applications are removed from the Truck Owner and Truck Driver Home pages and Trucking active views.
-- After a trailer reaches Rented, that trailer transaction is removed from the trailer owner and requester Home pages and Trucking active views.
-- Pending, accepted, agreement, and final-admin-action transactions continue to appear normally.
-- Admin retains completed records for management and audit purposes.
-- No SQL is required.
+Corrected the active trucking job application flow using V7.8.204 as the base:
+
+1. Truck owner posts a driver job.
+2. Admin approves the job and it becomes Open.
+3. Driver applies.
+4. The application stays Pending Admin Approval.
+5. Admin approves the application.
+6. The application becomes Pending Owner Review and appears for the correct truck owner.
+7. Truck owner accepts or declines.
+8. If accepted, the driver clicks Agree.
+9. Admin gives final approval and the driver becomes Hired; the job is removed from available jobs.
+
+The fix supersedes an older trucking handler that was bypassing Admin and sending applications directly to the owner.
+
+No non-trucking module was changed. No SQL is required.

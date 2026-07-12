@@ -5546,3 +5546,60 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.202';
 })();
 </script>
+
+<script id="v78205-trucking-admin-owner-flow-fix">
+/* V7.8.205 — Targeted trucking-only fix.
+   Restores the intended flow: driver applies -> admin approves -> truck owner reviews.
+   This supersedes the older direct-to-owner apply handler without changing other modules. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>norm(a)===norm(b);
+  const appById=id=>(data.truckApplications||[]).find(a=>String(a.id)===String(id)||String(a.dbId||'')===String(id));
+  const jobById=id=>(data.truckJobs||[]).find(j=>String(j.id)===String(id)||String(j.dbId||'')===String(id));
+
+  window.applyTruckJob=async function(id){
+    if(!requireLogin())return;
+    if(currentUser.role!=='driver')return alert('Only truck drivers can apply for truck driving jobs.');
+    const j=jobById(id);
+    if(!j)return alert('Job not found.');
+    if(j.status!=='Open')return alert('This job is waiting for admin approval or is closed.');
+    const duplicate=(data.truckApplications||[]).some(a=>(String(a.jobId)===String(j.id)||String(a.jobDbId||'')===String(j.dbId||''))&&sameEmail(a.driverEmail,currentUser.email)&&!['Declined','Closed','Closed - Position Filled'].includes(a.status));
+    if(duplicate)return alert('You already applied for this job.');
+    const p=(data.truckDriverProfiles||[]).find(x=>sameEmail(x.driverEmail,currentUser.email))||{};
+    if(!p.license||!p.experience)return alert('Please complete your Driver Job Profile before applying.');
+
+    const app={id:'TA'+Date.now().toString().slice(-6),jobId:j.id,jobDbId:j.dbId||'',jobTitle:j.title,ownerName:j.ownerName,ownerEmail:j.ownerEmail,driverName:p.name||currentUser.name,driverEmail:currentUser.email,driverPhone:p.phone||currentUser.phone||'',city:p.city||'',license:p.license||'',experience:p.experience||'',looking:p.looking||'',notes:p.notes||'',status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+    const res=await syncTruckApplicationToSupabase(app,j);
+    if(res&&res.error)return alert('Application was not sent to Admin. Please run the trucking Supabase migration, then try again. '+res.error.message);
+    data.truckApplications.unshift(app);
+    addNote(currentUser.email,'Application submitted for '+j.title+'. Admin approval is required before the truck owner can review it.');
+    addNote('admin.habeshaconnect@gmail.com','Driver application waiting for approval: '+app.driverName+' applied for '+j.title+'.');
+    try{await Promise.resolve(sendAdminEmailNotice('New Truck Driver Application','A truck driver submitted a job application for admin approval.',{Driver:app.driverName,DriverEmail:app.driverEmail,Job:j.title,Owner:j.ownerName,OwnerEmail:j.ownerEmail},'admin'));}catch(e){console.warn(e);}
+    persistOnly();
+    alert('Applied. Admin approval is required before the truck owner can see and review your application.');
+    truck();
+  };
+
+  window.adminApproveTruckApplication=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const a=appById(id);
+    if(!a)return alert('Application not found.');
+    if(a.status!=='Pending Admin Approval')return alert('This application is not waiting for admin approval.');
+    const old={...a};
+    a.status='Pending Owner Review';
+    a.adminApprovedAt=new Date().toLocaleString();
+    const now=new Date().toISOString();
+    const r=await updateTruckApplicationDb(a,{status:'Pending Owner Review',admin_approved_at:now});
+    if(r&&r.error){Object.assign(a,old);return alert('Could not approve application in Supabase: '+r.error.message);}
+    addNote(a.ownerEmail,'Driver application approved by admin for your review: '+a.driverName+' applied for '+a.jobTitle+'.');
+    addNote(a.driverEmail,'Your application for '+a.jobTitle+' was approved by admin and sent to the truck owner.');
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Truck application approved for your review',summary:'Admin approved a driver application. Open your Trucking dashboard to accept or decline it.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Driver:a.driverName,DriverEmail:a.driverEmail,Job:a.jobTitle,Status:'Pending Owner Review'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck application approved',summary:'Your truck application was approved by admin and sent to the truck owner.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Status:'Pending Owner Review'}}));}catch(e){console.warn(e);}
+    persistOnly();
+    if(typeof adminSuccess==='function')adminSuccess();
+    alert('Application approved and sent to the truck owner.');
+  };
+
+  window.__hcVersion='V7.8.205';
+})();
+</script>
