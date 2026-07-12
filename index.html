@@ -5345,3 +5345,44 @@ async function adminApproveTrailerPayment(id){
 
 </body>
 </html>
+
+<script id="v78200-trailer-owner-accept-decline-fix">
+/* V7.8.200 — Restore trailer owner Accept/Decline controls for Pending Owner Review requests. */
+(function(){
+  function sameEmail(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  const previousOwnerActions=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    let base=typeof previousOwnerActions==='function'?previousOwnerActions():'';
+    if(!currentUser)return base;
+    const pending=(data.trailerRentals||[]).filter(t=>sameEmail(t.ownerEmail,currentUser.email)&&t.status==='Pending Owner Review'&&t.renterEmail);
+    if(!pending.length)return base;
+    const cards=pending.map(t=>`<div class="card" style="border:2px solid #f59e0b"><h3>🚚 New Trailer Rental Request</h3><p><b>${esc(t.trailerType||'Trailer')}</b> • ${esc(t.location||'')}</p><p><b>Requester:</b> ${esc(t.renterName||'Truck driver/owner')}</p><p><b>Phone:</b> ${esc(t.renterPhone||'Not provided')}</p><p class="muted">Accept or decline this trailer rental request.</p><div class="actions"><button class="btn good" type="button" onclick="approveTrailerRental('${esc(t.id)}')">Accept</button><button class="btn bad" type="button" onclick="declineTrailerRental('${esc(t.id)}')">Decline</button></div></div>`).join('');
+    return base+`<section class="card" style="margin-top:18px"><h2>🔔 Trailer Requests Waiting for Your Decision</h2><div class="grid">${cards}</div></section>`;
+  };
+
+  const previousTruck=window.truck;
+  window.truck=function(){
+    const result=previousTruck.apply(this,arguments);
+    setTimeout(()=>{
+      if(!currentUser||currentUser.role!=='truck_owner')return;
+      const table=document.getElementById('trailerRentalsTable')?.nextElementSibling;
+      if(!table)return;
+      const rows=table.querySelectorAll('tbody tr, tr');
+      rows.forEach(row=>{
+        const text=row.textContent||'';
+        if(!/Pending Owner Review/i.test(text))return;
+        const cells=row.querySelectorAll('td');
+        if(!cells.length)return;
+        const actionCell=cells[cells.length-1];
+        const item=(data.trailerRentals||[]).find(t=>sameEmail(t.ownerEmail,currentUser.email)&&t.status==='Pending Owner Review'&&text.includes(String(t.trailerType||''))&&text.includes(String(t.renterName||'')));
+        if(item)actionCell.innerHTML=`<button class="btn good" type="button" onclick="approveTrailerRental('${esc(item.id)}')">Accept</button> <button class="btn bad" type="button" onclick="declineTrailerRental('${esc(item.id)}')">Decline</button>`;
+      });
+    },0);
+    return result;
+  };
+
+  window.__hcVersion='V7.8.200';
+})();
+</script>
