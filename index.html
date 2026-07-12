@@ -5219,5 +5219,109 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.197';
 })();
 </script>
+
+<script id="v78198-truck-driver-final-admin-approval">
+/* V7.8.198 — Truck hiring completion flow.
+   Owner accepts -> Driver agrees -> Admin final approves -> Hired. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const appById=id=>(data.truckApplications||[]).find(a=>String(a.id)===String(id)||String(a.dbId||'')===String(id));
+  const jobForApp=a=>(data.truckJobs||[]).find(j=>String(j.id)===String(a.jobId)||String(j.dbId||'')===String(a.jobDbId));
+
+  window.driverAgreeTruckJob=async function(id){
+    const a=appById(id); if(!a)return alert('Application not found.');
+    if(!currentUser||norm(a.driverEmail)!==norm(currentUser.email))return alert('Only the accepted driver can agree.');
+    if(a.status!=='Owner Accepted - Waiting Driver Agreement')return alert('This application is not waiting for your agreement.');
+    const old={...a};
+    a.status='Pending Final Admin Approval';
+    a.driverAgreedAt=new Date().toLocaleString();
+    const now=new Date().toISOString();
+    const r=await updateTruckApplicationDb(a,{status:a.status,approved_at:now});
+    if(r&&r.error){Object.assign(a,old);return alert('Could not save your agreement: '+r.error.message);}
+    const j=jobForApp(a)||{};
+    addNote(a.ownerEmail,(a.driverName||'Driver')+' agreed to the truck driver job. Final admin approval is pending.');
+    addNote('admin.habeshaconnect@gmail.com','Final truck hire approval needed: '+(a.driverName||'Driver')+' agreed to '+(a.jobTitle||'the job')+'.');
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Driver agreed — final admin approval pending',summary:'The accepted driver agreed to your truck job. Admin must now give final approval before the application becomes Hired.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Driver:a.driverName,DriverEmail:a.driverEmail,Status:'Pending Final Admin Approval'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Final truck hire approval needed','The accepted truck driver clicked Agree. Please open Admin and select Final Approve Hire.',{Job:a.jobTitle,Owner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:'Pending Final Admin Approval'},'admin'));}catch(e){console.warn(e);}
+    persistOnly();
+    const ownerName=a.ownerName||j.ownerName||'Not provided';
+    const ownerPhone=j.ownerPhone||a.ownerPhone||j.phone||'Not provided';
+    const ownerEmail=a.ownerEmail||j.ownerEmail||'Not provided';
+    contactAlert(ownerName,ownerPhone,ownerEmail,'Truck Owner Information');
+    try{home();}catch(e){console.warn('Home refresh after truck driver agreement failed',e);}
+  };
+
+  window.viewTruckOwnerInformation=function(id){
+    const a=appById(id);
+    if(!a||!currentUser||norm(a.driverEmail)!==norm(currentUser.email))return alert('Owner information is not available.');
+    if(!['Pending Final Admin Approval','Hired'].includes(a.status))return alert('Please click Agree first.');
+    const j=jobForApp(a)||{};
+    contactAlert(a.ownerName||j.ownerName,j.ownerPhone||a.ownerPhone||j.phone,a.ownerEmail||j.ownerEmail,'Truck Owner Information');
+  };
+
+  window.approveTruckApp=async function(id){
+    const a=appById(id); if(!a)return alert('Application not found.');
+    const isAdmin=currentUser&&currentUser.role==='admin';
+    const isOwner=currentUser&&norm(a.ownerEmail)===norm(currentUser.email);
+
+    if(isAdmin){
+      if(a.status!=='Pending Final Admin Approval')return alert('Final approval is available only after the driver clicks Agree.');
+      const j=jobForApp(a);
+      const oldA={...a}, oldJ=j?{...j}:null;
+      const nowIso=new Date().toISOString(), nowText=new Date().toLocaleString();
+      a.status='Hired'; a.hiredAt=nowText;
+      if(j){j.status='Filled';j.hiredDriverName=a.driverName;j.hiredDriverEmail=a.driverEmail;j.hiredAt=nowText;}
+      const others=(data.truckApplications||[]).filter(x=>String(x.jobId)===String(a.jobId)&&x.id!==a.id&&!['Declined','Closed','Hired'].includes(x.status));
+      const oldOthers=others.map(x=>({x,status:x.status,closedAt:x.closedAt}));
+      others.forEach(x=>{x.status='Closed';x.closedAt=nowText;});
+
+      const r=await updateTruckApplicationDb(a,{status:'Hired',hired_at:nowIso});
+      if(r&&r.error){Object.assign(a,oldA);if(j&&oldJ)Object.assign(j,oldJ);oldOthers.forEach(o=>{o.x.status=o.status;o.x.closedAt=o.closedAt;});return alert('Could not final approve the hire: '+r.error.message);}
+      if(j){const jr=await updateTruckJobDb(j,{status:'Filled',hired_driver_name:a.driverName,hired_driver_email:a.driverEmail,hired_at:nowIso});if(jr&&jr.error)console.warn('Truck job filled sync failed',jr.error);}
+      for(const other of others){
+        const or=await updateTruckApplicationDb(other,{status:'Closed',closed_at:nowIso});
+        if(or&&or.error)console.warn('Could not close another truck application',other.id,or.error);
+        try{await Promise.resolve(sendEmailNotice({to:other.driverEmail,name:other.driverName,subject:'Truck job position filled',summary:'The truck owner selected another driver and the position is now filled.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:other.jobTitle,Status:'Closed'}}));}catch(e){console.warn(e);}
+      }
+      addNote(a.driverEmail,'Admin final approved your truck driving hire for '+a.jobTitle+'.');
+      addNote(a.ownerEmail,'Admin final approved '+a.driverName+' as hired for '+a.jobTitle+'.');
+      try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck job hire approved',summary:'Admin gave final approval. You are now marked Hired for this truck driving job.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Owner:a.ownerName,Status:'Hired'}}));}catch(e){console.warn(e);}
+      try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Truck driver hire approved',summary:'Admin gave final approval for your selected driver.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Driver:a.driverName,Job:a.jobTitle,Status:'Hired'}}));}catch(e){console.warn(e);}
+      persistOnly();
+      if(typeof adminSuccess==='function')adminSuccess(); else if(typeof admin==='function')admin();
+      alert('Hire final approved. The selected driver is Hired and the other applications were closed.');
+      return;
+    }
+
+    if(!isOwner)return alert('Only the truck owner can accept this application.');
+    if(a.status!=='Pending Owner Review')return alert('This application is not waiting for truck owner review.');
+    const old={...a};
+    a.status='Owner Accepted - Waiting Driver Agreement';
+    a.ownerAcceptedAt=new Date().toLocaleString();
+    const r=await updateTruckApplicationDb(a,{status:a.status});
+    if(r&&r.error){Object.assign(a,old);return alert('Could not accept the driver application: '+r.error.message);}
+    addNote(a.driverEmail,'The truck owner accepted your application. Open your home page and click Agree.');
+    addNote('admin.habeshaconnect@gmail.com','Truck owner accepted '+a.driverName+' for '+a.jobTitle+'. Waiting for driver agreement.');
+    try{await Promise.resolve(sendEmailNotice({to:a.driverEmail,name:a.driverName,subject:'Truck owner accepted your application',summary:'The truck owner accepted your application. Open your home page and click Agree.',buttonText:'Open Home Page',page:'home',details:{Job:a.jobTitle,Owner:a.ownerName,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Truck owner accepted driver application','A truck owner accepted a driver application. The driver must now click Agree.',{Job:a.jobTitle,TruckOwner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Status:a.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly();
+    alert('Driver accepted. The driver must now click Agree.');
+    truck();
+  };
+
+  const oldDriverHomeActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    let html=typeof oldDriverHomeActions==='function'?oldDriverHomeActions():'';
+    if(!currentUser||currentUser.role!=='driver')return html;
+    const waiting=(data.truckApplications||[]).filter(a=>norm(a.driverEmail)===norm(currentUser.email)&&a.status==='Pending Final Admin Approval');
+    if(!waiting.length)return html;
+    const cards=waiting.map(a=>`<div class="card" style="border:2px solid #f59e0b"><h3>⏳ Final Admin Approval Pending</h3><p><b>${String(a.jobTitle||'Truck Driver Job')}</b></p><p class="muted">You agreed to this job. Admin must give final approval before the status becomes Hired.</p><button class="btn primary" type="button" onclick="viewTruckOwnerInformation('${String(a.id)}')">View Owner Information</button></div>`).join('');
+    return html+`<section style="margin-top:18px"><div class="grid">${cards}</div></section>`;
+  };
+
+  window.__hcVersion='V7.8.198';
+})();
+</script>
+
 </body>
 </html>
