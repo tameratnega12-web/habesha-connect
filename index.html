@@ -5386,3 +5386,55 @@ async function adminApproveTrailerPayment(id){
   window.__hcVersion='V7.8.200';
 })();
 </script>
+
+<script id="v78201-remove-agreed-transaction-buttons">
+/* V7.8.201 — After the driver/renter agrees, remove all Home-page buttons
+   for that specific truck job or trailer rental transaction. History remains in Trucking. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+
+  const priorItems=window.personalizedHomeItems;
+  window.personalizedHomeItems=function(){
+    const items=typeof priorItems==='function'?priorItems():[];
+    if(!window.currentUser||!['driver','truck_owner'].includes(currentUser.role))return items;
+    return (items||[]).filter(item=>{
+      const title=norm(item&&item.title);
+      const status=norm(item&&item.status);
+      // Once a driver agrees, the transaction waits for Admin with no Home action button.
+      if(status==='pending final admin approval' &&
+         (title==='truck job application'||title==='new driver application'||title==='my truck job')) return false;
+      // Once the trailer renter agrees, no Home action button should remain.
+      if(status==='renter agreed' &&
+         (title.includes('trailer')||title.includes('rental'))) return false;
+      return true;
+    });
+  };
+
+  function removeAgreedButtons(html){
+    if(!html)return html;
+    const template=document.createElement('template');
+    template.innerHTML=html;
+    template.content.querySelectorAll('.card').forEach(card=>{
+      const text=norm(card.textContent);
+      const agreedJob=text.includes('final admin approval pending')||text.includes('truck job agreed');
+      const agreedTrailer=text.includes('trailer rental agreed');
+      if(agreedJob||agreedTrailer){
+        card.querySelectorAll('button,.actions').forEach(el=>el.remove());
+      }
+    });
+    return template.innerHTML;
+  }
+
+  const priorDriverActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    return removeAgreedButtons(typeof priorDriverActions==='function'?priorDriverActions():'');
+  };
+
+  const priorOwnerActions=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    return removeAgreedButtons(typeof priorOwnerActions==='function'?priorOwnerActions():'');
+  };
+
+  window.__hcVersion='V7.8.201';
+})();
+</script>

@@ -1,21 +1,14 @@
-# Habesha Agenagn V7.8.201 — Supabase Sign-In Restoration
+# Habesha Agenagn V7.8.201
 
-## Fix included
+## Trucking agreement Home-page cleanup
 
-- Restored the correct public Supabase Project URL and browser-safe publishable key in `js/supabase-config.js`.
-- Restored Supabase authentication for Admin and all existing user accounts.
-- Updated the application version marker to V7.8.201.
-- Preserved all category workflows and the V7.8.200 security cleanup.
+After the driver agrees to an accepted truck job:
+- The specific transaction no longer shows Open Trucking, View Owner Information, or other action buttons on either Home page.
+- The driver may still see a status-only Final Admin Approval Pending card.
+- Admin final approval and the Hired/Filled workflow remain unchanged.
 
-## Deployment
+After the driver or truck owner agrees to an accepted trailer rental:
+- The specific transaction no longer shows View Trailer Owner Information or any other Home-page action button.
+- The record remains available inside the Trucking/Trailer history.
 
-1. Upload the full V7.8.201 project to GitHub.
-2. Wait for Vercel deployment to finish.
-3. Hard-refresh the website or open it in a private/incognito window.
-4. Test Admin sign-in first, then one normal user account.
-
-## SQL
-
-No additional SQL is required for V7.8.201. If the V7.8.200 security SQL was already run, do not run it again for this sign-in correction.
-
-Never place a Supabase secret/service-role key in browser code.
+No SQL is required.
