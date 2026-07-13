@@ -3030,7 +3030,15 @@ function bmProfileRecords(){return businessRecords().filter(b=>b.recordType==='b
 function bmPublicProfiles(){return bmProfileRecords().filter(b=>bmNormalizeStatus(b.status)==='Approved'||(currentUser&&currentUser.role==='admin'));}
 function bmCustomerProfiles(){return bmProfileRecords().filter(b=>bmNormalizeStatus(b.status)==='Approved');}
 function bmPendingProfiles(){return bmProfileRecords().filter(b=>bmNormalizeStatus(b.status)==='Pending Admin Approval');}
-function bmMyProfile(){if(!currentUser)return null;return bmProfileRecords().find(b=>(b.ownerEmail||b.owner_email||b.createdBy||'').toLowerCase()===(currentUser.email||'').toLowerCase())||null}
+function bmMyProfiles(){if(!currentUser)return [];let email=(currentUser.email||'').trim().toLowerCase();return bmProfileRecords().filter(b=>(b.ownerEmail||b.owner_email||b.createdBy||'').trim().toLowerCase()===email)}
+function bmMyProfile(){return bmMyProfiles()[0]||null}
+function bmProfileKey(b){return String((b&&(b.dbId||b.id))||'')}
+function bmSelectedProfileKey(){try{return new URL(location.href).searchParams.get('business')||''}catch(e){return ''}}
+function bmFindProfileByKey(key){key=String(key||'');return bmProfileRecords().find(b=>String(b.dbId||'')===key||String(b.id||'')===key)||null}
+function bmBusinessProfileUrl(b){let u=new URL(location.href);u.search='';u.searchParams.set('business',bmProfileKey(b));u.hash='business';return u.toString()}
+async function openBusinessProfile(key){let u=new URL(location.href);u.search='';u.searchParams.set('business',String(key||''));u.hash='business';history.pushState({page:'business'},'',u.toString());await show('business',false)}
+async function backToBusinessDirectory(){let u=new URL(location.href);u.searchParams.delete('business');u.hash='business';history.pushState({page:'business'},'',u.toString());await show('business',false)}
+async function copyBusinessProfileLink(key){let b=bmFindProfileByKey(key);if(!b)return alert('Business profile not found.');let link=bmBusinessProfileUrl(b);try{await navigator.clipboard.writeText(link);alert('Unique business profile link copied.');}catch(e){prompt('Copy this unique business profile link:',link)}}
 function mapBusinessRecordFromDb(row){
   let d=row.details||{};
   let rowStatus=bmNormalizeStatus(row.status||'Pending Admin Approval');
@@ -3055,12 +3063,13 @@ async function loadBusinessFromSupabase(options){
     data.businesses=[...remote,...localOnly];
     businessDirectoryLoadedAt=Date.now();
     persistOnly();
-    // Business page: refresh only the public list so phone dropdowns do not close.
-    if(currentPage==='business' && $('businessList')){
+    // Business page: refresh the exact shared profile, or only the public list so phone inputs do not close.
+    if(currentPage==='business' && bmSelectedProfileKey()){
+      business();
+    }else if(currentPage==='business' && $('businessList')){
       filterBusinessDirectory();
-      let my=bmMyProfile();
       let holder=$('businessOwnerPanel');
-      if(holder)holder.innerHTML=businessOwnerPanel(my);
+      if(holder)holder.innerHTML=businessOwnerPanel();
     }
     // Admin page: rebuild after pending profiles load so approvals appear.
     if(currentPage==='admin' && !adminBackgroundRefreshing && $('admin')){
@@ -3107,12 +3116,13 @@ async function syncBusinessRecordToSupabase(rec){
     return res;
   }catch(e){console.warn('Business Directory background save failed',e);return {error:e};}
 }
-function addBusinessLocal(rec){let arr=businessRecords();let i=arr.findIndex(x=>x.id===rec.id||((x.ownerEmail||x.createdBy)===(rec.ownerEmail||rec.createdBy)&&x.recordType==='business_profile'));if(i>=0)arr[i]=rec;else arr.unshift(rec);persistOnly();business();return rec}
+function addBusinessLocal(rec){let arr=businessRecords();let i=arr.findIndex(x=>(rec.dbId&&String(x.dbId)===String(rec.dbId))||(rec.id&&String(x.id)===String(rec.id)));if(i>=0)arr[i]=rec;else arr.unshift(rec);persistOnly();business();return rec}
 function businessCategoryOptions(selected){let cats=['Restaurant / Food','Coffee Shop / Bakery','Grocery / Market','Tax / Accounting','Insurance','Mechanic / Auto','Beauty Salon / Barber','Home Service','Real Estate','Doctor / Dentist','Church / Community','Trucking / Transport','Taxi / Limo','Retail Store','Other'];return cats.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('')}
 function businessStatusPill(b){let st=bmNormalizeStatus(b.status||'Pending Admin Approval');let cls=st==='Approved'?'good':st==='Declined'?'bad':'warn';return `<span class="pill ${cls}">${bmEsc(st)}</span>`}
-function businessCard(b,mode){mode=mode||'public';let offers=(b.offers||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,8).map(x=>`<span class="pill">${bmEsc(x)}</span>`).join(' ');let socials=[b.website?`<a href="${bmEsc(b.website)}" target="_blank">Website</a>`:'',b.facebook?`<a href="${bmEsc(b.facebook)}" target="_blank">Facebook</a>`:'',b.instagram?`<a href="${bmEsc(b.instagram)}" target="_blank">Instagram</a>`:''].filter(Boolean).join(' • ');let phone=b.phone?String(b.phone).replace(/[^0-9+]/g,''):'';let status=mode==='owner'?`<p><b>Status:</b> ${businessStatusPill(b)}</p>`:'';let ownerActions=mode==='owner'?`<div class="actions"><button class="btn ghost" onclick="editBusinessProfile()">Edit</button><button class="btn bad" onclick="deleteBusinessProfile('${b.id}')">Delete</button>${bmNormalizeStatus(b.status)==='Approved'?`<button class="btn primary" onclick="scrollToPublicBusiness('${b.id}')">View Public Profile</button>`:''}</div>`:'';return `<div class="card" id="biz_${bmEsc(b.id||'')}"><h3>🏢 ${bmEsc(b.businessName||b.name||'Business')}</h3><p><span class="pill good">${bmEsc(b.category||b.type||'Business')}</span> ${b.city?'<span class="pill">📍 '+bmEsc(b.city)+'</span>':''}</p>${status}<p>${bmEsc(b.about||'This business has not added a description yet.')}</p><p><b>Offers:</b> ${offers||'<span class="muted">Not listed yet</span>'}</p><p><b>Phone:</b> ${bmEsc(b.phone||'Not listed')} ${b.address?' • <b>Address:</b> '+bmEsc(b.address):''}</p><p><b>Hours:</b> ${bmEsc(b.hours||'Not listed')}</p>${b.menuUrl?`<p><b>Menu / Info:</b> <a href="${bmEsc(b.menuUrl)}" target="_blank">Open</a></p>`:''}${socials?`<p>${socials}</p>`:''}<div class="actions">${phone?`<a class="btn primary" href="tel:${bmEsc(phone)}">Call Business</a>`:''}${b.address?`<a class="btn ghost" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}">Directions</a>`:''}</div>${ownerActions}</div>`}
-function businessOwnerPanel(b){if(!b)return businessProfileForm(null);return `<div class="card"><h3>My Business Listing</h3>${businessCard(b,'owner')}</div>`}
-function editBusinessProfile(){let b=bmMyProfile();let holder=$('businessOwnerPanel');if(holder)holder.innerHTML=businessProfileForm(b);}
+function businessCard(b,mode){mode=mode||'public';let key=bmProfileKey(b);let offers=(b.offers||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,8).map(x=>`<span class="pill">${bmEsc(x)}</span>`).join(' ');let socials=[b.website?`<a href="${bmEsc(b.website)}" target="_blank">Website</a>`:'',b.facebook?`<a href="${bmEsc(b.facebook)}" target="_blank">Facebook</a>`:'',b.instagram?`<a href="${bmEsc(b.instagram)}" target="_blank">Instagram</a>`:''].filter(Boolean).join(' • ');let phone=b.phone?String(b.phone).replace(/[^0-9+]/g,''):'';let status=mode==='owner'?`<p><b>Status:</b> ${businessStatusPill(b)}</p>`:'';let ownerActions=mode==='owner'?`<div class="actions"><button class="btn ghost" onclick="editBusinessProfile('${bmEsc(key)}')">Edit</button><button class="btn bad" onclick="deleteBusinessProfile('${bmEsc(key)}')">Delete</button>${bmNormalizeStatus(b.status)==='Approved'?`<button class="btn primary" onclick="openBusinessProfile('${bmEsc(key)}')">View Public Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${bmEsc(key)}')">Copy Profile Link</button>`:''}</div>`:'';let publicActions=mode==='public'?`<button class="btn primary" onclick="openBusinessProfile('${bmEsc(key)}')">View Business Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${bmEsc(key)}')">Share Profile</button>`:'';return `<div class="card" id="biz_${bmEsc(key)}"><h3>🏢 ${bmEsc(b.businessName||b.name||'Business')}</h3><p><span class="pill good">${bmEsc(b.category||b.type||'Business')}</span> ${b.city?'<span class="pill">📍 '+bmEsc(b.city)+'</span>':''}</p>${status}<p>${bmEsc(b.about||'This business has not added a description yet.')}</p><p><b>Offers:</b> ${offers||'<span class="muted">Not listed yet</span>'}</p><p><b>Phone:</b> ${bmEsc(b.phone||'Not listed')} ${b.address?' • <b>Address:</b> '+bmEsc(b.address):''}</p><p><b>Hours:</b> ${bmEsc(b.hours||'Not listed')}</p>${b.menuUrl?`<p><b>Menu / Info:</b> <a href="${bmEsc(b.menuUrl)}" target="_blank">Open</a></p>`:''}${socials?`<p>${socials}</p>`:''}<div class="actions">${publicActions}${phone?`<a class="btn primary" href="tel:${bmEsc(phone)}">Call Business</a>`:''}${b.address?`<a class="btn ghost" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}">Directions</a>`:''}</div>${ownerActions}</div>`}
+function businessOwnerPanel(){let mine=bmMyProfiles();let cards=mine.map(b=>businessCard(b,'owner')).join('');return `<div class="card"><div class="item-head"><h3>My Business Listings</h3><button class="btn primary" onclick="newBusinessProfile()">Add Another Business</button></div><p class="muted">Each approved business has its own unique public profile link.</p></div>${cards||businessProfileForm(null)}`}
+function newBusinessProfile(){let holder=$('businessOwnerPanel');if(holder)holder.innerHTML=businessProfileForm(null);}
+function editBusinessProfile(id){let b=bmFindProfileByKey(id)||bmMyProfile();let holder=$('businessOwnerPanel');if(holder)holder.innerHTML=businessProfileForm(b);}
 async function deleteBusinessProfile(id){
   if(!confirm('Delete this business profile?'))return;
   let b=businessRecords().find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
@@ -3126,12 +3136,21 @@ async function deleteBusinessProfile(id){
 }
 function scrollToPublicBusiness(id){let el=$('biz_'+id);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}else{alert('This business is approved. Customers can see it in the public Business Directory list.');}}
 function business(){
+ let selectedKey=bmSelectedProfileKey();
+ if(selectedKey){
+   let selected=bmFindProfileByKey(selectedKey);
+   let allowed=selected&&(bmNormalizeStatus(selected.status)==='Approved'||(currentUser&&currentUser.role==='admin')||(currentUser&&cleanEmail(selected.ownerEmail||selected.owner_email||selected.createdBy)===cleanEmail(currentUser.email)));
+   let content=allowed?businessCard(selected,'profile'):`<div class="card"><h3>Business profile not found</h3><p class="muted">This profile may still be waiting for approval, may have been removed, or the link may be incorrect.</p></div>`;
+   $('business').innerHTML=`<h2>🏢 Business Profile</h2>${categoryIntro('business')}<div class="actions"><button class="btn ghost" onclick="backToBusinessDirectory()">← Back to Business Directory</button></div><section id="selectedBusinessProfile" style="margin-top:16px">${content}</section>`;
+   fireAndForget(loadBusinessFromSupabase({force:true}),'specific business profile load');
+   return;
+ }
  let profiles=bmCustomerProfiles();
  let my=bmMyProfile();
  let isCustomerView=!!(currentUser&&currentUser.role==='customer');
  let isOwner=currentUser&&!isCustomerView&&(currentUser.role==='business_owner'||(currentUser.roles||[]).includes('business_owner')||currentUser.role==='admin');
  let rows=profiles.map(b=>businessCard(b,'public')).join('')||'<div class="card"><p class="muted">No approved businesses listed yet.</p></div>';
- let ownerPanel=isCustomerView?'':(isOwner?`<section id="businessOwnerPanel">${businessOwnerPanel(my)}</section>`:`<div class="card"><h3>Own a business?</h3><p>Create a business profile so the community can find what you serve, your hours, phone number, address, menu, and services.</p><button class="btn primary" onclick="chooseServiceRole('business','business_owner')">Create Business Profile</button></div>`);
+ let ownerPanel=isCustomerView?'':(isOwner?`<section id="businessOwnerPanel">${businessOwnerPanel()}</section>`:`<div class="card"><h3>Own a business?</h3><p>Create a business profile so the community can find what you serve, your hours, phone number, address, menu, and services.</p><button class="btn primary" onclick="chooseServiceRole('business','business_owner')">Create Business Profile</button></div>`);
  let jobPanel=isOwner?`<section id="businessJobsPanel"><div class="grid two">${jobPostForm()}<div class="card"><h3>My Posted Jobs</h3><p class="muted">Manage jobs posted by your business.</p>${jobOwnerCards()}</div></div></section>`:'';
  let ownerApps=isOwner?(data.jobApplications||[]).filter(a=>(a.employerEmail||'').toLowerCase()===(currentUser.email||'').toLowerCase()):[];
  let applicantsHtml=ownerApps.map(a=>`<div class="card"><div class="item-head"><h3>${jobEsc(a.jobTitle||'Job Application')}</h3>${jobBadge(a.status||'Pending Employer Review')}</div><p><b>Applicant:</b> ${jobEsc(a.applicantName||'')}</p><p><b>Phone:</b> ${jobEsc(a.applicantPhone||'Not listed')}</p><p><b>Email:</b> ${jobEsc(a.applicantEmail||'Not listed')}</p><p><b>Experience:</b> ${jobEsc(a.experience||'Not listed')}</p><p>${jobEsc(a.message||'')}</p><div class="actions">${a.status==='Pending Employer Review'?`<button class="btn primary" onclick="employerAcceptJobApp('${a.id}')">Accept</button><button class="btn bad" onclick="employerDeclineJobApp('${a.id}')">Decline</button>`:''}</div></div>`).join('')||'<div class="card"><p class="muted">No applicants yet.</p></div>';
@@ -3158,7 +3177,7 @@ async function saveBusinessProfile(){
   let phone=($('bizPhone').value||'').trim();
   if(!name||!category||!about||!phone)return alert('Please enter business name, category, about/what you serve, and phone number.');
   let existingId=$('bizId').value||'';
-  let existing=existingId?businessRecords().find(x=>String(x.id)===String(existingId)||String(x.dbId)===String(existingId)):bmMyProfile();
+  let existing=existingId?businessRecords().find(x=>String(x.id)===String(existingId)||String(x.dbId)===String(existingId)):null;
   let wasApproved=existing&&bmNormalizeStatus(existing.status)==='Approved';
   let rec={id:existing?existing.id:'BD'+Date.now().toString().slice(-8),dbId:existing?existing.dbId:undefined,source:existing?existing.source:undefined,recordType:'business_profile',businessName:name,name:name,category:category,type:category,about:about,offers:$('bizOffers').value||'',phone:phone,email:$('bizEmail').value||currentUser.email||'',address:$('bizAddress').value||'',city:$('bizCity').value||'',hours:$('bizHours').value||'',menuUrl:$('bizMenu').value||'',website:$('bizMenu').value||'',facebook:$('bizFacebook').value||'',instagram:$('bizInstagram').value||'',languages:$('bizLanguages').value||'',payments:$('bizPayments').value||'',ownerName:currentUser.name||'',ownerEmail:currentUser.email||'',createdBy:currentUser.email||'',status:'Pending Admin Approval',date:new Date().toISOString().slice(0,10),time:new Date().toLocaleString(),updatedAt:new Date().toLocaleString()};
   addBusinessLocal(rec);
@@ -6641,6 +6660,6 @@ window.__hcVersion='V7.8.213';
     return `<h3>🚨 Taxi/Limo Driver Acceptances Waiting Admin Approval</h3><div class="grid">${cards}</div>${base}`;
   };
 
-  window.__hcVersion='V7.8.233';
+  window.__hcVersion='V7.8.234';
 })();
 </script>
