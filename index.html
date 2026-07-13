@@ -3468,6 +3468,7 @@ async function admin(){
          await adminSafeLoad(loadSupabasePayments,'Admin payments load');
          await adminSafeLoad(loadSupabaseTrucking,'Admin trucking load');
          await adminSafeLoad(loadSupabaseHomeServices,'Admin home services load');
+         await adminSafeLoad(loadSupabaseTaxiLimo,'Admin taxi/limo load');
          await adminSafeLoad(loadSupabaseMarketplace,'Admin marketplace load');
          await adminSafeLoad(loadJobsFromSupabase,'Admin jobs load');
          await adminSafeLoad(()=>loadBusinessFromSupabase({force:true}),'Admin business directory load');

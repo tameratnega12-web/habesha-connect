@@ -1,8 +1,8 @@
 # Habesha Agenagn V7.8.215
 
-Truck Owner UI routing cleanup:
-- Removed the Drivers Available for Hire button from Truck Owner Home.
-- Removed stale Trailer Needed forms/panels from beside Truck Owner Quick Actions.
-- See Trailer Requests opens only trailer requests and their Accept/Decline/status actions.
-- Post Trailer Needed opens only the Trailer Needed form.
-- No workflow, email, approval, database, or SQL changes.
+Taxi/Limo owner Admin approval visibility fix.
+
+- Added the missing Taxi/Limo Supabase loader to the Admin dashboard background refresh.
+- Taxi/Limo owner applications submitted as Pending Admin Approval now load into Admin for Approve/Decline.
+- No Taxi/Limo vehicle, driver, ride, trucking, shipping, rental, marketplace, or other workflow was changed.
+- No SQL change is required.
