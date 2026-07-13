@@ -6080,3 +6080,50 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.219';
 })();
 </script>
+
+
+<script id="v78220-taxi-driver-home-buttons-restore">
+/* V7.8.220 — Restore Taxi/Limo Driver home buttons after Taxi/Limo data loads.
+   Keeps the trailer agreement panel only at the bottom of Trucking/Trailer. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function taxiDriverRecordForCurrentUser(){
+    if(!window.currentUser) return null;
+    const email=norm(currentUser.email);
+    return (data.taxiDriverApps||[]).find(a=>norm(a.email||a.driverEmail)===email)
+      || (data.taxiLimoDriverAssignments||[]).find(a=>norm(a.driverEmail)===email)
+      || null;
+  }
+  function isTaxiDriverAccount(){
+    if(!window.currentUser) return false;
+    return ['taxi_limo_driver','taxi_driver'].includes(currentUser.role) || !!taxiDriverRecordForCurrentUser();
+  }
+
+  const originalTaxiDriverActions=window.taxiDriverHomeActions;
+  window.taxiDriverHomeActions=function(){
+    if(!isTaxiDriverAccount()) return '';
+    if(typeof originalTaxiDriverActions!=='function') return '';
+    const originalRole=currentUser.role;
+    if(!['taxi_limo_driver','taxi_driver'].includes(originalRole)) currentUser.role='taxi_limo_driver';
+    try{return originalTaxiDriverActions();}
+    finally{currentUser.role=originalRole;}
+  };
+
+  const originalTruckDriverActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    if(isTaxiDriverAccount()) return '';
+    return typeof originalTruckDriverActions==='function'?originalTruckDriverActions():'';
+  };
+
+  const previousTaxiLoad=window.loadSupabaseTaxiLimo;
+  if(typeof previousTaxiLoad==='function'){
+    window.loadSupabaseTaxiLimo=async function(){
+      const result=await previousTaxiLoad.apply(this,arguments);
+      if(window.currentUser && window.currentPage==='home' && typeof window.home==='function') window.home();
+      return result;
+    };
+  }
+
+  window.__hcVersion='V7.8.220';
+})();
+</script>
