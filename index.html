@@ -3033,11 +3033,29 @@ function bmPendingProfiles(){return bmProfileRecords().filter(b=>bmNormalizeStat
 function bmMyProfiles(){if(!currentUser)return [];let email=(currentUser.email||'').trim().toLowerCase();return bmProfileRecords().filter(b=>(b.ownerEmail||b.owner_email||b.createdBy||'').trim().toLowerCase()===email)}
 function bmMyProfile(){return bmMyProfiles()[0]||null}
 function bmProfileKey(b){return String((b&&(b.dbId||b.id))||'')}
-function bmSelectedProfileKey(){try{return new URL(location.href).searchParams.get('business')||''}catch(e){return ''}}
+let bmActivePublicProfileKey='';
+function bmSelectedProfileKey(){
+  try{return new URL(location.href).searchParams.get('business')||bmActivePublicProfileKey||''}
+  catch(e){return bmActivePublicProfileKey||''}
+}
 function bmFindProfileByKey(key){key=String(key||'');return bmProfileRecords().find(b=>String(b.dbId||'')===key||String(b.id||'')===key)||null}
 function bmBusinessProfileUrl(b){let u=new URL(location.href);u.search='';u.searchParams.set('business',bmProfileKey(b));u.hash='business';return u.toString()}
-async function openBusinessProfile(key){let u=new URL(location.href);u.search='';u.searchParams.set('business',String(key||''));u.hash='business';history.pushState({page:'business'},'',u.toString());await show('business',false)}
-async function backToBusinessDirectory(){let u=new URL(location.href);u.searchParams.delete('business');u.hash='business';history.pushState({page:'business'},'',u.toString());await show('business',false)}
+async function openBusinessProfile(key){
+  key=String(key||'').trim();
+  let selected=bmFindProfileByKey(key);
+  if(!selected)return alert('Business profile not found. Please refresh the Business Directory and try again.');
+  if(bmNormalizeStatus(selected.status)!=='Approved' && !(currentUser&&currentUser.role==='admin'))return alert('This business profile is not publicly available yet.');
+  bmActivePublicProfileKey=key;
+  let u=new URL(location.href);u.search='';u.searchParams.set('business',key);u.hash='business';
+  history.pushState({page:'business',business:key},'',u.toString());
+  await show('business',false);
+}
+async function backToBusinessDirectory(){
+  bmActivePublicProfileKey='';
+  let u=new URL(location.href);u.searchParams.delete('business');u.hash='business';
+  history.pushState({page:'business'},'',u.toString());
+  await show('business',false);
+}
 async function copyBusinessProfileLink(key){let b=bmFindProfileByKey(key);if(!b)return alert('Business profile not found.');let link=bmBusinessProfileUrl(b);try{await navigator.clipboard.writeText(link);alert('Unique business profile link copied.');}catch(e){prompt('Copy this unique business profile link:',link)}}
 function mapBusinessRecordFromDb(row){
   let d=row.details||{};
@@ -3149,13 +3167,17 @@ function scrollToPublicBusiness(id){let el=$('biz_'+id);if(el){el.scrollIntoView
 function business(){
  let selectedKey=bmSelectedProfileKey();
  if(selectedKey){
+   bmActivePublicProfileKey=String(selectedKey);
    let selected=bmFindProfileByKey(selectedKey);
-   let allowed=selected&&(bmNormalizeStatus(selected.status)==='Approved'||(currentUser&&currentUser.role==='admin')||(currentUser&&cleanEmail(selected.ownerEmail||selected.owner_email||selected.createdBy)===cleanEmail(currentUser.email)));
+   // Public profile routing is independent of the signed-in user's active role.
+   // Customers and multi-role users always see the exact approved business selected by ID.
+   let allowed=selected&&(bmNormalizeStatus(selected.status)==='Approved'||(currentUser&&currentUser.role==='admin'));
    let content=allowed?businessCard(selected,'profile'):`<div class="card"><h3>Business profile not found</h3><p class="muted">This profile may still be waiting for approval, may have been removed, or the link may be incorrect.</p></div>`;
    $('business').innerHTML=`<h2>🏢 Business Profile</h2>${categoryIntro('business')}<div class="actions"><button class="btn ghost" onclick="backToBusinessDirectory()">← Back to Business Directory</button></div><section id="selectedBusinessProfile" style="margin-top:16px">${content}</section>`;
    fireAndForget(loadBusinessFromSupabase({force:true}),'specific business profile load');
    return;
  }
+ bmActivePublicProfileKey='';
  let profiles=bmCustomerProfiles();
  let my=bmMyProfile();
  let isCustomerView=!!(currentUser&&currentUser.role==='customer');
@@ -6671,6 +6693,172 @@ window.__hcVersion='V7.8.213';
     return `<h3>🚨 Taxi/Limo Driver Acceptances Waiting Admin Approval</h3><div class="grid">${cards}</div>${base}`;
   };
 
-  window.__hcVersion='V7.8.234';
+  window.__hcVersion='V7.8.235';
 })();
+/* V7.8.236 Business Profile + per-business Manager foundation */
+(function(){
+  const esc=bmEsc;
+  const oldBusinessCard=window.businessCard||businessCard;
+  const featureLabels={employees:'Employees',time_card:'Time Card',scheduling:'Scheduling'};
+  window.bm236State={business:null,features:[],employees:[],timeEntries:[],schedules:[]};
+  function val(id){const e=$(id);return e?String(e.value||'').trim():''}
+  function checked(id){const e=$(id);return !!(e&&e.checked)}
+  function ownerOf(b){return currentUser&&cleanEmail(b.ownerEmail||b.owner_email||b.createdBy)===cleanEmail(currentUser.email)}
+  function dbBusinessId(b){return String((b&&b.dbId)||'')}
+  function option(value,current){return `<option value="${esc(value)}" ${String(value)===String(current||'')?'selected':''}>${esc(value)}</option>`}
+  function yesNo(value){return value?'Yes':'No'}
+  function link(url,label){return url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`:''}
+
+  window.businessProfileForm=function(b){
+    b=b||{};
+    const hours=b.weeklyHours||{};
+    return `<div class="card"><h3>${b.id?'Update Business Profile':'Create Business Profile'}</h3>
+      <input id="bizId" type="hidden" value="${esc(b.id||'')}">
+      <div class="grid two"><div><label>Business Name</label><input id="bizName" placeholder="Example: Habesha Restaurant" value="${esc(b.businessName||b.name||'')}"></div><div><label>Business Category</label><select id="bizType">${businessCategoryOptions(b.category||b.type)}</select></div></div>
+      <div class="grid two"><div><label>Business Type / Legal Structure</label><select id="bizLegalType">${['Sole Proprietorship','LLC','Corporation','Partnership','Nonprofit / Community Organization','Church / Religious Organization','Informal / Home-Based Business','Other'].map(x=>option(x,b.legalType)).join('')}</select></div><div><label>Year Established</label><input id="bizYearEstablished" type="number" min="1800" max="2100" placeholder="2026" value="${esc(b.yearEstablished||'')}"></div></div>
+      <div class="grid two"><div><label>Logo Image Link</label><input id="bizLogoUrl" placeholder="https://..." value="${esc(b.logoUrl||'')}"></div><div><label>Cover Image Link</label><input id="bizCoverUrl" placeholder="https://..." value="${esc(b.coverUrl||'')}"></div></div>
+      <label>About the Business</label><textarea id="bizAbout" placeholder="Tell the community who you are, your experience, and what makes the business special.">${esc(b.about||'')}</textarea>
+      <label>Products / Services Offered (separate with commas)</label><input id="bizOffers" placeholder="Tax preparation, bookkeeping, insurance, payroll" value="${esc(b.offers||'')}">
+      <label>Specialties / Popular Items</label><input id="bizSpecialties" placeholder="Injera catering, immigration tax returns, Ethiopian wedding service..." value="${esc(b.specialties||'')}">
+      <div class="grid two"><div><label>Owner / Manager Name</label><input id="bizManagerName" value="${esc(b.managerName||b.ownerName||currentUser.name||'')}"></div><div><label>Primary Phone</label><input id="bizPhone" placeholder="Phone number" value="${esc(b.phone||'')}"></div></div>
+      <div class="grid two"><div><label>Business Email</label><input id="bizEmail" type="email" value="${esc(b.email||currentUser.email||'')}"></div><div><label>WhatsApp Number</label><input id="bizWhatsapp" placeholder="Optional" value="${esc(b.whatsapp||'')}"></div></div>
+      <label>Street Address</label><input id="bizAddress" placeholder="Business address" value="${esc(b.address||'')}">
+      <div class="grid two"><div><label>City / Area</label><input id="bizCity" placeholder="Clarkston, Atlanta, Decatur..." value="${esc(b.city||'')}"></div><div><label>State / Region</label><input id="bizState" placeholder="GA" value="${esc(b.state||'')}"></div></div>
+      <div class="grid two"><div><label>ZIP / Postal Code</label><input id="bizZip" value="${esc(b.zip||'')}"></div><div><label>Service Area</label><input id="bizServiceArea" placeholder="Metro Atlanta, nationwide, online, Addis Ababa..." value="${esc(b.serviceArea||'')}"></div></div>
+      <div class="grid two"><div><label>Languages</label><input id="bizLanguages" placeholder="English, Amharic, Afaan Oromo, Tigrinya" value="${esc(b.languages||'')}"></div><div><label>Price Range</label><select id="bizPriceRange">${['Not listed','$ - Affordable','$$ - Moderate','$$$ - Premium','Free / Community Service','Call for Quote'].map(x=>option(x,b.priceRange)).join('')}</select></div></div>
+      <div class="grid two"><div><label>Payment Methods</label><input id="bizPayments" placeholder="Cash, card, Zelle, Apple Pay" value="${esc(b.payments||'')}"></div><div><label>License / Certification</label><input id="bizLicense" placeholder="Optional license or certification information" value="${esc(b.licenseInfo||'')}"></div></div>
+      <h4>Business Options</h4><div class="grid two">
+        <label><input id="bizDelivery" type="checkbox" ${b.delivery?'checked':''}> Delivery Available</label>
+        <label><input id="bizCatering" type="checkbox" ${b.catering?'checked':''}> Catering Available</label>
+        <label><input id="bizAppointments" type="checkbox" ${b.appointments?'checked':''}> Appointments Accepted</label>
+        <label><input id="bizWalkIns" type="checkbox" ${b.walkIns?'checked':''}> Walk-ins Welcome</label>
+        <label><input id="bizParking" type="checkbox" ${b.parking?'checked':''}> Parking Available</label>
+        <label><input id="bizAccessible" type="checkbox" ${b.accessible?'checked':''}> Wheelchair Accessible</label>
+      </div>
+      <h4>Weekly Hours</h4><div class="grid two">${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d=>`<div><label>${d}</label><input id="bizHours${d}" placeholder="9:00 AM - 6:00 PM or Closed" value="${esc(hours[d]||'')}"></div>`).join('')}</div>
+      <label>General Hours Note</label><input id="bizHours" placeholder="Appointments available after hours" value="${esc(b.hours||'')}">
+      <h4>Online Presence</h4><div class="grid two"><div><label>Website / Menu Link</label><input id="bizMenu" placeholder="https://..." value="${esc(b.menuUrl||b.website||'')}"></div><div><label>Google Business / Booking Link</label><input id="bizGoogle" placeholder="https://..." value="${esc(b.googleLink||'')}"></div></div>
+      <div class="grid two"><div><label>Facebook</label><input id="bizFacebook" value="${esc(b.facebook||'')}"></div><div><label>Instagram</label><input id="bizInstagram" value="${esc(b.instagram||'')}"></div></div>
+      <div class="grid two"><div><label>TikTok</label><input id="bizTiktok" value="${esc(b.tiktok||'')}"></div><div><label>YouTube</label><input id="bizYoutube" value="${esc(b.youtube||'')}"></div></div>
+      <label>Community / Cultural Notes</label><textarea id="bizCommunityNotes" placeholder="Catering for Ethiopian weddings, church events, cultural festivals, community discounts...">${esc(b.communityNotes||'')}</textarea>
+      <label>Business Policies / Additional Notes</label><textarea id="bizPolicies" placeholder="Appointments, cancellation policy, delivery minimum, return policy...">${esc(b.policies||'')}</textarea>
+      <button class="btn primary" onclick="saveBusinessProfile()">Save Business Profile</button>
+    </div>`;
+  };
+
+  window.saveBusinessProfile=async function(){
+    if(!requireLogin())return;
+    const name=val('bizName'),category=val('bizType'),about=val('bizAbout'),phone=val('bizPhone');
+    if(!name||!category||!about||!phone)return alert('Please enter business name, category, about the business, and phone number.');
+    const existingId=val('bizId');
+    const existing=existingId?businessRecords().find(x=>String(x.id)===existingId||String(x.dbId)===existingId):null;
+    const wasApproved=existing&&bmNormalizeStatus(existing.status)==='Approved';
+    const weeklyHours={};['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(d=>weeklyHours[d]=val('bizHours'+d));
+    const rec=Object.assign({},existing||{}, {
+      id:existing?existing.id:'BD'+Date.now().toString().slice(-8),dbId:existing?existing.dbId:undefined,source:existing?existing.source:undefined,
+      recordType:'business_profile',businessName:name,name,category,type:category,legalType:val('bizLegalType'),yearEstablished:val('bizYearEstablished'),logoUrl:val('bizLogoUrl'),coverUrl:val('bizCoverUrl'),about,
+      offers:val('bizOffers'),specialties:val('bizSpecialties'),managerName:val('bizManagerName'),phone,email:val('bizEmail')||currentUser.email||'',whatsapp:val('bizWhatsapp'),
+      address:val('bizAddress'),city:val('bizCity'),state:val('bizState'),zip:val('bizZip'),serviceArea:val('bizServiceArea'),languages:val('bizLanguages'),priceRange:val('bizPriceRange'),payments:val('bizPayments'),licenseInfo:val('bizLicense'),
+      delivery:checked('bizDelivery'),catering:checked('bizCatering'),appointments:checked('bizAppointments'),walkIns:checked('bizWalkIns'),parking:checked('bizParking'),accessible:checked('bizAccessible'),weeklyHours,hours:val('bizHours'),
+      menuUrl:val('bizMenu'),website:val('bizMenu'),googleLink:val('bizGoogle'),facebook:val('bizFacebook'),instagram:val('bizInstagram'),tiktok:val('bizTiktok'),youtube:val('bizYoutube'),communityNotes:val('bizCommunityNotes'),policies:val('bizPolicies'),
+      ownerName:currentUser.name||'',ownerEmail:currentUser.email||'',createdBy:currentUser.email||'',status:'Pending Admin Approval',date:new Date().toISOString().slice(0,10),time:new Date().toLocaleString(),updatedAt:new Date().toLocaleString()
+    });
+    addBusinessLocal(rec);
+    const res=await syncBusinessRecordToSupabase(rec);
+    if(res&&res.error){alert('Business profile saved on this device, but Supabase did not receive it: '+res.error.message);return;}
+    addNote('admin.habeshaconnect@gmail.com','Business Directory profile needs approval: '+name);
+    sendAdminEmailNotice(wasApproved?'Business profile update needs approval':'New business profile needs approval','A business owner submitted a detailed Business Directory profile.',{Business:name,Owner:currentUser.name||'',OwnerEmail:currentUser.email||'',Phone:phone,Category:category,City:rec.city||'',Status:'Pending Admin Approval'},'admin');
+    addNote(currentUser.email,'Your business profile was submitted and is waiting for Admin approval.');
+    await loadBusinessFromSupabase({force:true});
+    alert('Business profile submitted. Admin approval is required before customers can see it.');
+  };
+
+  window.businessCard=function(b,mode){
+    mode=mode||'public';
+    const key=bmProfileKey(b), approved=bmNormalizeStatus(b.status)==='Approved';
+    const offers=String(b.offers||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,12).map(x=>`<span class="pill">${esc(x)}</span>`).join(' ');
+    const options=[b.delivery?'Delivery':'',b.catering?'Catering':'',b.appointments?'Appointments':'',b.walkIns?'Walk-ins':'',b.parking?'Parking':'',b.accessible?'Accessible':''].filter(Boolean).map(x=>`<span class="pill good">${esc(x)}</span>`).join(' ');
+    const socials=[link(b.website||b.menuUrl,'Website / Menu'),link(b.googleLink,'Google / Booking'),link(b.facebook,'Facebook'),link(b.instagram,'Instagram'),link(b.tiktok,'TikTok'),link(b.youtube,'YouTube')].filter(Boolean).join(' • ');
+    const phone=b.phone?String(b.phone).replace(/[^0-9+]/g,''):'';
+    const wa=b.whatsapp?String(b.whatsapp).replace(/[^0-9]/g,''):'';
+    const hours=b.weeklyHours||{};
+    const hoursRows=Object.keys(hours).filter(d=>hours[d]).map(d=>`<div><b>${esc(d)}:</b> ${esc(hours[d])}</div>`).join('');
+    const status=mode==='owner'?`<p><b>Status:</b> ${businessStatusPill(b)}</p>`:'';
+    const ownerActions=mode==='owner'?`<div class="actions"><button class="btn ghost" onclick="editBusinessProfile('${esc(key)}')">Edit Profile</button>${b.dbId?`<button class="btn primary" onclick="openBusinessManager('${esc(key)}')">Business Manager</button>`:''}<button class="btn bad" onclick="deleteBusinessProfile('${esc(key)}')">Delete</button>${approved?`<button class="btn primary" onclick="openBusinessProfile('${esc(key)}')">View Public Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${esc(key)}')">Copy Profile Link</button>`:''}</div>`:'';
+    const publicActions=mode==='public'?`<button class="btn primary" onclick="openBusinessProfile('${esc(key)}')">View Business Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${esc(key)}')">Share Profile</button>`:(mode==='profile'?`<button class="btn ghost" onclick="copyBusinessProfileLink('${esc(key)}')">Share Profile</button>`:'');
+    return `<div class="card" id="biz_${esc(key)}">${b.coverUrl?`<img src="${esc(b.coverUrl)}" alt="Business cover" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-bottom:12px">`:''}<div class="item-head"><div>${b.logoUrl?`<img src="${esc(b.logoUrl)}" alt="Business logo" style="width:72px;height:72px;object-fit:cover;border-radius:50%;margin-right:12px;vertical-align:middle">`:''}<h3 style="display:inline">🏢 ${esc(b.businessName||b.name||'Business')}</h3></div></div>
+      <p><span class="pill good">${esc(b.category||b.type||'Business')}</span> ${b.city?`<span class="pill">📍 ${esc([b.city,b.state].filter(Boolean).join(', '))}</span>`:''} ${b.priceRange?`<span class="pill">${esc(b.priceRange)}</span>`:''}</p>${status}
+      <p>${esc(b.about||'This business has not added a description yet.')}</p>${b.yearEstablished?`<p><b>Established:</b> ${esc(b.yearEstablished)} ${b.legalType?' • <b>Business Type:</b> '+esc(b.legalType):''}</p>`:''}
+      <p><b>Products / Services:</b> ${offers||'<span class="muted">Not listed</span>'}</p>${b.specialties?`<p><b>Specialties:</b> ${esc(b.specialties)}</p>`:''}${options?`<p>${options}</p>`:''}
+      <p><b>Phone:</b> ${esc(b.phone||'Not listed')} ${b.email?' • <b>Email:</b> '+esc(b.email):''}</p>${b.managerName?`<p><b>Owner / Manager:</b> ${esc(b.managerName)}</p>`:''}
+      <p><b>Address:</b> ${esc([b.address,b.city,b.state,b.zip].filter(Boolean).join(', ')||'Not listed')}</p>${b.serviceArea?`<p><b>Service Area:</b> ${esc(b.serviceArea)}</p>`:''}
+      ${b.languages?`<p><b>Languages:</b> ${esc(b.languages)}</p>`:''}${b.payments?`<p><b>Payment Methods:</b> ${esc(b.payments)}</p>`:''}${b.licenseInfo?`<p><b>License / Certification:</b> ${esc(b.licenseInfo)}</p>`:''}
+      ${hoursRows?`<details><summary><b>Weekly Hours</b></summary><div style="margin-top:8px">${hoursRows}</div></details>`:`<p><b>Hours:</b> ${esc(b.hours||'Not listed')}</p>`}
+      ${b.communityNotes?`<p><b>Community / Cultural Services:</b> ${esc(b.communityNotes)}</p>`:''}${b.policies?`<p><b>Policies:</b> ${esc(b.policies)}</p>`:''}${socials?`<p>${socials}</p>`:''}
+      <div class="actions">${publicActions}${phone?`<a class="btn primary" href="tel:${esc(phone)}">Call</a>`:''}${wa?`<a class="btn ghost" target="_blank" href="https://wa.me/${esc(wa)}">WhatsApp</a>`:''}${b.address?`<a class="btn ghost" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([b.address,b.city,b.state,b.zip].filter(Boolean).join(' '))}">Directions</a>`:''}</div>${ownerActions}
+    </div>`;
+  };
+
+  async function ensureDefaultFeatures(bid){
+    const existing=await hcSupabase.from('business_features').select('feature_key').eq('business_id',bid);
+    if(existing.error)return existing;
+    const have=new Set((existing.data||[]).map(x=>x.feature_key));
+    const missing=['employees','time_card','scheduling'].filter(k=>!have.has(k)).map(k=>({business_id:bid,feature_key:k,enabled:true,updated_at:new Date().toISOString()}));
+    if(!missing.length)return {data:existing.data,error:null};
+    return await hcSupabase.from('business_features').insert(missing);
+  }
+  async function loadManagerData(b){
+    const bid=dbBusinessId(b);if(!bid)throw new Error('This business must be saved in Supabase before Business Manager can open.');
+    await ensureDefaultFeatures(bid);
+    const [f,e,t,s]=await Promise.all([
+      hcSupabase.from('business_features').select('*').eq('business_id',bid),
+      hcSupabase.from('business_employees').select('*').eq('business_id',bid).order('created_at',{ascending:false}),
+      hcSupabase.from('business_time_entries').select('*').eq('business_id',bid).order('work_date',{ascending:false}).limit(100),
+      hcSupabase.from('business_schedules').select('*').eq('business_id',bid).order('shift_date',{ascending:true}).limit(100)
+    ]);
+    const err=[f,e,t,s].find(x=>x.error);if(err)throw err.error;
+    window.bm236State={business:b,features:f.data||[],employees:e.data||[],timeEntries:t.data||[],schedules:s.data||[]};
+  }
+  function enabled(k){const f=bm236State.features.find(x=>x.feature_key===k);return !!(f&&f.enabled)}
+  function employeeName(id){const e=bm236State.employees.find(x=>String(x.id)===String(id));return e?e.employee_name:'Employee'}
+  function managerTabs(){return `<div class="actions"><button class="btn ghost" onclick="renderBusinessManager('overview')">Overview</button><button class="btn ghost" onclick="renderBusinessManager('features')">Features</button>${enabled('employees')?`<button class="btn ghost" onclick="renderBusinessManager('employees')">Employees</button>`:''}${enabled('time_card')?`<button class="btn ghost" onclick="renderBusinessManager('time')">Time Card</button>`:''}${enabled('scheduling')?`<button class="btn ghost" onclick="renderBusinessManager('schedule')">Scheduling</button>`:''}<button class="btn ghost" onclick="business()">Back to Business Directory</button></div>`}
+  function employeeOptions(){return bm236State.employees.filter(e=>e.status==='Active').map(e=>`<option value="${esc(e.id)}">${esc(e.employee_name)}${e.job_title?' — '+esc(e.job_title):''}</option>`).join('')}
+
+  window.openBusinessManager=async function(key){
+    const b=bmFindProfileByKey(key);if(!b||!ownerOf(b))return alert('Only the owner of this business can open its Business Manager.');
+    $('business').innerHTML=`<h2>🏢 Business Manager</h2><div class="card"><p>Loading ${esc(b.businessName||b.name)}...</p></div>`;
+    try{await loadManagerData(b);renderBusinessManager('overview');}catch(e){$('business').innerHTML=`<h2>🏢 Business Manager</h2><div class="card"><h3>Supabase setup required</h3><p>${esc(e.message||e)}</p><p>Run <code>supabase/v7_8_236_business_profile_manager_foundation.sql</code> once.</p><button class="btn ghost" onclick="business()">Back</button></div>`;}
+  };
+  window.renderBusinessManager=function(tab){
+    const b=bm236State.business;if(!b)return;
+    let body='';
+    if(tab==='features'){
+      body=`<div class="card"><h3>Business Features</h3><p class="muted">These settings apply only to <b>${esc(b.businessName||b.name)}</b>. Another business owned by the same person can use different features.</p>${Object.keys(featureLabels).map(k=>{const f=bm236State.features.find(x=>x.feature_key===k);return `<p><label><input type="checkbox" ${f&&f.enabled?'checked':''} onchange="toggleBusinessFeature('${k}',this.checked)"> <b>${featureLabels[k]}</b></label></p>`}).join('')}</div>`;
+    }else if(tab==='employees'){
+      const cards=bm236State.employees.map(e=>`<div class="card"><h3>${esc(e.employee_name)}</h3><p><b>Job:</b> ${esc(e.job_title||'Not listed')} • <b>Status:</b> ${esc(e.status)}</p><p><b>Email:</b> ${esc(e.employee_email||'')} • <b>Phone:</b> ${esc(e.employee_phone||'')}</p><p><b>Language:</b> ${esc(e.preferred_language||'')} • <b>Hourly Rate:</b> $${Number(e.hourly_rate||0).toFixed(2)}</p><button class="btn bad" onclick="removeBusinessEmployee('${e.id}')">Remove</button></div>`).join('')||'<div class="card"><p>No employees added yet.</p></div>';
+      body=`<div class="card"><h3>Add Employee</h3><div class="grid two"><input id="bmEmpName" placeholder="Employee name"><input id="bmEmpTitle" placeholder="Job title"></div><div class="grid two"><input id="bmEmpEmail" type="email" placeholder="Employee email"><input id="bmEmpPhone" placeholder="Phone"></div><div class="grid two"><input id="bmEmpLanguage" placeholder="Preferred language"><input id="bmEmpRate" type="number" min="0" step="0.01" placeholder="Hourly rate"></div><textarea id="bmEmpNotes" placeholder="Notes"></textarea><button class="btn primary" onclick="addBusinessEmployee()">Add Employee</button></div><div class="grid">${cards}</div>`;
+    }else if(tab==='time'){
+      const rows=bm236State.timeEntries.map(t=>`<tr><td>${esc(employeeName(t.employee_id))}</td><td>${esc(t.work_date||'')}</td><td>${esc(t.clock_in?new Date(t.clock_in).toLocaleString():'')}</td><td>${esc(t.clock_out?new Date(t.clock_out).toLocaleString():'Open')}</td><td>${esc(t.break_minutes||0)}</td><td>${esc(t.status||'')}</td></tr>`).join('')||'<tr><td colspan="6">No time entries.</td></tr>';
+      body=`<div class="card"><h3>Time Card</h3>${bm236State.employees.length?`<select id="bmTimeEmployee"><option value="">Select employee</option>${employeeOptions()}</select><div class="grid two"><button class="btn primary" onclick="businessClockIn()">Clock In</button><button class="btn bad" onclick="businessClockOut()">Clock Out</button></div>`:'<p>Add an employee first.</p>'}</div><div class="card"><div style="overflow:auto"><table><tr><th>Employee</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Break</th><th>Status</th></tr>${rows}</table></div></div>`;
+    }else if(tab==='schedule'){
+      const cards=bm236State.schedules.map(s=>`<div class="card"><h3>${esc(employeeName(s.employee_id))}</h3><p><b>${esc(s.shift_date)}</b> • ${esc(s.start_time)}–${esc(s.end_time)}</p><p><b>Duty:</b> ${esc(s.role_duty||'')} ${s.location?' • <b>Location:</b> '+esc(s.location):''}</p><p><span class="pill">${esc(s.status)}</span></p><button class="btn bad" onclick="deleteBusinessShift('${s.id}')">Delete Shift</button></div>`).join('')||'<div class="card"><p>No shifts scheduled.</p></div>';
+      body=`<div class="card"><h3>Create Employee Shift</h3>${bm236State.employees.length?`<select id="bmShiftEmployee"><option value="">Select employee</option>${employeeOptions()}</select><div class="grid two"><input id="bmShiftDate" type="date"><input id="bmShiftLocation" placeholder="Location / branch"></div><div class="grid two"><input id="bmShiftStart" type="time"><input id="bmShiftEnd" type="time"></div><input id="bmShiftDuty" placeholder="Role / duty"><textarea id="bmShiftNotes" placeholder="Shift notes"></textarea><button class="btn primary" onclick="addBusinessShift()">Save Shift</button>`:'<p>Add an employee first.</p>'}</div><div class="grid">${cards}</div>`;
+    }else{
+      const active=bm236State.employees.filter(e=>e.status==='Active').length, open=bm236State.timeEntries.filter(t=>t.status==='Open').length, upcoming=bm236State.schedules.filter(s=>s.shift_date>=new Date().toISOString().slice(0,10)&&s.status!=='Cancelled').length;
+      body=`<div class="grid"><div class="card"><h3>👥 Employees</h3><p><b>${active}</b> active employees</p></div><div class="card"><h3>⏱️ Time Card</h3><p><b>${open}</b> open time entries</p></div><div class="card"><h3>📅 Scheduling</h3><p><b>${upcoming}</b> upcoming shifts</p></div></div><div class="card"><h3>Business-Specific Setup</h3><p>All employees, time entries, schedules, and enabled features are connected to this exact business ID. They are not shared with your other businesses.</p></div>`;
+    }
+    $('business').innerHTML=`<h2>🏢 ${esc(b.businessName||b.name)} — Business Manager</h2>${managerTabs()}<section style="margin-top:16px">${body}</section>`;
+  };
+
+  window.toggleBusinessFeature=async function(k,on){const b=bm236State.business;const res=await hcSupabase.from('business_features').upsert({business_id:b.dbId,feature_key:k,enabled:!!on,updated_at:new Date().toISOString()},{onConflict:'business_id,feature_key'});if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('features');};
+  window.addBusinessEmployee=async function(){const b=bm236State.business,name=val('bmEmpName');if(!name)return alert('Enter employee name.');const payload={business_id:b.dbId,employee_name:name,employee_email:val('bmEmpEmail'),employee_phone:val('bmEmpPhone'),job_title:val('bmEmpTitle'),preferred_language:val('bmEmpLanguage'),hourly_rate:Number(val('bmEmpRate')||0),notes:val('bmEmpNotes'),status:'Active',updated_at:new Date().toISOString()};const res=await hcSupabase.from('business_employees').insert(payload);if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('employees');};
+  window.removeBusinessEmployee=async function(id){if(!confirm('Remove this employee?'))return;const b=bm236State.business;const res=await hcSupabase.from('business_employees').delete().eq('id',id).eq('business_id',b.dbId);if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('employees');};
+  window.businessClockIn=async function(){const b=bm236State.business,eid=val('bmTimeEmployee');if(!eid)return alert('Select an employee.');const emp=bm236State.employees.find(e=>String(e.id)===eid);const existing=bm236State.timeEntries.find(t=>String(t.employee_id)===eid&&t.status==='Open');if(existing)return alert('This employee already has an open time card.');const now=new Date();const res=await hcSupabase.from('business_time_entries').insert({business_id:b.dbId,employee_id:eid,employee_email:emp.employee_email||'',work_date:now.toISOString().slice(0,10),clock_in:now.toISOString(),status:'Open'});if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('time');};
+  window.businessClockOut=async function(){const b=bm236State.business,eid=val('bmTimeEmployee');if(!eid)return alert('Select an employee.');const open=bm236State.timeEntries.find(t=>String(t.employee_id)===eid&&t.status==='Open');if(!open)return alert('No open time card found for this employee.');const res=await hcSupabase.from('business_time_entries').update({clock_out:new Date().toISOString(),status:'Completed',updated_at:new Date().toISOString()}).eq('id',open.id).eq('business_id',b.dbId);if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('time');};
+  window.addBusinessShift=async function(){const b=bm236State.business,eid=val('bmShiftEmployee'),date=val('bmShiftDate'),start=val('bmShiftStart'),end=val('bmShiftEnd');if(!eid||!date||!start||!end)return alert('Select employee, date, start time, and end time.');const emp=bm236State.employees.find(e=>String(e.id)===eid);const res=await hcSupabase.from('business_schedules').insert({business_id:b.dbId,employee_id:eid,employee_email:emp.employee_email||'',shift_date:date,start_time:start,end_time:end,location:val('bmShiftLocation'),role_duty:val('bmShiftDuty'),notes:val('bmShiftNotes'),status:'Scheduled'});if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('schedule');};
+  window.deleteBusinessShift=async function(id){if(!confirm('Delete this shift?'))return;const b=bm236State.business;const res=await hcSupabase.from('business_schedules').delete().eq('id',id).eq('business_id',b.dbId);if(res.error)return alert(res.error.message);await loadManagerData(b);renderBusinessManager('schedule');};
+
+  window.__hcVersion='V7.8.237';
+})();
+
 </script>
