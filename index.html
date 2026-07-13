@@ -429,7 +429,8 @@ function refreshCurrentPage(){backgroundPageSync(currentPage,true);}
 // before the file input change event finishes. Refreshing at that moment closes the form
 // and clears the selected gallery photo. Other pages keep their normal focus refresh.
 function businessProfileEditorOpen248(){
- return currentPage==='business' && !!($('bizName') || $('bizGalleryFiles') || window.__businessGallerySaveInProgress);
+ return (currentPage==='business' && !!($('bizName') || $('bizGalleryFiles') || window.__businessGallerySaveInProgress))
+   || (currentPage==='events' && !!($('evTitle') || $('evGalleryFiles') || window.__eventGallerySaveInProgress));
 }
 window.addEventListener('focus',()=>{
  if(businessProfileEditorOpen248())return;
@@ -5716,6 +5717,128 @@ window.__hcVersion='V7.8.213';
     return (accept+' '+(html&&html!=='-'?html:'')).trim()||'-';
   };
   window.__hcVersion='V7.8.231';
+})();
+</script>
+
+
+<script>
+/* V7.8.250 Event Organizer direct multi-photo gallery upload.
+   Exact scope: Events only. Uses a separate event-media bucket and preserves the event form
+   while the phone photo picker is open. */
+(function(){
+  const EVENT_PHOTO_BUCKET='event-media';
+  const MAX_EVENT_PHOTOS=6;
+  const MAX_EVENT_PHOTO_BYTES=5*1024*1024;
+  let pendingEventPhotoFiles250=[];
+
+  const priorEventForm250=window.eventForm;
+  const priorEventCard250=window.eventCard;
+
+  function ee250(v){return typeof eventEsc==='function'?eventEsc(v):String(v||'').replace(/[&<>"']/g,'');}
+  function eventPhotos250(e){return Array.isArray(e&&e.eventPhotos)?e.eventPhotos.filter(p=>p&&p.url):[];}
+  function ext250(file){const x=(String(file&&file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');return x||'jpg';}
+  function valid250(file){
+    if(!file)return '';
+    if(!String(file.type||'').startsWith('image/'))return 'Every event photo must be an image.';
+    if(file.size>MAX_EVENT_PHOTO_BYTES)return 'Each event photo must be 5 MB or smaller.';
+    return '';
+  }
+  function renderSelected250(){
+    const h=$('evGallerySelectedPreview');if(!h)return;
+    if(!pendingEventPhotoFiles250.length){h.innerHTML='';return;}
+    h.innerHTML=`<p><b>New photos selected:</b> ${pendingEventPhotoFiles250.length}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">${pendingEventPhotoFiles250.map((f,i)=>`<div style="position:relative"><img src="${URL.createObjectURL(f)}" alt="Selected event photo ${i+1}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px"><button type="button" class="btn bad" onclick="removeSelectedEventPhoto250(${i})" style="position:absolute;right:5px;top:5px;padding:5px 8px">Delete</button></div>`).join('')}</div>`;
+  }
+
+  window.eventForm=function(myBiz){
+    pendingEventPhotoFiles250=[];
+    let html=typeof priorEventForm250==='function'?priorEventForm250(myBiz):'';
+    const block=`<div class="card" style="background:#f8fafc;margin:12px 0"><h4 style="margin-top:0">Event Photo Gallery</h4><p class="muted">Upload up to ${MAX_EVENT_PHOTOS} event flyers or photos. Each photo can be up to 5 MB. You may select several photos at once or choose more photos again before submitting.</p><input id="evGalleryFiles" type="file" accept="image/*" multiple onchange="previewEventGallery250(this)"><div id="evGallerySelectedPreview" style="margin-top:10px"></div></div>`;
+    html=html.replace('<label>Flyer / Photo Link</label><input id="evFlyer" placeholder="Paste flyer image link or website image link">',block);
+    return html;
+  };
+
+  window.previewEventGallery250=function(input){
+    const chosen=Array.from(input&&input.files||[]);
+    const error=chosen.map(valid250).find(Boolean);
+    if(error){if(input)input.value='';return alert(error);}
+    for(const file of chosen){
+      const duplicate=pendingEventPhotoFiles250.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified);
+      if(!duplicate)pendingEventPhotoFiles250.push(file);
+    }
+    if(pendingEventPhotoFiles250.length>MAX_EVENT_PHOTOS){
+      pendingEventPhotoFiles250=pendingEventPhotoFiles250.slice(0,MAX_EVENT_PHOTOS);
+      if(input)input.value='';renderSelected250();
+      return alert('You can upload a maximum of '+MAX_EVENT_PHOTOS+' event photos.');
+    }
+    if(input)input.value='';
+    renderSelected250();
+  };
+  window.removeSelectedEventPhoto250=function(index){pendingEventPhotoFiles250.splice(index,1);renderSelected250();};
+
+  async function uploadEventPhoto250(rec,file,index){
+    if(!authReady())throw new Error('Supabase is not connected.');
+    if(!rec||!rec.dbId)throw new Error('The event ID was not returned by Supabase.');
+    const path=String(rec.dbId)+'/event-'+Date.now()+'-'+index+'.'+ext250(file);
+    const up=await hcSupabase.storage.from(EVENT_PHOTO_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+    if(up.error)throw up.error;
+    const pub=hcSupabase.storage.from(EVENT_PHOTO_BUCKET).getPublicUrl(path);
+    const url=pub&&pub.data&&pub.data.publicUrl;if(!url)throw new Error('Supabase did not return an event photo URL.');
+    return {path,url};
+  }
+
+  window.submitEvent=async function(){
+    if(!requireLogin())return;
+    const allowed=currentUser&&(currentUser.role==='event_organizer'||currentUser.role==='business_owner'||currentUser.role==='admin'||currentUser.role==='service_provider'||(currentUser.roles||[]).includes('event_organizer')||(currentUser.roles||[]).includes('business_owner'));
+    if(!allowed)return alert('Please add the Events Organizer service first.');
+    const title=($('evTitle').value||'').trim(),date=$('evDate').value,desc=($('evDescription').value||'').trim(),phone=($('evPhone').value||'').trim();
+    if(!title||!date||!desc||!phone)return alert('Please enter event name, date, description, and phone number.');
+    const files=pendingEventPhotoFiles250.slice();
+    const error=files.map(valid250).find(Boolean);if(error)return alert(error);
+    const ev={id:'EV'+Date.now().toString().slice(-8),title,category:$('evCategory').value,organizerName:($('evOrganizer').value||currentUser.name||'').trim(),organizerEmail:currentUser.email||'',phone,email:$('evEmail').value||currentUser.email||'',description:desc,date,startTime:$('evStart').value||'',endTime:$('evEnd').value||'',admission:$('evAdmission').value,adultPrice:$('evAdult').value||0,childPrice:$('evChild').value||0,vipPrice:$('evVip').value||0,venue:$('evVenue').value||'',address:$('evAddress').value||'',city:$('evCity').value||'',state:$('evState').value||'',zip:$('evZip').value||'',flyerUrl:'',eventPhotos:[],social:$('evSocial').value||'',capacity:$('evCapacity').value||0,registered:[],status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+    window.__eventGallerySaveInProgress=true;
+    try{
+      eventRecords().unshift(ev);persistOnly();
+      const first=await syncEventToSupabase(ev);if(first&&first.error)throw first.error;
+      await loadEventsFromSupabase({force:true});
+      let rec=eventRecords().find(x=>String(x.id)===String(ev.id));
+      if(!rec||!rec.dbId)throw new Error('The event was saved, but its database ID was not returned. Please submit again after running the event photo SQL.');
+      const uploaded=[];
+      for(let i=0;i<files.length;i++)uploaded.push(await uploadEventPhoto250(rec,files[i],i));
+      rec.eventPhotos=uploaded;
+      const second=await syncEventToSupabase(rec);if(second&&second.error)throw second.error;
+      addNote('admin.habeshaconnect@gmail.com','Event waiting for approval: '+title+' by '+rec.organizerName);
+      sendAdminEmailNotice('Event waiting for approval','A community event was submitted for admin approval.',{Event:title,Organizer:rec.organizerName,Date:date,City:rec.city,Photos:uploaded.length,Status:rec.status},'events');
+      pendingEventPhotoFiles250=[];persistOnly();
+      await loadEventsFromSupabase({force:true});
+      events();
+      alert(files.length?'Event and photos submitted for admin approval.':'Event submitted for admin approval.');
+    }catch(e){
+      console.error('Event photo upload failed',e);
+      alert('The event photo could not upload: '+(e.message||e));
+    }finally{window.__eventGallerySaveInProgress=false;}
+  };
+
+  function photoTile250(p,i){return `<div style="overflow:hidden;border-radius:12px;aspect-ratio:1/1;background:#eef2f7"><img src="${ee250(p.url)}" alt="Event photo ${i+1}" onclick="openEventPhotoViewer250(decodeURIComponent('${encodeURIComponent(String(p.url||''))}'))" style="width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in"></div>`;}
+  function publicGallery250(e){const photos=eventPhotos250(e);if(!photos.length)return '';return `<div style="margin:14px 0"><h4>Event Photos</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px">${photos.map(photoTile250).join('')}</div></div>`;}
+  window.eventCard=function(e){
+    let html=typeof priorEventCard250==='function'?priorEventCard250(e):'';
+    const gallery=publicGallery250(e);
+    if(gallery)html=html.replace('<div class="actions">',gallery+'<div class="actions">');
+    return html;
+  };
+
+  window.openEventPhotoViewer250=function(url){
+    let modal=$('eventPhotoViewer250');
+    if(!modal){
+      modal=document.createElement('div');modal.id='eventPhotoViewer250';modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+      modal.innerHTML='<button type="button" aria-label="Close photo" onclick="closeEventPhotoViewer250()" style="position:absolute;right:16px;top:12px;font-size:34px;background:transparent;color:white;border:0;cursor:pointer">×</button><img id="eventPhotoViewerImage250" alt="Large event photo" style="max-width:96vw;max-height:90vh;object-fit:contain;border-radius:10px">';
+      modal.onclick=function(x){if(x.target===modal)closeEventPhotoViewer250();};document.body.appendChild(modal);
+    }
+    $('eventPhotoViewerImage250').src=url;modal.style.display='flex';document.body.style.overflow='hidden';
+  };
+  window.closeEventPhotoViewer250=function(){const modal=$('eventPhotoViewer250');if(modal)modal.style.display='none';document.body.style.overflow='';};
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeEventPhotoViewer250();});
+  window.__hcVersion='V7.8.250';
 })();
 </script>
 
