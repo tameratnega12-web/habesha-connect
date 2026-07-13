@@ -197,7 +197,7 @@ async function ownerDeclineRentalReq(id){return alert('Owner accept/decline was 
 
 const $=id=>document.getElementById(id);
 const pages=['home','account','profile','services','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications','admin','how','about','contact','help','report','privacy','terms'];
-const labels={home:'Home',account:'Account',profile:'Profile',services:'My Services',customer:'Customer',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Job Seekers',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Directory',events:'Events',messages:'Messages',notifications:'Notifications',admin:'Admin',how:'How It Works',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
+const labels={home:'Home',account:'Account',profile:'Profile',services:'My Service',customer:'Customer',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Job Seekers',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Directory',events:'Events',messages:'Messages',notifications:'Notifications',admin:'Admin',how:'How It Works',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
 const hcSupabase=(window.supabase&&window.SUPABASE_URL&&window.SUPABASE_ANON_KEY)?window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY):null;
 function authReady(){return !!hcSupabase}
 function cleanEmail(v){return String(v||'').trim().toLowerCase();}
@@ -391,7 +391,7 @@ function roleNavPages(){
  // including from the phone navigation dropdown. Other signed-in users keep the simple menu.
  if(!currentUser)return ROLE_NAV_PAGES.guest;
  if(currentUser.role==='admin')return ['home','admin','profile'];
- return ['home','profile'];
+ return ['home','services','profile'];
 }
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
