@@ -5738,26 +5738,30 @@ window.__hcVersion='V7.8.213';
       <input id="bizLogoUrl" type="hidden" value="${esc239(b.logoUrl||'')}"><input id="bizLogoPath" type="hidden" value="${esc239(b.logoPath||'')}">
       <input id="bizCoverUrl" type="hidden" value="${esc239(b.coverUrl||'')}"><input id="bizCoverPath" type="hidden" value="${esc239(b.coverPath||'')}">
       <div class="grid two">
-        <div><label><b>Business Logo</b></label><div id="bizLogoPreview" style="margin:8px 0">${photoPreview(b.logoUrl,'Business logo','logo')}</div><input id="bizLogoFile" type="file" accept="image/*" onchange="previewBusinessPhoto239(this,'bizLogoPreview','logo')"><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('logo')">Remove Logo</button></div>
-        <div><label><b>Cover Photo</b></label><div id="bizCoverPreview" style="margin:8px 0">${photoPreview(b.coverUrl,'Cover photo','cover')}</div><input id="bizCoverFile" type="file" accept="image/*" onchange="previewBusinessPhoto239(this,'bizCoverPreview','cover')"><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('cover')">Remove Cover Photo</button></div>
+        <div><label><b>Business Logo</b></label><div id="bizLogoPreview" style="margin:8px 0">${photoPreview(b.logoUrl,'Business logo','logo')}</div><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('logo')">Remove Logo</button></div>
+        <div><label><b>Cover Photo</b></label><div id="bizCoverPreview" style="margin:8px 0">${photoPreview(b.coverUrl,'Cover photo','cover')}</div><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('cover')">Remove Cover Photo</button></div>
       </div>
+      <div style="margin-top:14px"><label><b>Choose Photo Type</b></label><select id="bizProfilePhotoType"><option value="logo">Business Logo</option><option value="cover">Cover Photo</option></select><label style="margin-top:10px"><b>Choose Business Photo</b></label><input id="bizProfilePhotoFile" type="file" accept="image/*" onchange="previewBusinessPhoto239(this)"><p class="muted" style="margin-top:6px">Select Logo or Cover Photo above, then use this one Choose File button.</p></div>
       ${b.dbId?'':'<p class="muted">For a new business, the profile is saved first and then the selected images are uploaded automatically.</p>'}
     </div>`;
     if(html.includes(oldBlock))return html.replace(oldBlock,newBlock);
     return html.replace('<label>About the Business</label>',newBlock+'<label>About the Business</label>');
   };
 
-  window.previewBusinessPhoto239=function(input,previewId,kind){
+  window.previewBusinessPhoto239=function(input){
     const file=input&&input.files&&input.files[0];if(!file)return;
+    const typeEl=$('bizProfilePhotoType');
+    const kind=typeEl&&typeEl.value==='cover'?'cover':'logo';
     const err=validateImage(file,kind==='logo'?MAX_LOGO_BYTES:MAX_COVER_BYTES,kind==='logo'?'Logo':'Cover photo');
     if(err){input.value='';return alert(err);}
-    const url=URL.createObjectURL(file),holder=$(previewId);
+    input.dataset.photoKind=kind;
+    const url=URL.createObjectURL(file),holder=$(kind==='logo'?'bizLogoPreview':'bizCoverPreview');
     if(holder)holder.innerHTML=photoPreview(url,kind==='logo'?'Business logo':'Cover photo',kind);
   };
 
   window.clearBusinessPhoto239=function(kind){
-    const urlId=kind==='logo'?'bizLogoUrl':'bizCoverUrl', pathId=kind==='logo'?'bizLogoPath':'bizCoverPath', fileId=kind==='logo'?'bizLogoFile':'bizCoverFile', previewId=kind==='logo'?'bizLogoPreview':'bizCoverPreview';
-    const u=$(urlId),p=$(pathId),f=$(fileId),h=$(previewId);if(u)u.value='';if(p)p.value='';if(f)f.value='';if(h)h.innerHTML=photoPreview('',kind==='logo'?'Business logo':'Cover photo',kind);
+    const urlId=kind==='logo'?'bizLogoUrl':'bizCoverUrl', pathId=kind==='logo'?'bizLogoPath':'bizCoverPath', previewId=kind==='logo'?'bizLogoPreview':'bizCoverPreview';
+    const u=$(urlId),p=$(pathId),f=$('bizProfilePhotoFile'),h=$(previewId);if(u)u.value='';if(p)p.value='';if(f&&f.dataset.photoKind===kind){f.value='';delete f.dataset.photoKind;}if(h)h.innerHTML=photoPreview('',kind==='logo'?'Business logo':'Cover photo',kind);
   };
 
   async function uploadBusinessImage(rec,file,kind,oldPath){
@@ -5774,11 +5778,13 @@ window.__hcVersion='V7.8.213';
   }
 
   window.saveBusinessProfile=async function(){
-    const logoInput=$('bizLogoFile'),coverInput=$('bizCoverFile');
-    const logoFile=logoInput&&logoInput.files&&logoInput.files[0]||null;
-    const coverFile=coverInput&&coverInput.files&&coverInput.files[0]||null;
-    const logoErr=validateImage(logoFile,MAX_LOGO_BYTES,'Logo'),coverErr=validateImage(coverFile,MAX_COVER_BYTES,'Cover photo');
-    if(logoErr||coverErr)return alert(logoErr||coverErr);
+    const photoInput=$('bizProfilePhotoFile');
+    const selectedFile=photoInput&&photoInput.files&&photoInput.files[0]||null;
+    const selectedKind=photoInput&&photoInput.dataset&&photoInput.dataset.photoKind?photoInput.dataset.photoKind:(($('bizProfilePhotoType')&&$('bizProfilePhotoType').value==='cover')?'cover':'logo');
+    const logoFile=selectedFile&&selectedKind==='logo'?selectedFile:null;
+    const coverFile=selectedFile&&selectedKind==='cover'?selectedFile:null;
+    const photoErr=validateImage(selectedFile,selectedKind==='logo'?MAX_LOGO_BYTES:MAX_COVER_BYTES,selectedKind==='logo'?'Logo':'Cover photo');
+    if(photoErr)return alert(photoErr);
     const oldLogoUrl=$('bizLogoUrl')?$('bizLogoUrl').value:'';
     const oldCoverUrl=$('bizCoverUrl')?$('bizCoverUrl').value:'';
     const oldLogoPath=$('bizLogoPath')?$('bizLogoPath').value:'';
@@ -7234,6 +7240,6 @@ window.__hcVersion='V7.8.213';
   };
   window.closeBusinessPhotoViewer241=function(){const modal=$('businessPhotoViewer241');if(modal)modal.style.display='none';document.body.style.overflow='';};
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeBusinessPhotoViewer241();});
-  window.__hcVersion='V7.8.241';
+  window.__hcVersion='V7.8.242';
 })();
 </script>
