@@ -740,7 +740,7 @@ function homeInfoSupport(){return `<h2 style="margin-top:22px">Information & Sup
 
 function hcHomeEsc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function hcHomeTime(x){let v=x?.updatedAt||x?.updated_at||x?.createdAt||x?.created_at||x?.date||'';let t=Date.parse(v);return Number.isFinite(t)?t:0;}
-function hcHomeItem(title,detail,status,page,icon,time,priority=2){return {title,detail,status,page,icon,time,priority};}
+function hcHomeItem(title,detail,status,page,icon,time,priority=2,action=''){return {title,detail,status,page,icon,time,priority,action};}
 function personalizedHomeItems(){
  if(!currentUser)return [];
  const email=cleanEmail(currentUser.email), role=currentUser.role, out=[];
@@ -799,7 +799,7 @@ function personalizedHomeItems(){
    (data.taxiDriverApps||[]).filter(a=>cleanEmail(a.ownerEmail)===email&&pending(a.status)).forEach(a=>add(hcHomeItem('New Taxi/Limo Driver Application',`${a.driverName||'Driver'} applied`,a.status,'taxi','🚕',hcHomeTime(a),0)));
  }
  if(role==='taxi_limo_driver'||role==='taxi_driver'){
-   (data.taxiRideRequests||[]).filter(r=>available(r.status)||pending(r.status)).forEach(r=>add(hcHomeItem('Open Customer Ride',`${r.pickup||''} to ${r.destination||''} • ${r.rideDate||r.date||''}`,r.status,'taxi','🚕',hcHomeTime(r),1)));
+   (data.taxiRideRequests||[]).filter(r=>r.status==='Approved - Waiting Driver'&&!(r.declinedBy||[]).includes(currentUser.email)).forEach(r=>add(hcHomeItem('Open Customer Ride',`${r.pickup||''} to ${r.destination||''} • ${r.rideDate||r.date||''}`,r.status,'taxi','🚕',hcHomeTime(r),1,"goTaxiSection('openRides')")));
    (data.taxiDriverApps||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('My Taxi/Limo Application',`${a.ownerName||'Taxi/Limo owner'}`,a.status,'taxi','📋',hcHomeTime(a),pending(a.status)?0:2)));
  }
  // Marketplace.
@@ -825,7 +825,7 @@ function personalizedHomeItems(){
 function personalizedHomeFeed(){
  if(!currentUser||currentUser.role==='admin')return '';
  const items=personalizedHomeItems();
- const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="show('${x.page}')">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
+ const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="${x.action||`show('${x.page}')`}">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
  return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${items.length?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
 }
 function travelerHomeActions(){
