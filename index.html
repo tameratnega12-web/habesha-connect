@@ -5951,6 +5951,85 @@ window.__hcVersion='V7.8.213';
   },true);
 })();
 </script>
+
+
+<script id="v78257-truck-driver-agree-owner-contact-fix">
+/* V7.8.257 — Trucking-only fix.
+   After the truck owner accepts an application, show Agree on the truck driver's Home page.
+   Clicking Agree releases the truck owner's information to that accepted driver. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const acceptedStatuses=[
+    'Owner Accepted - Waiting Driver Agreement',
+    'Accepted - Waiting Driver Agreement',
+    'Owner Accepted',
+    'Accepted',
+    'Waiting Driver Agreement',
+    'Waiting for Driver Agreement'
+  ];
+  const agreedStatuses=['Pending Final Admin Approval','Driver Agreed','Hired'];
+
+  function signedInDriver(){
+    try{return currentUser&&currentUser.role==='driver'?currentUser:null;}catch(e){return null;}
+  }
+  function appById257(id){
+    return (data.truckApplications||[]).find(a=>String(a.id)===String(id)||String(a.dbId||'')===String(id));
+  }
+  function driverAgreementCards257(){
+    const user=signedInDriver();
+    if(!user)return '';
+    const apps=(data.truckApplications||[]).filter(a=>
+      sameEmail(a.driverEmail,user.email)&&
+      (acceptedStatuses.includes(String(a.status||''))||agreedStatuses.includes(String(a.status||'')))
+    );
+    if(!apps.length)return '';
+    return `<section id="truckDriverAgreementV78257" class="card" style="margin-top:18px;border:2px solid #16a34a">
+      <h2>✅ Truck Owner Accepted — Your Agreement Is Required</h2>
+      <p class="muted">Accepted truck job applications appear here on your home page.</p>
+      <div class="grid">${apps.map(a=>{
+        const agreed=agreedStatuses.includes(String(a.status||''));
+        return `<div class="card" style="border:2px solid #16a34a">
+          <h3>🚛 ${esc(a.jobTitle||'Truck Driver Job')}</h3>
+          <p><b>Truck Owner:</b> ${esc(a.ownerName||'Truck Owner')}</p>
+          <p class="muted">${agreed?'You agreed. The truck owner information is available.':'The truck owner accepted your application. Click Agree to release the owner information.'}</p>
+          <div class="actions">${agreed
+            ?`<button class="btn primary" type="button" onclick="viewTruckOwnerInformation('${esc(a.id)}')">View Owner Information</button>`
+            :`<button class="btn good" type="button" onclick="driverAgreeTruckJob('${esc(a.id)}')">Agree</button>`}
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </section>`;
+  }
+
+  const priorDriverHomeActions257=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    let base=typeof priorDriverHomeActions257==='function'?priorDriverHomeActions257():'';
+    base=String(base||'').replace(/<section[^>]*id=["']truckDriverAgreementV78257["'][\s\S]*?<\/section>/gi,'');
+    return driverAgreementCards257()+base;
+  };
+
+  const priorDriverAgree257=window.driverAgreeTruckJob;
+  window.driverAgreeTruckJob=async function(id){
+    const app=appById257(id);
+    if(!app)return alert('Application not found.');
+    const user=signedInDriver();
+    if(!user||!sameEmail(app.driverEmail,user.email))return alert('Only the accepted driver can agree.');
+    if(agreedStatuses.includes(String(app.status||'')))return window.viewTruckOwnerInformation(id);
+    if(!acceptedStatuses.includes(String(app.status||'')))return alert('This application is not waiting for your agreement.');
+    if(typeof priorDriverAgree257!=='function')return alert('The agreement action is unavailable.');
+    await priorDriverAgree257(id);
+    const refreshed=appById257(id)||app;
+    if(agreedStatuses.includes(String(refreshed.status||''))){
+      window.viewTruckOwnerInformation(id);
+      try{if(typeof home==='function')home();}catch(e){console.warn(e);}
+    }
+  };
+
+  window.__hcVersion='V7.8.257';
+})();
+</script>
 </body>
 </html>
 
