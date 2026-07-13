@@ -3087,7 +3087,9 @@ async function loadBusinessFromSupabase(options){
     }else if(currentPage==='business' && $('businessList')){
       filterBusinessDirectory();
       let holder=$('businessOwnerPanel');
-      if(holder)holder.innerHTML=businessOwnerPanel();
+      // Do not rebuild the owner panel while the business profile form is open.
+      // Rebuilding here closes the phone photo picker result and clears selected gallery files.
+      if(holder&&!$('bizName'))holder.innerHTML=businessOwnerPanel();
     }
     // Admin page: rebuild after pending profiles load so approvals appear.
     if(currentPage==='admin' && !adminBackgroundRefreshing && $('admin')){
@@ -7240,41 +7242,6 @@ window.__hcVersion='V7.8.213';
   };
   window.closeBusinessPhotoViewer241=function(){const modal=$('businessPhotoViewer241');if(modal)modal.style.display='none';document.body.style.overflow='';};
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeBusinessPhotoViewer241();});
-  window.__hcVersion='V7.8.242';
-})();
-</script>
-
-
-<script id="v78243-business-gallery-only">
-/* V7.8.243 — Business Directory uses the photo gallery only. Logo and cover photo controls/display removed. */
-(function(){
-  const priorBusinessProfileForm243=window.businessProfileForm;
-  const priorBusinessCard243=window.businessCard;
-
-  function removeLogoCoverSection243(html){
-    html=String(html||'');
-    const startMarker='<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Logo and Cover Photo</h4>';
-    const galleryMarker='<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Photo Gallery</h4>';
-    const start=html.indexOf(startMarker);
-    if(start<0)return html;
-    const gallery=html.indexOf(galleryMarker,start);
-    if(gallery<0)return html;
-    return html.slice(0,start)+html.slice(gallery);
-  }
-
-  window.businessProfileForm=function(b){
-    const html=typeof priorBusinessProfileForm243==='function'?priorBusinessProfileForm243(b||{}):'';
-    return removeLogoCoverSection243(html);
-  };
-
-  window.businessCard=function(b,mode){
-    let html=typeof priorBusinessCard243==='function'?priorBusinessCard243(b,mode):'';
-    html=String(html||'')
-      .replace(/<img\b[^>]*alt=["']Business cover["'][^>]*>/ig,'')
-      .replace(/<img\b[^>]*alt=["']Business logo["'][^>]*>/ig,'');
-    return html;
-  };
-
-  window.__hcVersion='V7.8.243';
+  window.__hcVersion='V7.8.244';
 })();
 </script>
