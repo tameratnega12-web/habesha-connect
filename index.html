@@ -3106,13 +3106,24 @@ async function syncBusinessRecordToSupabase(rec){
     };
     let res;
     if(rec.dbId){
-      res=await hcSupabase.from('business_records').update(payload).eq('id',rec.dbId).select().single();
-      if(res.error&&String(res.error.message||'').toLowerCase().includes('no rows'))res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().single();
+      // Always update the exact Supabase business row. Do not use .single(),
+      // because PostgREST throws when RLS/duplicates return zero or many rows.
+      res=await hcSupabase.from('business_records').update(payload).eq('id',rec.dbId).select().limit(1);
     }else{
-      res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().single();
+      res=await hcSupabase.from('business_records').upsert(payload,{onConflict:'local_ref'}).select().limit(1);
     }
-    if(!res.error&&res.data){rec.dbId=res.data.id;rec.source='supabase';rec.status=bmNormalizeStatus(res.data.status||rec.status);persistOnly();}
-    else if(res.error){console.warn('Business Directory Supabase save error',res.error);}
+    let savedRow=Array.isArray(res&&res.data)?res.data[0]:(res&&res.data)||null;
+    if(!res.error&&savedRow){
+      rec.dbId=savedRow.id;
+      rec.source='supabase';
+      rec.status=bmNormalizeStatus(savedRow.status||rec.status);
+      persistOnly();
+      return {data:savedRow,error:null};
+    }
+    if(!res.error&&!savedRow){
+      res={data:null,error:{message:'Supabase did not return the selected business row. Check Business Directory RLS update/select policies.'}};
+    }
+    if(res.error)console.warn('Business Directory Supabase save error',res.error);
     return res;
   }catch(e){console.warn('Business Directory background save failed',e);return {error:e};}
 }
