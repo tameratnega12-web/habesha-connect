@@ -1,15 +1,14 @@
-# Habesha Agenagn V7.8.213
+Habesha Agenagn V7.8.213
 
-## Rental single-flow cleanup
+Taxi/Limo Owner home-page buttons fix only.
 
-Removed the reverse Rental Wanted communication flow.
+Owner quick actions:
+- Owner Application
+- Add Vehicle
+- My Vehicles
+- Available Drivers
+- Post Driver Job
+- Driver Hiring Activity
+- Ride Requests
 
-Kept the original rental flow:
-1. Property owner posts a property.
-2. Admin approves it.
-3. Rent seeker opens approved rentals and submits a request.
-4. Admin approves the request.
-5. Property owner accepts or declines.
-6. The seeker requests/views owner information at the approved stage.
-
-Rental Quick Actions remains at the top of the rent seeker home page. Old Rental Wanted records are hidden from current rental listings. No new SQL is required.
+Each button opens its own Taxi/Limo Owner section. Add Vehicle and My Vehicles show an approval notice when the owner application is not yet approved. No other category or user role was changed. No SQL is required.

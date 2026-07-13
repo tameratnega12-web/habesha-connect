@@ -868,14 +868,14 @@ let taxiDashboardView='';
 async function goTaxiSection(section){
  taxiDashboardView=section||'';
  await show('taxi');
- const targets={ownerApplication:'taxiOwnerPanel',availableDrivers:'taxiAvailableDrivers',postDriverJob:'taxiPostDriverJob',rideRequests:'taxiRideRequests',applyDriver:'taxiDriverApplicationSection',availableJobs:'taxiAvailableJobs',openRides:'taxiOpenRides',rideActivity:'taxiMyRides',requestRide:'taxiRequestRide'};
+ const targets={ownerApplication:'taxiOwnerPanel',addVehicle:'taxiAddVehicle',myVehicles:'taxiMyVehicles',availableDrivers:'taxiAvailableDrivers',postDriverJob:'taxiPostDriverJob',driverActivity:'taxiOwnerDriverActivity',rideRequests:'taxiRideRequests',applyDriver:'taxiDriverApplicationSection',availableJobs:'taxiAvailableJobs',openRides:'taxiOpenRides',rideActivity:'taxiMyRides',requestRide:'taxiRequestRide'};
  const targetId=targets[section]||'';
  const openTarget=()=>{const el=$(targetId);if(el&&el.scrollIntoView){el.scrollIntoView({behavior:'smooth',block:'start'});return true;}return false;};
  if(targetId&&!openTarget())setTimeout(openTarget,120);
 }
 function taxiOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='taxi_limo_owner')return '';
- return `<section id="taxiOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚕 Taxi/Limo Owner Quick Actions</h2><p class="muted">Manage your owner application, available drivers, driver jobs, and customer ride requests.</p></div><div class="grid"><div class="card"><h3>🏢 Owner Application</h3><p class="muted">Submit or review your Taxi/Limo owner application and vehicle information.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Owner Application</button></div><div class="card"><h3>👥 Available Drivers</h3><p class="muted">See approved Taxi/Limo drivers who are available.</p><button class="btn primary" onclick="goTaxiSection('availableDrivers')">Available Drivers</button></div><div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Choose an approved driver and vehicle, then send a hire request.</p><button class="btn primary" onclick="goTaxiSection('postDriverJob')">Post Driver Job</button></div><div class="card"><h3>🚖 Ride Requests</h3><p class="muted">Review customer Taxi/Limo ride requests and their status.</p><button class="btn primary" onclick="goTaxiSection('rideRequests')">Ride Requests</button></div></div></section>`;
+ return `<section id="taxiOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚕 Taxi/Limo Owner Quick Actions</h2><p class="muted">Complete your owner setup, add vehicles, hire drivers, and manage active driver connections.</p></div><div class="grid"><div class="card"><h3>🏢 Owner Application</h3><p class="muted">Submit or review your Taxi/Limo owner application.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Owner Application</button></div><div class="card"><h3>🚘 Add Vehicle</h3><p class="muted">Add a Taxi/Limo vehicle for Admin approval.</p><button class="btn primary" onclick="goTaxiSection('addVehicle')">Add Vehicle</button></div><div class="card"><h3>🚗 My Vehicles</h3><p class="muted">Review your submitted vehicles and approval status.</p><button class="btn primary" onclick="goTaxiSection('myVehicles')">My Vehicles</button></div><div class="card"><h3>👥 Available Drivers</h3><p class="muted">See approved Taxi/Limo drivers who are available.</p><button class="btn primary" onclick="goTaxiSection('availableDrivers')">Available Drivers</button></div><div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Choose an approved driver and approved vehicle, then send a hire request.</p><button class="btn primary" onclick="goTaxiSection('postDriverJob')">Post Driver Job</button></div><div class="card"><h3>📋 Driver Hiring Activity</h3><p class="muted">Review pending hire requests, active drivers, and employment actions.</p><button class="btn primary" onclick="goTaxiSection('driverActivity')">Driver Hiring Activity</button></div><div class="card"><h3>🚖 Ride Requests</h3><p class="muted">Review customer Taxi/Limo ride requests and their status.</p><button class="btn primary" onclick="goTaxiSection('rideRequests')">Ride Requests</button></div></div></section>`;
 }
 function taxiDriverHomeActions(){
  if(!currentUser||!['taxi_limo_driver','taxi_driver'].includes(currentUser.role))return '';
@@ -2902,16 +2902,19 @@ function taxiRenderOnly(){
  let taxiJobsPanel=`<h3 id="taxiAvailableJobs">Available Taxi/Limo Jobs</h3><table><tr><th>Owner</th><th>Vehicle</th><th>Status</th><th>Action</th></tr>${isDriver?driverHireRows:assignmentRows}</table>`;
  let ownerApplicationCard=isOwner?`<div class="card" id="taxiOwnerPanel"><h3>Taxi/Limo Owner Application</h3>${!myOwner?`<label>Company / Business Name</label><input id="taxiOwnerCompany" placeholder="Company name"><label>City / Service Area</label><input id="taxiOwnerCity" placeholder="Atlanta, Clarkston, Airport"><label>Phone</label><input id="taxiOwnerPhone" value="${currentUser.phone||''}"><button class="btn primary" onclick="applyTaxiOwner()">Submit Application</button>`:`<p>Status: ${taxiBadge(myOwner.status)}</p><p><b>${myOwner.companyName||''}</b></p>`}</div>`:'';
  let addVehicleCard=(isOwner&&ownerApproved)?`<div class="card" id="taxiAddVehicle"><h3>Add Taxi/Limo Vehicle</h3><label>Vehicle Type</label><select id="taxiVehicleType"><option>Taxi</option><option>Limo</option><option>SUV</option><option>Van</option></select><div class="row"><input id="taxiVehicleMake" placeholder="Make"><input id="taxiVehicleModel" placeholder="Model"></div><div class="row"><input id="taxiVehicleYear" placeholder="Year"><input id="taxiVehiclePlate" placeholder="Plate number"></div><label>Insurance / Registration Note</label><input id="taxiVehicleDocs" placeholder="Insurance/registration info"><button class="btn primary" onclick="addTaxiVehicle()">Submit Vehicle</button></div>`:'';
- let myVehiclesCard=(isOwner&&ownerApproved)?`<div class="card"><h3>My Vehicles</h3><table><tr><th>Vehicle</th><th>Type</th><th>Plate</th><th>Status</th></tr>${vehicleRows}</table></div>`:'';
+ let myVehiclesCard=(isOwner&&ownerApproved)?`<div class="card" id="taxiMyVehicles"><h3>My Vehicles</h3><table><tr><th>Vehicle</th><th>Type</th><th>Plate</th><th>Status</th></tr>${vehicleRows}</table></div>`:'';
  let postDriverJobCard=isOwner?`<div class="card" id="taxiPostDriverJob"><h3>Post Driver Job / Hire Driver</h3>${ownerApproved?'':`<p class="notice">Admin must approve your owner application before this form can be submitted.</p>`}<label>Driver</label><select id="taxiAssignDriver" ${ownerApproved?'':'disabled'}><option value="">Choose approved driver</option>${approvedDriverOptions}</select><label>Vehicle</label><select id="taxiAssignVehicle" ${ownerApproved?'':'disabled'}><option value="">Choose approved vehicle</option>${approvedVehicleOptions}</select><button class="btn primary" onclick="assignTaxiDriverToVehicle()" ${ownerApproved?'':'disabled'}>Send Hire Request to Driver</button></div>`:'';
- let ownerDriverRecords=(isOwner&&ownerApproved)?`<div class="card"><h3>My Active Drivers</h3><table><tr><th>Driver</th><th>Vehicle</th><th>Status</th><th>Action</th></tr>${activeDriverRows}</table></div><div class="card"><h3>Hire Request History</h3><table><tr><th>Driver</th><th>Vehicle</th><th>Status</th><th>Action</th></tr>${assignmentRows}</table></div>`:'';
+ let ownerDriverRecords=(isOwner&&ownerApproved)?`<div id="taxiOwnerDriverActivity"><div class="card"><h3>My Active Drivers</h3><table><tr><th>Driver</th><th>Vehicle</th><th>Status</th><th>Action</th></tr>${activeDriverRows}</table></div><div class="card"><h3>Hire Request History</h3><table><tr><th>Driver</th><th>Vehicle</th><th>Status</th><th>Action</th></tr>${assignmentRows}</table></div></div>`:'';
  let taxiContent='';
  if(isOwner){
    let view=taxiDashboardView||'ownerApplication';
-   if(view==='availableDrivers')taxiContent=availableDriversCard;
-   else if(view==='postDriverJob')taxiContent=`${postDriverJobCard}${ownerDriverRecords}`;
+   if(view==='addVehicle')taxiContent=addVehicleCard||`<div class="card" id="taxiAddVehicle"><h3>Add Taxi/Limo Vehicle</h3><p class="notice">Admin must approve your Taxi/Limo owner application before you can add a vehicle.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Open Owner Application</button></div>`;
+   else if(view==='myVehicles')taxiContent=myVehiclesCard||`<div class="card" id="taxiMyVehicles"><h3>My Vehicles</h3><p class="notice">Admin must approve your Taxi/Limo owner application before vehicle records become available.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Open Owner Application</button></div>`;
+   else if(view==='availableDrivers')taxiContent=availableDriversCard;
+   else if(view==='postDriverJob')taxiContent=`${postDriverJobCard}`;
+   else if(view==='driverActivity')taxiContent=ownerDriverRecords||`<div class="card" id="taxiOwnerDriverActivity"><h3>Driver Hiring Activity</h3><p class="notice">Admin must approve your Taxi/Limo owner application before you can hire drivers.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Open Owner Application</button></div>`;
    else if(view==='rideRequests')taxiContent=rideRequestsCard;
-   else taxiContent=`<div class="grid">${ownerApplicationCard}${addVehicleCard}${myVehiclesCard}</div>`;
+   else taxiContent=ownerApplicationCard;
  }else if(isDriver){
    let view=taxiDashboardView||'availableJobs';
    if(view==='applyDriver')taxiContent=driverForm;
@@ -5403,6 +5406,11 @@ async function adminApproveTrailerPayment(id){
 
   window.__hcVersion='V7.8.204';
 })();
+</script>
+
+<script id="v78213-taxi-owner-home-buttons-fix">
+/* V7.8.213 — Taxi/Limo Owner home buttons only. */
+window.__hcVersion='V7.8.213';
 </script>
 </body>
 </html>
