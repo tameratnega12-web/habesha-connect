@@ -7353,3 +7353,103 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.247';
 })();
 </script>
+
+<script id="v78258-remove-truck-job-after-driver-agree">
+/* V7.8.258 — Trucking-only completion cleanup.
+   After the accepted truck driver clicks Agree, release the owner's contact information
+   and remove that job/application from both the truck owner and truck driver views. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>norm(a)===norm(b);
+  const REMOVED_APP='Driver Agreed - Removed From Parties';
+  const REMOVED_JOB='Filled - Removed From Parties';
+  const waitingStatuses=[
+    'Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement',
+    'Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'
+  ];
+
+  function appById258(id){
+    return (data.truckApplications||[]).find(a=>String(a.id)===String(id)||String(a.dbId||'')===String(id));
+  }
+  function jobForApp258(a){
+    return (data.truckJobs||[]).find(j=>
+      (a.jobDbId&&j.dbId&&String(a.jobDbId)===String(j.dbId))||
+      (a.jobId&&String(a.jobId)===String(j.id))||
+      (a.jobId&&j.dbId&&String(a.jobId)===String(j.dbId))
+    )||null;
+  }
+  function isRemovedApp258(a){return String(a&&a.status||'')===REMOVED_APP;}
+  function isRemovedJob258(j){return String(j&&j.status||'')===REMOVED_JOB;}
+  function hideRemovedFromPartyViews258(){
+    if(!currentUser||!['driver','truck_owner'].includes(currentUser.role))return;
+    data.truckApplications=(data.truckApplications||[]).filter(a=>!isRemovedApp258(a));
+    data.truckJobs=(data.truckJobs||[]).filter(j=>!isRemovedJob258(j));
+  }
+
+  const priorLoad258=window.loadSupabaseTrucking;
+  if(typeof priorLoad258==='function'){
+    window.loadSupabaseTrucking=async function(){
+      const result=await priorLoad258.apply(this,arguments);
+      hideRemovedFromPartyViews258();
+      return result;
+    };
+  }
+
+  const priorDriverHome258=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    hideRemovedFromPartyViews258();
+    return typeof priorDriverHome258==='function'?priorDriverHome258():'';
+  };
+  const priorOwnerHome258=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    hideRemovedFromPartyViews258();
+    return typeof priorOwnerHome258==='function'?priorOwnerHome258():'';
+  };
+  const priorTruck258=window.truck;
+  window.truck=async function(){
+    hideRemovedFromPartyViews258();
+    const result=await priorTruck258.apply(this,arguments);
+    hideRemovedFromPartyViews258();
+    return result;
+  };
+
+  window.driverAgreeTruckJob=async function(id){
+    const a=appById258(id);
+    if(!a)return alert('Application not found.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only the accepted driver can agree.');
+    if(!waitingStatuses.includes(String(a.status||'')))return alert('This application is not waiting for your agreement.');
+
+    const j=jobForApp258(a)||{};
+    const ownerName=a.ownerName||j.ownerName||'Not provided';
+    const ownerPhone=j.ownerPhone||a.ownerPhone||j.phone||'Not provided';
+    const ownerEmail=a.ownerEmail||j.ownerEmail||'Not provided';
+    const nowIso=new Date().toISOString();
+    const oldApp={...a};
+    const oldJob=j&&j.id?{...j}:null;
+
+    a.status=REMOVED_APP;
+    a.driverAgreedAt=new Date().toLocaleString();
+    if(j&&j.id){j.status=REMOVED_JOB;j.hiredDriverName=a.driverName;j.hiredDriverEmail=a.driverEmail;j.hiredAt=new Date().toLocaleString();}
+
+    const ar=await updateTruckApplicationDb(a,{status:REMOVED_APP,approved_at:nowIso,hired_at:nowIso});
+    if(ar&&ar.error){Object.assign(a,oldApp);if(oldJob)Object.assign(j,oldJob);return alert('Could not save your agreement: '+ar.error.message);}
+    if(j&&j.id){
+      const jr=await updateTruckJobDb(j,{status:REMOVED_JOB,hired_driver_name:a.driverName,hired_driver_email:a.driverEmail,hired_at:nowIso});
+      if(jr&&jr.error)console.warn('Truck job completion status save failed',jr.error);
+    }
+
+    try{addNote(a.ownerEmail,a.driverName+' agreed to the truck job. The completed job was removed from both dashboards.');}catch(e){}
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Truck driver agreed to your job',summary:'The accepted driver agreed. The completed job has been removed from both user dashboards.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Driver:a.driverName,Status:'Completed'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Truck driver agreed — job completed','The accepted truck driver clicked Agree. The job was completed and removed from both user dashboards.',{Job:a.jobTitle,Owner:a.ownerName,Driver:a.driverName,Status:'Completed'},'admin'));}catch(e){console.warn(e);}
+
+    data.truckApplications=(data.truckApplications||[]).filter(x=>String(x.id)!==String(a.id)&&String(x.dbId||'')!==String(a.dbId||''));
+    if(j&&j.id)data.truckJobs=(data.truckJobs||[]).filter(x=>String(x.id)!==String(j.id)&&String(x.dbId||'')!==String(j.dbId||''));
+    try{persistOnly();}catch(e){}
+
+    alert('Agreement completed. This job was removed from both parties.\n\nTruck Owner Information\n\nName: '+ownerName+'\nPhone: '+ownerPhone+'\nEmail: '+ownerEmail);
+    try{if(typeof home==='function')home();}catch(e){console.warn(e);}
+  };
+
+  window.__hcVersion='V7.8.258';
+})();
+</script>
