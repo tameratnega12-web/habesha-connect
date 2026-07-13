@@ -2743,7 +2743,7 @@ async function loadSupabaseTaxiLimo(){
   }catch(e){data.taxiLimoSyncErrors.push('taxi_limo_driver_assignments: '+(e.message||e));console.warn('Taxi/Limo assignments load failed',e);}
   try{
     let rides=await hcSupabase.from('taxi_ride_requests').select('*').order('created_at',{ascending:false});
-    if(rides.error){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+rides.error.message);}else{data.taxiRideRequests=(rides.data||[]).map(r=>{let d=r.details||{};return {dbId:r.id,id:r.id,riderName:r.rider_name||d.riderName||'',riderEmail:r.rider_email||d.riderEmail||'',riderPhone:r.rider_phone||d.riderPhone||'',pickup:r.pickup_location||r.pickup||d.pickup||d.pickup_location||'',destination:r.dropoff_location||r.destination||d.destination||d.dropoff_location||'',rideDate:r.ride_date||d.rideDate||'',rideTime:r.ride_time||d.rideTime||'',passengers:r.passengers||d.passengers||'',notes:r.notes||d.notes||'',status:taxiUiStatus(r.status),driverName:r.driver_name||d.driverName||'',driverEmail:r.driver_email||d.driverEmail||'',driverPhone:r.driver_phone||d.driverPhone||'',driverAvailability:d.driverAvailability||'',declinedBy:d.declinedBy||[],createdAt:r.created_at||''};});}
+    if(rides.error){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+rides.error.message);}else{data.taxiRideRequests=(rides.data||[]).map(r=>{let d=r.details||{};return {dbId:r.id,id:r.id,riderName:r.rider_name||d.riderName||'',riderEmail:r.rider_email||d.riderEmail||'',riderPhone:r.rider_phone||d.riderPhone||'',pickup:r.pickup_location||r.pickup||d.pickup||d.pickup_location||'',destination:r.dropoff_location||r.destination||d.destination||d.dropoff_location||'',rideDate:r.ride_date||d.rideDate||'',rideTime:r.ride_time||d.rideTime||'',passengers:r.passengers||d.passengers||'',notes:r.notes||d.notes||'',status:taxiUiStatus(r.status),driverName:r.driver_name||d.driverName||'',driverEmail:r.driver_email||d.driverEmail||'',driverPhone:r.driver_phone||d.driverPhone||'',driverAvailability:d.driverAvailability||'',declinedBy:d.declinedBy||[],adminApproved:!!d.adminApproved,adminApprovedAt:d.adminApprovedAt||'',createdAt:r.created_at||''};});}
   }catch(e){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+(e.message||e));console.warn('Taxi/Limo ride requests load failed',e);}
   persistOnly();
 }
@@ -6523,5 +6523,122 @@ window.__hcVersion='V7.8.213';
   };
 
   window.__hcVersion='V7.8.230';
+})();
+</script>
+
+<script id="v78232-taxi-driver-accept-admin-approval-fix">
+/* V7.8.232 — Driver accept -> Admin approval -> Customer Agree -> contact release. Taxi/Limo rides only. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function selectedTaxiDriver(){return !!currentUser && ['taxi_limo_driver','taxi_driver'].includes(String(currentUser.role||'').trim().toLowerCase());}
+  function rideById(id){const k=String(id||'');return (data.taxiRideRequests||[]).find(r=>String(r.id||'')===k||String(r.dbId||'')===k);}
+  function approvedDriver(){return selectedTaxiDriver() && (data.taxiDriverApps||[]).find(a=>norm(a.email||a.driverEmail)===norm(currentUser.email)&&a.status==='Approved');}
+
+  window.driverAcceptTaxiNotifyCustomer=async function(id){
+    const r=rideById(id),a=approvedDriver();
+    if(!selectedTaxiDriver())return alert('Switch to Taxi/Limo Driver before accepting a customer ride.');
+    if(!a)return alert('Admin must approve your Taxi/Limo driver application before you accept rides.');
+    if(!r)return alert('Taxi ride not found.');
+    if(r.status!=='Approved - Waiting Driver'||norm(r.driverEmail))return alert('This ride is no longer available.');
+    if((r.declinedBy||[]).map(norm).includes(norm(currentUser.email)))return alert('You already declined this ride.');
+
+    const fields={driverName:currentUser.name,driverEmail:norm(currentUser.email),driverPhone:currentUser.phone||a.phone||'',status:'Driver Accepted - Waiting Admin Approval',adminApproved:false,adminApprovedAt:''};
+    const res=await updateTaxiRideDb(r,fields);
+    if(res.error)return alert('Could not accept ride: '+res.error.message);
+    Object.assign(r,fields,{driverAvailability:a.availability||''});
+
+    addNote(r.riderEmail,'A Taxi/Limo driver accepted your ride request. Admin is reviewing the driver.');
+    addNote('admin.habeshaconnect@gmail.com','Taxi/Limo driver acceptance needs approval: '+(r.riderName||'Customer')+' — '+(r.pickup||'')+' to '+(r.destination||''));
+    try{sendEmailNotice({to:r.riderEmail,name:r.riderName,subject:'A driver accepted your Taxi/Limo ride',summary:'A Taxi/Limo driver accepted your ride request. Admin must approve the driver before you can agree and view driver information.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Pickup:r.pickup,Destination:r.destination,Driver:currentUser.name,Status:'Waiting for Admin Approval'}});}catch(e){console.warn(e);}
+    try{sendAdminEmailNotice('Taxi/Limo driver accepted — approval required','A Taxi/Limo driver accepted a customer ride. Approve or decline the selected driver in Admin.',{Ride:r.id,Driver:currentUser.name,DriverEmail:currentUser.email,Rider:r.riderName,RiderEmail:r.riderEmail,Pickup:r.pickup,Destination:r.destination,Status:r.status},'admin');}catch(e){console.warn(e);}
+
+    if(typeof adminDataLoaded!=='undefined')adminDataLoaded=false;
+    try{if(typeof loadSupabaseTaxiLimo==='function')await loadSupabaseTaxiLimo();}catch(e){console.warn(e);}
+    persistOnly();
+    alert('Ride accepted. Admin and the customer were notified. Waiting for Admin approval.');
+    taxi();
+  };
+
+  window.adminApproveTaxiAcceptance=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const r=rideById(id);if(!r)return alert('Taxi ride not found.');
+    if(r.status!=='Driver Accepted - Waiting Admin Approval'||r.adminApproved)return alert('This driver acceptance is not waiting for Admin approval.');
+    const approvedAt=new Date().toISOString();
+    const res=await updateTaxiRideDb(r,{adminApproved:true,adminApprovedAt:approvedAt});
+    if(res.error)return alert('Could not approve driver: '+res.error.message);
+    r.adminApproved=true;r.adminApprovedAt=approvedAt;
+    addNote(r.riderEmail,'Admin approved the Taxi/Limo driver. Open Taxi/Limo and click Agree to view driver information.');
+    addNote(r.driverEmail,'Admin approved your ride acceptance. Waiting for the customer to click Agree.');
+    try{sendEmailNotice({to:r.riderEmail,name:r.riderName,subject:'Taxi/Limo driver approved — your agreement is required',summary:'Admin approved the driver who accepted your ride. Open Taxi/Limo and click Agree to release the driver information.',buttonText:'Agree in Taxi/Limo',page:'taxi',details:{Driver:r.driverName,Pickup:r.pickup,Destination:r.destination,Status:'Waiting for Customer Agreement'}});}catch(e){console.warn(e);}
+    try{sendEmailNotice({to:r.driverEmail,name:r.driverName,subject:'Your Taxi/Limo ride acceptance was approved',summary:'Admin approved your ride acceptance. Waiting for the customer to click Agree before contact information is released.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Customer:r.riderName,Pickup:r.pickup,Destination:r.destination,Status:'Waiting for Customer Agreement'}});}catch(e){console.warn(e);}
+    persistOnly();adminSuccess('Driver approved. Waiting for customer agreement.');
+  };
+
+  window.adminDeclineTaxiAcceptance=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const r=rideById(id);if(!r)return alert('Taxi ride not found.');
+    if(r.status!=='Driver Accepted - Waiting Admin Approval'||r.adminApproved)return alert('This driver acceptance is not waiting for Admin decision.');
+    const oldDriver=r.driverEmail;
+    const fields={driverName:'',driverEmail:'',driverPhone:'',status:'Approved - Waiting Driver',adminApproved:false,adminApprovedAt:''};
+    const res=await updateTaxiRideDb(r,fields);
+    if(res.error)return alert('Could not decline driver: '+res.error.message);
+    Object.assign(r,fields,{vehicle:''});
+    if(oldDriver){addNote(oldDriver,'Admin declined your Taxi/Limo ride acceptance.');try{sendEmailNotice({to:oldDriver,name:'Taxi/Limo Driver',subject:'Taxi/Limo ride acceptance declined',summary:'Admin declined your acceptance for this ride.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Pickup:r.pickup,Destination:r.destination,Status:'Declined by Admin'}});}catch(e){}}
+    persistOnly();adminSuccess('Driver declined. The ride is open to approved drivers again.');
+  };
+
+  const priorActions=window.taxiRideActions;
+  window.taxiRideActions=function(r){
+    let html=typeof priorActions==='function'?priorActions(r):'-';
+    if(!r||!currentUser)return html;
+    const customer=norm(r.riderEmail)===norm(currentUser.email);
+    // Remove the older customer Agree button before Admin approval.
+    if(customer&&r.status==='Driver Accepted - Waiting Admin Approval'){
+      html=String(html||'').replace(/<button[^>]*onclick=["']taxiCustomerAgreeRide\([^)]*\)["'][^>]*>Agree(?: &amp;| &) View Driver Information<\/button>/ig,'').trim();
+      if(r.adminApproved){
+        const agree=`<button class="btn primary" onclick="taxiCustomerAgreeRide('${r.id}')">Agree &amp; View Driver Information</button>`;
+        return (agree+' '+(html&&html!=='-'?html:'')).trim();
+      }
+      return html&&html!=='-'?html:'-';
+    }
+    return html;
+  };
+
+  window.taxiCustomerAgreeRide=async function(id){
+    const r=rideById(id);if(!r)return alert('Taxi ride not found.');
+    if(!currentUser||norm(r.riderEmail)!==norm(currentUser.email))return alert('Only the customer who requested this ride can agree.');
+    if(r.status!=='Driver Accepted - Waiting Admin Approval'||!r.adminApproved)return alert('Admin must approve the driver before you can agree.');
+    if(!r.driverEmail)return alert('Driver information is not ready yet.');
+    const res=await updateTaxiRideDb(r,{status:'Driver Approved - Contact Shared'});
+    if(res.error)return alert('Could not save your agreement: '+res.error.message);
+    r.status='Driver Approved - Contact Shared';
+    addNote(r.driverEmail,(r.riderName||'The customer')+' agreed to the Taxi/Limo ride. Contact information is now available.');
+    try{sendEmailNotice({to:r.driverEmail,name:r.driverName,subject:'Customer agreed to your Taxi/Limo ride',summary:'The customer agreed. Contact information is now available.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Customer:r.riderName,CustomerPhone:r.riderPhone,Pickup:r.pickup,Destination:r.destination,Status:'Contact Shared'}});}catch(e){console.warn(e);}
+    try{sendAdminEmailNotice('Taxi/Limo customer agreed','The customer agreed after Admin approved the selected driver. Contact information was released.',{Ride:r.id,Customer:r.riderName,Driver:r.driverName,Pickup:r.pickup,Destination:r.destination,Status:'Contact Shared'},'admin');}catch(e){console.warn(e);}
+    persistOnly();
+    alert('Agreement completed.\n\nDriver Information\nName: '+(r.driverName||'Not provided')+'\nPhone: '+(r.driverPhone||'Not provided')+'\nEmail: '+(r.driverEmail||'Not provided'));
+    taxi();
+  };
+
+  const priorAdminActions=window.taxiAdminActions;
+  window.taxiAdminActions=function(r){
+    if(r&&r.status==='Driver Accepted - Waiting Admin Approval'){
+      if(r.adminApproved)return '<span class="pill warn">Waiting Customer Agreement</span>';
+      return `<button class="btn primary" onclick="adminApproveTaxiAcceptance('${r.id}')">Approve Driver</button> <button class="btn bad" onclick="adminDeclineTaxiAcceptance('${r.id}')">Decline Driver</button>`;
+    }
+    return typeof priorAdminActions==='function'?priorAdminActions(r):'-';
+  };
+
+  const priorTaxiAdminHtml=window.taxiAdminHtml;
+  window.taxiAdminHtml=function(){
+    const base=typeof priorTaxiAdminHtml==='function'?priorTaxiAdminHtml():'';
+    if(!currentUser||currentUser.role!=='admin')return base;
+    const waiting=(data.taxiRideRequests||[]).filter(r=>r.status==='Driver Accepted - Waiting Admin Approval'&&!r.adminApproved);
+    if(!waiting.length)return base;
+    const cards=waiting.map(r=>`<div class="card" style="border:2px solid #f59e0b"><h4>🚖 Driver Acceptance Needs Approval</h4><p><b>Customer:</b> ${r.riderName||''}<br><b>Driver:</b> ${r.driverName||''}<br><b>Route:</b> ${r.pickup||''} → ${r.destination||''}</p><div class="actions"><button class="btn primary" onclick="adminApproveTaxiAcceptance('${r.id}')">Approve Driver</button> <button class="btn bad" onclick="adminDeclineTaxiAcceptance('${r.id}')">Decline Driver</button></div></div>`).join('');
+    return `<h3>🚨 Taxi/Limo Driver Acceptances Waiting Admin Approval</h3><div class="grid">${cards}</div>${base}`;
+  };
+
+  window.__hcVersion='V7.8.232';
 })();
 </script>
