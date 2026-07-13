@@ -5824,6 +5824,38 @@ window.__hcVersion='V7.8.213';
 
 
 
+
+<script>
+/* V7.8.245 Business Directory gallery only: remove logo and cover photo UI/display */
+(function(){
+  const priorBusinessProfileForm245=window.businessProfileForm;
+  const priorBusinessCard245=window.businessCard;
+
+  function removeLogoCoverEditor245(html){
+    html=String(html||'');
+    // Remove the active V7.8.239/V7.8.240 logo-and-cover editor card, including hidden fields.
+    html=html.replace(/<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Logo and Cover Photo<\/h4>[\s\S]*?<input id="bizCoverPath"[^>]*>\s*<\/div>/g,'');
+    // Safety cleanup in case an older layout remains.
+    html=html.replace(/<div[^>]*>[\s\S]*?<label><b>Business Logo<\/b><\/label>[\s\S]*?Remove Cover Photo[\s\S]*?<\/div>\s*<\/div>/g,'');
+    return html;
+  }
+
+  window.businessProfileForm=function(b){
+    const html=typeof priorBusinessProfileForm245==='function'?priorBusinessProfileForm245(b||{}):'';
+    return removeLogoCoverEditor245(html);
+  };
+
+  window.businessCard=function(b,mode){
+    let html=typeof priorBusinessCard245==='function'?priorBusinessCard245(b,mode):'';
+    // Remove any saved cover image and logo from the public card. Gallery photos remain unchanged.
+    html=html.replace(/<img src="[^"]*" alt="Business cover"[^>]*>/g,'');
+    html=html.replace(/<img src="[^"]*" alt="Business logo"[^>]*>/g,'');
+    return html;
+  };
+
+  window.__hcVersion='V7.8.245';
+})();
+</script>
 </body>
 </html>
 
