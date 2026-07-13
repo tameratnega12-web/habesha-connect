@@ -3147,7 +3147,7 @@ async function syncBusinessRecordToSupabase(rec){
     return res;
   }catch(e){console.warn('Business Directory background save failed',e);return {error:e};}
 }
-function addBusinessLocal(rec){let arr=businessRecords();let i=arr.findIndex(x=>(rec.dbId&&String(x.dbId)===String(rec.dbId))||(rec.id&&String(x.id)===String(rec.id)));if(i>=0)arr[i]=rec;else arr.unshift(rec);persistOnly();business();return rec}
+function addBusinessLocal(rec){let arr=businessRecords();let i=arr.findIndex(x=>(rec.dbId&&String(x.dbId)===String(rec.dbId))||(rec.id&&String(x.id)===String(rec.id)));if(i>=0)arr[i]=rec;else arr.unshift(rec);persistOnly();if(!window.__businessGallerySaveInProgress)business();return rec}
 function businessCategoryOptions(selected){let cats=['Restaurant / Food','Coffee Shop / Bakery','Grocery / Market','Tax / Accounting','Insurance','Mechanic / Auto','Beauty Salon / Barber','Home Service','Real Estate','Doctor / Dentist','Church / Community','Trucking / Transport','Taxi / Limo','Retail Store','Other'];return cats.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('')}
 function businessStatusPill(b){let st=bmNormalizeStatus(b.status||'Pending Admin Approval');let cls=st==='Approved'?'good':st==='Declined'?'bad':'warn';return `<span class="pill ${cls}">${bmEsc(st)}</span>`}
 function businessCard(b,mode){mode=mode||'public';let key=bmProfileKey(b);let offers=(b.offers||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,8).map(x=>`<span class="pill">${bmEsc(x)}</span>`).join(' ');let socials=[b.website?`<a href="${bmEsc(b.website)}" target="_blank">Website</a>`:'',b.facebook?`<a href="${bmEsc(b.facebook)}" target="_blank">Facebook</a>`:'',b.instagram?`<a href="${bmEsc(b.instagram)}" target="_blank">Instagram</a>`:''].filter(Boolean).join(' • ');let phone=b.phone?String(b.phone).replace(/[^0-9+]/g,''):'';let status=mode==='owner'?`<p><b>Status:</b> ${businessStatusPill(b)}</p>`:'';let ownerActions=mode==='owner'?`<div class="actions"><button class="btn ghost" onclick="editBusinessProfile('${bmEsc(key)}')">Edit</button><button class="btn bad" onclick="deleteBusinessProfile('${bmEsc(key)}')">Delete</button>${bmNormalizeStatus(b.status)==='Approved'?`<button class="btn primary" onclick="openBusinessProfile('${bmEsc(key)}')">View Public Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${bmEsc(key)}')">Copy Profile Link</button>`:''}</div>`:'';let publicActions=mode==='public'?`<button class="btn primary" onclick="openBusinessProfile('${bmEsc(key)}')">View Business Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${bmEsc(key)}')">Share Profile</button>`:'';return `<div class="card" id="biz_${bmEsc(key)}"><h3>🏢 ${bmEsc(b.businessName||b.name||'Business')}</h3><p><span class="pill good">${bmEsc(b.category||b.type||'Business')}</span> ${b.city?'<span class="pill">📍 '+bmEsc(b.city)+'</span>':''}</p>${status}<p>${bmEsc(b.about||'This business has not added a description yet.')}</p><p><b>Offers:</b> ${offers||'<span class="muted">Not listed yet</span>'}</p><p><b>Phone:</b> ${bmEsc(b.phone||'Not listed')} ${b.address?' • <b>Address:</b> '+bmEsc(b.address):''}</p><p><b>Hours:</b> ${bmEsc(b.hours||'Not listed')}</p>${b.menuUrl?`<p><b>Menu / Info:</b> <a href="${bmEsc(b.menuUrl)}" target="_blank">Open</a></p>`:''}${socials?`<p>${socials}</p>`:''}<div class="actions">${publicActions}${phone?`<a class="btn primary" href="tel:${bmEsc(phone)}">Call Business</a>`:''}${b.address?`<a class="btn ghost" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}">Directions</a>`:''}</div>${ownerActions}</div>`}
@@ -6957,16 +6957,17 @@ window.__hcVersion='V7.8.213';
     if(kept.length+files.length>MAX_GALLERY_PHOTOS)return alert('You can keep a maximum of '+MAX_GALLERY_PHOTOS+' gallery photos.');
     const existingId=$('bizId')?$('bizId').value:'';
     const enteredName=$('bizName')?String($('bizName').value||'').trim():'';
-    await priorSaveBusinessProfile241();
-    if(!files.length&&!removedGalleryPaths241.length)return;
-    await loadBusinessFromSupabase({force:true});
-    let rec=existingId?bmFindProfileByKey(existingId):null;
-    if(!rec){
-      const email=cleanEmail(currentUser&&currentUser.email||'');
-      rec=bmMyProfiles().filter(x=>cleanEmail(x.ownerEmail||x.owner_email||x.createdBy)===email&&String(x.businessName||x.name||'').trim()===enteredName).sort((a,b)=>String(b.updatedAt||b.time||b.date||'').localeCompare(String(a.updatedAt||a.time||a.date||'')))[0]||null;
-    }
-    if(!rec||!rec.dbId)return alert('The profile was saved, but gallery photos must wait until the business ID is available. Refresh, edit the profile, and upload them again.');
+    window.__businessGallerySaveInProgress=true;
     try{
+      await priorSaveBusinessProfile241();
+      if(!files.length&&!removedGalleryPaths241.length){business();return;}
+      await loadBusinessFromSupabase({force:true});
+      let rec=existingId?bmFindProfileByKey(existingId):null;
+      if(!rec){
+        const email=cleanEmail(currentUser&&currentUser.email||'');
+        rec=bmMyProfiles().filter(x=>cleanEmail(x.ownerEmail||x.owner_email||x.createdBy)===email&&String(x.businessName||x.name||'').trim()===enteredName).sort((a,b)=>String(b.updatedAt||b.time||b.date||'').localeCompare(String(a.updatedAt||a.time||a.date||'')))[0]||null;
+      }
+      if(!rec||!rec.dbId)throw new Error('The business ID was not returned by Supabase. Please save the profile again.');
       const uploaded=[];
       for(let i=0;i<files.length;i++)uploaded.push(await uploadGalleryPhoto241(rec,files[i],i));
       rec.galleryPhotos=kept.concat(uploaded).slice(0,MAX_GALLERY_PHOTOS);
@@ -6978,10 +6979,13 @@ window.__hcVersion='V7.8.213';
       }
       removedGalleryPaths241=[];
       await loadBusinessFromSupabase({force:true});
+      business();
       alert('Business profile and gallery photos were saved. Admin approval is required before customers see the update.');
     }catch(e){
       console.error('Business gallery upload failed',e);
-      alert('The business profile was saved, but the gallery update failed: '+(e.message||e));
+      alert('The gallery photo could not upload: '+(e.message||e));
+    }finally{
+      window.__businessGallerySaveInProgress=false;
     }
   };
 
@@ -7009,6 +7013,6 @@ window.__hcVersion='V7.8.213';
   };
   window.closeBusinessPhotoViewer241=function(){const modal=$('businessPhotoViewer241');if(modal)modal.style.display='none';document.body.style.overflow='';};
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeBusinessPhotoViewer241();});
-  window.__hcVersion='V7.8.246';
+  window.__hcVersion='V7.8.247';
 })();
 </script>
