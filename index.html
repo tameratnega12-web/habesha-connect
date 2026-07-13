@@ -5705,157 +5705,6 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
-<script>
-/* V7.8.239 Business logo + cover photo upload using Supabase Storage */
-(function(){
-  const PHOTO_BUCKET='business-media';
-  const MAX_LOGO_BYTES=2*1024*1024;
-  const MAX_COVER_BYTES=5*1024*1024;
-  const priorBusinessProfileForm=window.businessProfileForm;
-  const priorSaveBusinessProfile=window.saveBusinessProfile;
-
-  function esc239(v){return typeof bmEsc==='function'?bmEsc(v):String(v||'').replace(/[&<>"']/g,'');}
-  function fileExt(file){
-    const name=String(file&&file.name||'');
-    const ext=(name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
-    return ext||'jpg';
-  }
-  function validateImage(file,maxBytes,label){
-    if(!file)return '';
-    if(!String(file.type||'').startsWith('image/'))return label+' must be an image file.';
-    if(file.size>maxBytes)return label+' is too large. Maximum size is '+Math.round(maxBytes/1024/1024)+' MB.';
-    return '';
-  }
-  function photoPreview(url,label,shape){
-    if(!url)return `<div class="muted" style="padding:12px;border:1px dashed #bbb;border-radius:10px">No ${label.toLowerCase()} uploaded yet.</div>`;
-    const style=shape==='logo'?'width:92px;height:92px;border-radius:50%;object-fit:cover':'width:100%;max-height:200px;border-radius:12px;object-fit:cover';
-    return `<img src="${esc239(url)}" alt="${esc239(label)}" style="${style}">`;
-  }
-
-  window.businessProfileForm=function(b){
-    b=b||{};
-    let html=typeof priorBusinessProfileForm==='function'?priorBusinessProfileForm(b):'';
-    const oldBlock=`<div class="grid two"><div><label>Logo Image Link</label><input id="bizLogoUrl" placeholder="https://..." value="${esc239(b.logoUrl||'')}"></div><div><label>Cover Image Link</label><input id="bizCoverUrl" placeholder="https://..." value="${esc239(b.coverUrl||'')}"></div></div>`;
-    const newBlock=`<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Logo and Cover Photo</h4><p class="muted">Upload directly from your phone or computer. Logo maximum: 2 MB. Cover maximum: 5 MB. JPG, PNG, WEBP, and other standard image formats are accepted.</p>
-      <input id="bizLogoUrl" type="hidden" value="${esc239(b.logoUrl||'')}"><input id="bizLogoPath" type="hidden" value="${esc239(b.logoPath||'')}">
-      <input id="bizCoverUrl" type="hidden" value="${esc239(b.coverUrl||'')}"><input id="bizCoverPath" type="hidden" value="${esc239(b.coverPath||'')}">
-      <div class="grid two">
-        <div><label><b>Business Logo</b></label><div id="bizLogoPreview" style="margin:8px 0">${photoPreview(b.logoUrl,'Business logo','logo')}</div><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('logo')">Remove Logo</button></div>
-        <div><label><b>Cover Photo</b></label><div id="bizCoverPreview" style="margin:8px 0">${photoPreview(b.coverUrl,'Cover photo','cover')}</div><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('cover')">Remove Cover Photo</button></div>
-      </div>
-      <div style="margin-top:14px"><label><b>Choose Photo Type</b></label><select id="bizProfilePhotoType"><option value="logo">Business Logo</option><option value="cover">Cover Photo</option></select><label style="margin-top:10px"><b>Choose Business Photo</b></label><input id="bizProfilePhotoFile" type="file" accept="image/*" onchange="previewBusinessPhoto239(this)"><p class="muted" style="margin-top:6px">Select Logo or Cover Photo above, then use this one Choose File button.</p></div>
-      ${b.dbId?'':'<p class="muted">For a new business, the profile is saved first and then the selected images are uploaded automatically.</p>'}
-    </div>`;
-    if(html.includes(oldBlock))return html.replace(oldBlock,newBlock);
-    return html.replace('<label>About the Business</label>',newBlock+'<label>About the Business</label>');
-  };
-
-  window.previewBusinessPhoto239=function(input){
-    const file=input&&input.files&&input.files[0];if(!file)return;
-    const typeEl=$('bizProfilePhotoType');
-    const kind=typeEl&&typeEl.value==='cover'?'cover':'logo';
-    const err=validateImage(file,kind==='logo'?MAX_LOGO_BYTES:MAX_COVER_BYTES,kind==='logo'?'Logo':'Cover photo');
-    if(err){input.value='';return alert(err);}
-    input.dataset.photoKind=kind;
-    const url=URL.createObjectURL(file),holder=$(kind==='logo'?'bizLogoPreview':'bizCoverPreview');
-    if(holder)holder.innerHTML=photoPreview(url,kind==='logo'?'Business logo':'Cover photo',kind);
-  };
-
-  window.clearBusinessPhoto239=function(kind){
-    const urlId=kind==='logo'?'bizLogoUrl':'bizCoverUrl', pathId=kind==='logo'?'bizLogoPath':'bizCoverPath', previewId=kind==='logo'?'bizLogoPreview':'bizCoverPreview';
-    const u=$(urlId),p=$(pathId),f=$('bizProfilePhotoFile'),h=$(previewId);if(u)u.value='';if(p)p.value='';if(f&&f.dataset.photoKind===kind){f.value='';delete f.dataset.photoKind;}if(h)h.innerHTML=photoPreview('',kind==='logo'?'Business logo':'Cover photo',kind);
-  };
-
-  async function uploadBusinessImage(rec,file,kind,oldPath){
-    if(!authReady())throw new Error('Supabase is not connected.');
-    if(!rec||!rec.dbId)throw new Error('The business must be saved in Supabase before uploading photos.');
-    const path=String(rec.dbId)+'/'+kind+'-'+Date.now()+'.'+fileExt(file);
-    const up=await hcSupabase.storage.from(PHOTO_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
-    if(up.error)throw up.error;
-    const pub=hcSupabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    const publicUrl=pub&&pub.data&&pub.data.publicUrl;
-    if(!publicUrl)throw new Error('Supabase did not return a public photo URL.');
-    if(oldPath&&oldPath!==path){try{await hcSupabase.storage.from(PHOTO_BUCKET).remove([oldPath]);}catch(e){console.warn('Old business photo cleanup failed',e);}}
-    return {path,url:publicUrl};
-  }
-
-  window.saveBusinessProfile=async function(){
-    const photoInput=$('bizProfilePhotoFile');
-    const selectedFile=photoInput&&photoInput.files&&photoInput.files[0]||null;
-    const selectedKind=photoInput&&photoInput.dataset&&photoInput.dataset.photoKind?photoInput.dataset.photoKind:(($('bizProfilePhotoType')&&$('bizProfilePhotoType').value==='cover')?'cover':'logo');
-    const logoFile=selectedFile&&selectedKind==='logo'?selectedFile:null;
-    const coverFile=selectedFile&&selectedKind==='cover'?selectedFile:null;
-    const photoErr=validateImage(selectedFile,selectedKind==='logo'?MAX_LOGO_BYTES:MAX_COVER_BYTES,selectedKind==='logo'?'Logo':'Cover photo');
-    if(photoErr)return alert(photoErr);
-    const oldLogoUrl=$('bizLogoUrl')?$('bizLogoUrl').value:'';
-    const oldCoverUrl=$('bizCoverUrl')?$('bizCoverUrl').value:'';
-    const oldLogoPath=$('bizLogoPath')?$('bizLogoPath').value:'';
-    const oldCoverPath=$('bizCoverPath')?$('bizCoverPath').value:'';
-    const existingId=$('bizId')?$('bizId').value:'';
-    const enteredName=$('bizName')?String($('bizName').value||'').trim():'';
-    await priorSaveBusinessProfile();
-    if(!logoFile&&!coverFile)return;
-    await loadBusinessFromSupabase({force:true});
-    let rec=existingId?bmFindProfileByKey(existingId):null;
-    if(!rec){
-      const email=cleanEmail(currentUser&&currentUser.email||'');
-      rec=bmMyProfiles().filter(x=>cleanEmail(x.ownerEmail||x.owner_email||x.createdBy)===email&&String(x.businessName||x.name||'').trim()===enteredName).sort((a,b)=>String(b.updatedAt||b.time||b.date||'').localeCompare(String(a.updatedAt||a.time||a.date||'')))[0]||null;
-    }
-    if(!rec||!rec.dbId)return alert('The business profile was saved, but the photo upload must wait until Supabase returns the business ID. Refresh and edit the profile to upload the photo.');
-    try{
-      if(logoFile){const r=await uploadBusinessImage(rec,logoFile,'logo',oldLogoPath);rec.logoUrl=r.url;rec.logoPath=r.path;}
-      else if(!oldLogoUrl){rec.logoUrl='';rec.logoPath='';}
-      if(coverFile){const r=await uploadBusinessImage(rec,coverFile,'cover',oldCoverPath);rec.coverUrl=r.url;rec.coverPath=r.path;}
-      else if(!oldCoverUrl){rec.coverUrl='';rec.coverPath='';}
-      rec.status='Pending Admin Approval';
-      const saved=await syncBusinessRecordToSupabase(rec);
-      if(saved&&saved.error)throw saved.error;
-      await loadBusinessFromSupabase({force:true});
-      alert('Business profile and photos were uploaded successfully. Admin approval is required before customers see the update.');
-    }catch(e){
-      console.error('Business photo upload failed',e);
-      alert('The business profile was saved, but the photo upload failed: '+(e.message||e)+'\n\nRun the V7.8.239 Supabase Storage SQL and try again.');
-    }
-  };
-
-  window.__hcVersion='V7.8.239';
-})();
-</script>
-
-
-
-
-<script>
-/* V7.8.245 Business Directory gallery only: remove logo and cover photo UI/display */
-(function(){
-  const priorBusinessProfileForm245=window.businessProfileForm;
-  const priorBusinessCard245=window.businessCard;
-
-  function removeLogoCoverEditor245(html){
-    html=String(html||'');
-    // Remove the active V7.8.239/V7.8.240 logo-and-cover editor card, including hidden fields.
-    html=html.replace(/<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Logo and Cover Photo<\/h4>[\s\S]*?<input id="bizCoverPath"[^>]*>\s*<\/div>/g,'');
-    // Safety cleanup in case an older layout remains.
-    html=html.replace(/<div[^>]*>[\s\S]*?<label><b>Business Logo<\/b><\/label>[\s\S]*?Remove Cover Photo[\s\S]*?<\/div>\s*<\/div>/g,'');
-    return html;
-  }
-
-  window.businessProfileForm=function(b){
-    const html=typeof priorBusinessProfileForm245==='function'?priorBusinessProfileForm245(b||{}):'';
-    return removeLogoCoverEditor245(html);
-  };
-
-  window.businessCard=function(b,mode){
-    let html=typeof priorBusinessCard245==='function'?priorBusinessCard245(b,mode):'';
-    // Remove any saved cover image and logo from the public card. Gallery photos remain unchanged.
-    html=html.replace(/<img src="[^"]*" alt="Business cover"[^>]*>/g,'');
-    html=html.replace(/<img src="[^"]*" alt="Business logo"[^>]*>/g,'');
-    return html;
-  };
-
-  window.__hcVersion='V7.8.245';
-})();
-</script>
 </body>
 </html>
 
@@ -6871,7 +6720,6 @@ window.__hcVersion='V7.8.213';
       <input id="bizId" type="hidden" value="${esc(b.id||'')}">
       <div class="grid two"><div><label>Business Name</label><input id="bizName" placeholder="Example: Habesha Restaurant" value="${esc(b.businessName||b.name||'')}"></div><div><label>Business Category</label><select id="bizType">${businessCategoryOptions(b.category||b.type)}</select></div></div>
       <div class="grid two"><div><label>Business Type / Legal Structure</label><select id="bizLegalType">${['Sole Proprietorship','LLC','Corporation','Partnership','Nonprofit / Community Organization','Church / Religious Organization','Informal / Home-Based Business','Other'].map(x=>option(x,b.legalType)).join('')}</select></div><div><label>Year Established</label><input id="bizYearEstablished" type="number" min="1800" max="2100" placeholder="2026" value="${esc(b.yearEstablished||'')}"></div></div>
-      <div class="grid two"><div><label>Logo Image Link</label><input id="bizLogoUrl" placeholder="https://..." value="${esc(b.logoUrl||'')}"></div><div><label>Cover Image Link</label><input id="bizCoverUrl" placeholder="https://..." value="${esc(b.coverUrl||'')}"></div></div>
       <label>About the Business</label><textarea id="bizAbout" placeholder="Tell the community who you are, your experience, and what makes the business special.">${esc(b.about||'')}</textarea>
       <label>Products / Services Offered (separate with commas)</label><input id="bizOffers" placeholder="Tax preparation, bookkeeping, insurance, payroll" value="${esc(b.offers||'')}">
       <label>Specialties / Popular Items</label><input id="bizSpecialties" placeholder="Injera catering, immigration tax returns, Ethiopian wedding service..." value="${esc(b.specialties||'')}">
@@ -6911,7 +6759,7 @@ window.__hcVersion='V7.8.213';
     const weeklyHours={};['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(d=>weeklyHours[d]=val('bizHours'+d));
     const rec=Object.assign({},existing||{}, {
       id:existing?existing.id:'BD'+Date.now().toString().slice(-8),dbId:existing?existing.dbId:undefined,source:existing?existing.source:undefined,
-      recordType:'business_profile',businessName:name,name,category,type:category,legalType:val('bizLegalType'),yearEstablished:val('bizYearEstablished'),logoUrl:val('bizLogoUrl'),coverUrl:val('bizCoverUrl'),about,
+      recordType:'business_profile',businessName:name,name,category,type:category,legalType:val('bizLegalType'),yearEstablished:val('bizYearEstablished'),about,
       offers:val('bizOffers'),specialties:val('bizSpecialties'),managerName:val('bizManagerName'),phone,email:val('bizEmail')||currentUser.email||'',whatsapp:val('bizWhatsapp'),
       address:val('bizAddress'),city:val('bizCity'),state:val('bizState'),zip:val('bizZip'),serviceArea:val('bizServiceArea'),languages:val('bizLanguages'),priceRange:val('bizPriceRange'),payments:val('bizPayments'),licenseInfo:val('bizLicense'),
       delivery:checked('bizDelivery'),catering:checked('bizCatering'),appointments:checked('bizAppointments'),walkIns:checked('bizWalkIns'),parking:checked('bizParking'),accessible:checked('bizAccessible'),weeklyHours,hours:val('bizHours'),
@@ -6941,7 +6789,7 @@ window.__hcVersion='V7.8.213';
     const status=mode==='owner'?`<p><b>Status:</b> ${businessStatusPill(b)}</p>`:'';
     const ownerActions=mode==='owner'?`<div class="actions"><button class="btn ghost" onclick="editBusinessProfile('${esc(key)}')">Edit Profile</button>${b.dbId?`<button class="btn primary" onclick="openBusinessManager('${esc(key)}')">Business Manager</button>`:''}<button class="btn bad" onclick="deleteBusinessProfile('${esc(key)}')">Delete</button>${approved?`<button class="btn primary" onclick="openBusinessProfile('${esc(key)}')">View Public Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${esc(key)}')">Copy Profile Link</button>`:''}</div>`:'';
     const publicActions=mode==='public'?`<button class="btn primary" onclick="openBusinessProfile('${esc(key)}')">View Business Profile</button><button class="btn ghost" onclick="copyBusinessProfileLink('${esc(key)}')">Share Profile</button>`:(mode==='profile'?`<button class="btn ghost" onclick="copyBusinessProfileLink('${esc(key)}')">Share Profile</button>`:'');
-    return `<div class="card" id="biz_${esc(key)}">${b.coverUrl?`<img src="${esc(b.coverUrl)}" alt="Business cover" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-bottom:12px">`:''}<div class="item-head"><div>${b.logoUrl?`<img src="${esc(b.logoUrl)}" alt="Business logo" style="width:72px;height:72px;object-fit:cover;border-radius:50%;margin-right:12px;vertical-align:middle">`:''}<h3 style="display:inline">🏢 ${esc(b.businessName||b.name||'Business')}</h3></div></div>
+    return `<div class="card" id="biz_${esc(key)}"><div class="item-head"><div><h3 style="display:inline">🏢 ${esc(b.businessName||b.name||'Business')}</h3></div></div>
       <p><span class="pill good">${esc(b.category||b.type||'Business')}</span> ${b.city?`<span class="pill">📍 ${esc([b.city,b.state].filter(Boolean).join(', '))}</span>`:''} ${b.priceRange?`<span class="pill">${esc(b.priceRange)}</span>`:''}</p>${status}
       <p>${esc(b.about||'This business has not added a description yet.')}</p>${b.yearEstablished?`<p><b>Established:</b> ${esc(b.yearEstablished)} ${b.legalType?' • <b>Business Type:</b> '+esc(b.legalType):''}</p>`:''}
       <p><b>Products / Services:</b> ${offers||'<span class="muted">Not listed</span>'}</p>${b.specialties?`<p><b>Specialties:</b> ${esc(b.specialties)}</p>`:''}${options?`<p>${options}</p>`:''}
@@ -7016,117 +6864,6 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.237';
 })();
 
-</script>
-
-<script>
-/* V7.8.240 Final active business logo + cover upload from phone/computer */
-(function(){
-  const PHOTO_BUCKET='business-media';
-  const MAX_LOGO_BYTES=2*1024*1024;
-  const MAX_COVER_BYTES=5*1024*1024;
-  const priorBusinessProfileForm=window.businessProfileForm;
-  const priorSaveBusinessProfile=window.saveBusinessProfile;
-
-  function esc239(v){return typeof bmEsc==='function'?bmEsc(v):String(v||'').replace(/[&<>"']/g,'');}
-  function fileExt(file){
-    const name=String(file&&file.name||'');
-    const ext=(name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
-    return ext||'jpg';
-  }
-  function validateImage(file,maxBytes,label){
-    if(!file)return '';
-    if(!String(file.type||'').startsWith('image/'))return label+' must be an image file.';
-    if(file.size>maxBytes)return label+' is too large. Maximum size is '+Math.round(maxBytes/1024/1024)+' MB.';
-    return '';
-  }
-  function photoPreview(url,label,shape){
-    if(!url)return `<div class="muted" style="padding:12px;border:1px dashed #bbb;border-radius:10px">No ${label.toLowerCase()} uploaded yet.</div>`;
-    const style=shape==='logo'?'width:92px;height:92px;border-radius:50%;object-fit:cover':'width:100%;max-height:200px;border-radius:12px;object-fit:cover';
-    return `<img src="${esc239(url)}" alt="${esc239(label)}" style="${style}">`;
-  }
-
-  window.businessProfileForm=function(b){
-    b=b||{};
-    let html=typeof priorBusinessProfileForm==='function'?priorBusinessProfileForm(b):'';
-    const oldBlock=`<div class="grid two"><div><label>Logo Image Link</label><input id="bizLogoUrl" placeholder="https://..." value="${esc239(b.logoUrl||'')}"></div><div><label>Cover Image Link</label><input id="bizCoverUrl" placeholder="https://..." value="${esc239(b.coverUrl||'')}"></div></div>`;
-    const newBlock=`<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Logo and Cover Photo</h4><p class="muted">Take a photo or choose one directly from your phone or computer. You do not need to create an image link. Logo maximum: 2 MB. Cover maximum: 5 MB.</p>
-      <input id="bizLogoUrl" type="hidden" value="${esc239(b.logoUrl||'')}"><input id="bizLogoPath" type="hidden" value="${esc239(b.logoPath||'')}">
-      <input id="bizCoverUrl" type="hidden" value="${esc239(b.coverUrl||'')}"><input id="bizCoverPath" type="hidden" value="${esc239(b.coverPath||'')}">
-      <div class="grid two">
-        <div><label><b>Business Logo</b></label><div id="bizLogoPreview" style="margin:8px 0">${photoPreview(b.logoUrl,'Business logo','logo')}</div><input id="bizLogoFile" type="file" accept="image/*" onchange="previewBusinessPhoto239(this,'bizLogoPreview','logo')"><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('logo')">Remove Logo</button></div>
-        <div><label><b>Cover Photo</b></label><div id="bizCoverPreview" style="margin:8px 0">${photoPreview(b.coverUrl,'Cover photo','cover')}</div><input id="bizCoverFile" type="file" accept="image/*" onchange="previewBusinessPhoto239(this,'bizCoverPreview','cover')"><button type="button" class="btn ghost" style="margin-top:8px" onclick="clearBusinessPhoto239('cover')">Remove Cover Photo</button></div>
-      </div>
-      ${b.dbId?'':'<p class="muted">For a new business, the profile is saved first and then the selected images are uploaded automatically.</p>'}
-    </div>`;
-    if(html.includes(oldBlock))return html.replace(oldBlock,newBlock);
-    return html.replace('<label>About the Business</label>',newBlock+'<label>About the Business</label>');
-  };
-
-  window.previewBusinessPhoto239=function(input,previewId,kind){
-    const file=input&&input.files&&input.files[0];if(!file)return;
-    const err=validateImage(file,kind==='logo'?MAX_LOGO_BYTES:MAX_COVER_BYTES,kind==='logo'?'Logo':'Cover photo');
-    if(err){input.value='';return alert(err);}
-    const url=URL.createObjectURL(file),holder=$(previewId);
-    if(holder)holder.innerHTML=photoPreview(url,kind==='logo'?'Business logo':'Cover photo',kind);
-  };
-
-  window.clearBusinessPhoto239=function(kind){
-    const urlId=kind==='logo'?'bizLogoUrl':'bizCoverUrl', pathId=kind==='logo'?'bizLogoPath':'bizCoverPath', fileId=kind==='logo'?'bizLogoFile':'bizCoverFile', previewId=kind==='logo'?'bizLogoPreview':'bizCoverPreview';
-    const u=$(urlId),p=$(pathId),f=$(fileId),h=$(previewId);if(u)u.value='';if(p)p.value='';if(f)f.value='';if(h)h.innerHTML=photoPreview('',kind==='logo'?'Business logo':'Cover photo',kind);
-  };
-
-  async function uploadBusinessImage(rec,file,kind,oldPath){
-    if(!authReady())throw new Error('Supabase is not connected.');
-    if(!rec||!rec.dbId)throw new Error('The business must be saved in Supabase before uploading photos.');
-    const path=String(rec.dbId)+'/'+kind+'-'+Date.now()+'.'+fileExt(file);
-    const up=await hcSupabase.storage.from(PHOTO_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
-    if(up.error)throw up.error;
-    const pub=hcSupabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    const publicUrl=pub&&pub.data&&pub.data.publicUrl;
-    if(!publicUrl)throw new Error('Supabase did not return a public photo URL.');
-    if(oldPath&&oldPath!==path){try{await hcSupabase.storage.from(PHOTO_BUCKET).remove([oldPath]);}catch(e){console.warn('Old business photo cleanup failed',e);}}
-    return {path,url:publicUrl};
-  }
-
-  window.saveBusinessProfile=async function(){
-    const logoInput=$('bizLogoFile'),coverInput=$('bizCoverFile');
-    const logoFile=logoInput&&logoInput.files&&logoInput.files[0]||null;
-    const coverFile=coverInput&&coverInput.files&&coverInput.files[0]||null;
-    const logoErr=validateImage(logoFile,MAX_LOGO_BYTES,'Logo'),coverErr=validateImage(coverFile,MAX_COVER_BYTES,'Cover photo');
-    if(logoErr||coverErr)return alert(logoErr||coverErr);
-    const oldLogoUrl=$('bizLogoUrl')?$('bizLogoUrl').value:'';
-    const oldCoverUrl=$('bizCoverUrl')?$('bizCoverUrl').value:'';
-    const oldLogoPath=$('bizLogoPath')?$('bizLogoPath').value:'';
-    const oldCoverPath=$('bizCoverPath')?$('bizCoverPath').value:'';
-    const existingId=$('bizId')?$('bizId').value:'';
-    const enteredName=$('bizName')?String($('bizName').value||'').trim():'';
-    await priorSaveBusinessProfile();
-    if(!logoFile&&!coverFile)return;
-    await loadBusinessFromSupabase({force:true});
-    let rec=existingId?bmFindProfileByKey(existingId):null;
-    if(!rec){
-      const email=cleanEmail(currentUser&&currentUser.email||'');
-      rec=bmMyProfiles().filter(x=>cleanEmail(x.ownerEmail||x.owner_email||x.createdBy)===email&&String(x.businessName||x.name||'').trim()===enteredName).sort((a,b)=>String(b.updatedAt||b.time||b.date||'').localeCompare(String(a.updatedAt||a.time||a.date||'')))[0]||null;
-    }
-    if(!rec||!rec.dbId)return alert('The business profile was saved, but the photo upload must wait until Supabase returns the business ID. Refresh and edit the profile to upload the photo.');
-    try{
-      if(logoFile){const r=await uploadBusinessImage(rec,logoFile,'logo',oldLogoPath);rec.logoUrl=r.url;rec.logoPath=r.path;}
-      else if(!oldLogoUrl){rec.logoUrl='';rec.logoPath='';}
-      if(coverFile){const r=await uploadBusinessImage(rec,coverFile,'cover',oldCoverPath);rec.coverUrl=r.url;rec.coverPath=r.path;}
-      else if(!oldCoverUrl){rec.coverUrl='';rec.coverPath='';}
-      rec.status='Pending Admin Approval';
-      const saved=await syncBusinessRecordToSupabase(rec);
-      if(saved&&saved.error)throw saved.error;
-      await loadBusinessFromSupabase({force:true});
-      alert('Business profile and photos were uploaded successfully. Admin approval is required before customers see the update.');
-    }catch(e){
-      console.error('Business photo upload failed',e);
-      alert('The business profile was saved, but the photo upload failed: '+(e.message||e)+'\n\nRun the V7.8.239 Supabase Storage SQL and try again.');
-    }
-  };
-
-  window.__hcVersion='V7.8.240';
-})();
 </script>
 
 <script>
@@ -7257,8 +6994,6 @@ window.__hcVersion='V7.8.213';
     let html=typeof priorBusinessCard241==='function'?priorBusinessCard241(b,mode):'';
     const gallery=publicGallery241(b);
     if(gallery)html=html.replace('<div class="actions">',gallery+'<div class="actions">');
-    html=html.replace(/<img src="([^"]+)" alt="Business cover"([^>]*)>/,function(_,url,rest){return `<img src="${url}" alt="Business cover"${rest} onclick="openBusinessPhotoViewer241(decodeURIComponent('${encodePhoto241(url)}'))">`;});
-    html=html.replace(/<img src="([^"]+)" alt="Business logo"([^>]*)>/,function(_,url,rest){return `<img src="${url}" alt="Business logo"${rest} onclick="openBusinessPhotoViewer241(decodeURIComponent('${encodePhoto241(url)}'))">`;});
     return html;
   };
 
@@ -7274,6 +7009,6 @@ window.__hcVersion='V7.8.213';
   };
   window.closeBusinessPhotoViewer241=function(){const modal=$('businessPhotoViewer241');if(modal)modal.style.display='none';document.body.style.overflow='';};
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeBusinessPhotoViewer241();});
-  window.__hcVersion='V7.8.244';
+  window.__hcVersion='V7.8.246';
 })();
 </script>
