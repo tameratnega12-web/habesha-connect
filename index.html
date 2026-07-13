@@ -3039,7 +3039,7 @@ function bmSelectedProfileKey(){
   catch(e){return bmActivePublicProfileKey||''}
 }
 function bmFindProfileByKey(key){key=String(key||'');return bmProfileRecords().find(b=>String(b.dbId||'')===key||String(b.id||'')===key)||null}
-function bmBusinessProfileUrl(b){let u=new URL(location.href);u.search='';u.searchParams.set('business',bmProfileKey(b));u.hash='business';return u.toString()}
+function bmBusinessProfileUrl(b){let key=bmProfileKey(b);return location.origin+location.pathname+'?business='+encodeURIComponent(key)+'#business'}
 async function openBusinessProfile(key){
   key=String(key||'').trim();
   let selected=bmFindProfileByKey(key);
@@ -3056,7 +3056,7 @@ async function backToBusinessDirectory(){
   history.pushState({page:'business'},'',u.toString());
   await show('business',false);
 }
-async function copyBusinessProfileLink(key){let b=bmFindProfileByKey(key);if(!b)return alert('Business profile not found.');let link=bmBusinessProfileUrl(b);try{await navigator.clipboard.writeText(link);alert('Unique business profile link copied.');}catch(e){prompt('Copy this unique business profile link:',link)}}
+async function copyBusinessProfileLink(key){let b=bmFindProfileByKey(key);if(!b)return alert('Business profile not found.');let link=bmBusinessProfileUrl(b);let title=b.businessName||b.name||'Business Profile';if(navigator.share){try{await navigator.share({title:title,text:'View '+title+' on Habesha Agenagn',url:link});return;}catch(e){if(e&&e.name==='AbortError')return;}}try{await navigator.clipboard.writeText(link);alert('Public business profile link copied.');}catch(e){prompt('Copy this public business profile link:',link)}}
 function mapBusinessRecordFromDb(row){
   let d=row.details||{};
   let rowStatus=bmNormalizeStatus(row.status||'Pending Admin Approval');
@@ -4367,8 +4367,9 @@ adminApproveRentalReq=function(id){return alert('Rental request approval is done
 adminDeclineRentalReq=function(id){return alert('Rental request decline is done by the property owner. Admin only approves property listings.');};
 adminFinalApproveRentalReq=function(id){return alert('Final admin approval is not used in this rental flow. Owner Accept marks the property Rented.');};
 
-try{history.replaceState({page:'home'},'',location.hash||'#home')}catch(e){}
-render();(async()=>{if(!(await handlePasswordRecovery())){show('home',false);await initAuth();}})();
+let __sharedBusinessKey='';try{__sharedBusinessKey=new URL(location.href).searchParams.get('business')||'';}catch(e){}
+try{history.replaceState({page:__sharedBusinessKey?'business':'home',business:__sharedBusinessKey||undefined},'',__sharedBusinessKey?(location.pathname+'?business='+encodeURIComponent(__sharedBusinessKey)+'#business'):(location.hash||'#home'))}catch(e){}
+render();(async()=>{if(!(await handlePasswordRecovery())){await initAuth();if(__sharedBusinessKey){await loadBusinessFromSupabase({force:true});await show('business',false);}else{await show('home',false);}}})();
 
 
 
