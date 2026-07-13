@@ -5450,6 +5450,59 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.218';
 })();
 </script>
+
+<script id="v78223-marketplace-admin-seller-buyer-agree-final-flow">
+/* V7.8.223 Marketplace-only final flow.
+   Seller listing -> Admin approves listing -> Customer requests -> Admin approves request
+   -> Seller Accept/Decline -> Customer Agree -> both contacts released.
+   This final controller intentionally overrides only the two later Marketplace functions
+   that bypassed buyer-request Admin approval. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const findItem=id=>(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  const findReq=id=>(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  async function refreshMarketV223(){
+    persistOnly();
+    try{if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();}catch(e){console.warn('Marketplace refresh skipped',e);}
+    if(currentPage==='home'&&typeof home==='function')home();
+    else if(currentPage==='admin'&&typeof adminSuccess==='function')adminSuccess();
+    else if(typeof marketplace==='function')marketplace();
+  }
+
+  // Approved listings can be requested, but every new customer request first waits for Admin.
+  window.marketRequestBuy=async function(id){
+    if(!requireLogin())return;
+    const m=findItem(id);if(!m)return alert('Marketplace item was not found. Please refresh Marketplace and try again.');
+    if(!['Approved','Available'].includes(m.status))return alert('This item is not available for requests.');
+    if(norm(m.sellerEmail)===norm(currentUser.email))return alert('You cannot request your own item.');
+    const exists=(data.marketRequests||[]).find(r=>String(r.itemId)===String(m.dbId||m.id)&&norm(r.buyerEmail)===norm(currentUser.email)&&!['Cancelled','Admin Declined','Seller Declined','Connection Declined','Completed'].includes(r.status));
+    if(exists)return alert('You already requested this item.');
+    const r={id:'MR'+Date.now().toString().slice(-7),itemId:m.dbId||m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Buyer Request Pending Admin',createdAt:new Date().toLocaleString()};
+    const res=await insertMarketRequestDb(r);
+    if(res.error)return alert('Marketplace request was not saved: '+res.error.message);
+    if(res.data){r.id=res.data.id;r.dbId=res.data.id;}
+    data.marketRequests.unshift(r);
+    addNote('admin.habeshaconnect@gmail.com','Marketplace buyer request waiting for approval: '+r.buyerName+' wants '+r.itemTitle);
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace buyer request waiting for approval','A customer requested an approved Marketplace item. Admin must approve the request before the seller can respond.',{Buyer:r.buyerName,BuyerEmail:r.buyerEmail,Item:r.itemTitle,Seller:r.sellerName,Status:r.status},'marketplace'));}catch(e){console.warn('Marketplace admin request email failed',e);}
+    persistOnly();marketplace();alert('Request sent to Admin for approval.');
+  };
+
+  // After Admin approval, the seller accepts or declines. Acceptance waits for customer Agree.
+  window.marketSellerAcceptReq=async function(id){
+    const r=findReq(id);if(!r||!currentUser||norm(r.sellerEmail)!==norm(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('Admin must approve this customer request before you can accept it.');
+    const item=findItem(r.itemId);if(item&&!['Approved','Available'].includes(item.status))return alert('This item is no longer available.');
+    r.status='Connection Approved';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not accept Marketplace request: '+res.error.message);
+    addNote(r.buyerEmail,'Seller accepted your Marketplace request for '+r.itemTitle+'. Open Home or Marketplace and click Agree.');
+    try{await Promise.resolve(sendEmailNotice({to:r.buyerEmail,name:r.buyerName,subject:'Marketplace seller accepted — your agreement is required',summary:'The seller accepted your Marketplace request. Click Agree before contact information is released.',buttonText:'Open Marketplace',page:'marketplace',details:{Item:r.itemTitle,Seller:r.sellerName,Status:'Waiting for Customer Agreement'}}));}catch(e){console.warn('Marketplace buyer agreement email failed',e);}
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace seller accepted request','The seller accepted an Admin-approved Marketplace request. The customer must now click Agree.',{Item:r.itemTitle,Seller:r.sellerName,Buyer:r.buyerName,Status:'Waiting for Customer Agreement'},'marketplace'));}catch(e){}
+    await refreshMarketV223();alert('Accepted. The customer was notified to click Agree.');
+  };
+
+  window.__hcVersion='V7.8.223';
+})();
+</script>
 </body>
 </html>
 
