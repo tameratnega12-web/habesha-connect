@@ -5622,6 +5622,31 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.229';
 })();
 </script>
+
+<script id="v78231-taxi-driver-accept-button-visible-fix">
+/* V7.8.231 — Show Taxi/Limo ride Accept button for the selected driver role even while the approved driver record is still loading. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function selectedTaxiDriver(){
+    return !!currentUser && ['taxi_limo_driver','taxi_driver'].includes(norm(currentUser.role));
+  }
+  const previousActions=window.taxiRideActions;
+  window.taxiRideActions=function(r){
+    let html=typeof previousActions==='function'?previousActions(r):'-';
+    if(!r||!selectedTaxiDriver())return html;
+    const me=norm(currentUser.email);
+    const available=r.status==='Approved - Waiting Driver' && !norm(r.driverEmail) && !(r.declinedBy||[]).map(norm).includes(me);
+    if(!available)return html;
+    // Remove any older Accept variants, then insert the current action exactly once.
+    html=String(html||'')
+      .replace(/<button[^>]*onclick=["']driverAcceptTaxi\([^)]*\)["'][^>]*>Accept Ride<\/button>/ig,'')
+      .replace(/<button[^>]*onclick=["']driverAcceptTaxiNotifyCustomer\([^)]*\)["'][^>]*>Accept Ride(?: &amp;| &) Notify Customer<\/button>/ig,'');
+    const accept=`<button class="btn primary" onclick="driverAcceptTaxiNotifyCustomer('${r.id}')">Accept Ride &amp; Notify Customer</button>`;
+    return (accept+' '+(html&&html!=='-'?html:'')).trim()||'-';
+  };
+  window.__hcVersion='V7.8.231';
+})();
+</script>
 </body>
 </html>
 
