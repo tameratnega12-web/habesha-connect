@@ -5416,6 +5416,40 @@ async function adminApproveTrailerPayment(id){
 /* V7.8.213 — Taxi/Limo Owner home buttons only. */
 window.__hcVersion='V7.8.213';
 </script>
+
+<script id="v78218-taxi-driver-home-role-display-fix">
+/* V7.8.218 — Taxi/Limo driver home only: prevent generic truck-driver cards from appearing
+   when the signed-in account has a Taxi/Limo driver application. */
+(function(){
+  function taxiAppForCurrentUser(){
+    if(!window.currentUser) return null;
+    const email=String(currentUser.email||'').trim().toLowerCase();
+    return (data.taxiDriverApps||[]).find(a=>String(a.email||a.driverEmail||'').trim().toLowerCase()===email)||null;
+  }
+
+  const previousTruckDriverHomeActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    if(taxiAppForCurrentUser()) return '';
+    return typeof previousTruckDriverHomeActions==='function'?previousTruckDriverHomeActions():'';
+  };
+
+  const previousTaxiDriverHomeActions=window.taxiDriverHomeActions;
+  window.taxiDriverHomeActions=function(){
+    if(!window.currentUser) return '';
+    const taxiRole=['taxi_limo_driver','taxi_driver'].includes(currentUser.role);
+    if(!taxiRole && !taxiAppForCurrentUser()) return '';
+    if(typeof previousTaxiDriverHomeActions==='function'){
+      const originalRole=currentUser.role;
+      if(!taxiRole) currentUser.role='taxi_limo_driver';
+      try{return previousTaxiDriverHomeActions();}
+      finally{currentUser.role=originalRole;}
+    }
+    return '';
+  };
+
+  window.__hcVersion='V7.8.218';
+})();
+</script>
 </body>
 </html>
 
@@ -5971,3 +6005,78 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+<script id="v78219-trailer-agreement-bottom-only-fix">
+/* V7.8.219 — Trailer agreement placement only.
+   Remove trailer agreement/contact cards from the general Home page and place them
+   at the very bottom of the Trucking/Trailer page for the requesting user. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function sameEmail(a,b){return !!norm(a)&&norm(a)===norm(b);}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  function stripTrailerAgreementFromHome(html){
+    if(!html)return html;
+    const template=document.createElement('template');
+    template.innerHTML=html;
+    template.content.querySelectorAll('section,.card').forEach(el=>{
+      const text=norm(el.textContent);
+      const id=String(el.id||'');
+      if(id==='trailerRequesterAgreementV78202'||id==='trailerOwnerRequesterAgreeV78210'||
+         text.includes('agreement needed / contact information')||
+         text.includes('trailer owner accepted — your agreement is required')||
+         text.includes('trailer owner accepted — agree to continue')){
+        el.remove();
+      }
+    });
+    return template.innerHTML;
+  }
+
+  const priorDriverHome=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    return stripTrailerAgreementFromHome(typeof priorDriverHome==='function'?priorDriverHome():'');
+  };
+  const priorOwnerHome=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    return stripTrailerAgreementFromHome(typeof priorOwnerHome==='function'?priorOwnerHome():'');
+  };
+
+  function trailerAgreementBottomPanel(){
+    if(!window.currentUser||!['driver','truck_owner'].includes(currentUser.role))return '';
+    const rows=(data.trailerRentals||[]).filter(t=>
+      sameEmail(t.renterEmail,currentUser.email)&&
+      ['Owner Accepted - Waiting Renter Agreement','Renter Agreed'].includes(String(t.status||''))
+    );
+    if(!rows.length)return '';
+    return `<section id="trailerAgreementBottomV78219" class="card" style="margin-top:26px;border:2px solid #16a34a">
+      <h2>✅ Trailer Agreement / Contact Information</h2>
+      <p class="muted">This section is shown at the bottom of your Trucking/Trailer page.</p>
+      <div class="grid">${rows.map(t=>{
+        const agreed=String(t.status||'')==='Renter Agreed';
+        return `<div class="card" style="border:2px solid #16a34a">
+          <h3>🚚 Trailer Rental ${agreed?'Agreed':'Accepted'}</h3>
+          <p><b>${esc(t.trailerType||'Trailer')}</b>${t.location?` • ${esc(t.location)}`:''}</p>
+          <p class="muted">${agreed?'Your agreement is complete. Trailer owner information is available.':'The trailer owner accepted your request. Click Agree to continue.'}</p>
+          <div class="actions">${agreed
+            ?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${esc(t.id)}')">View Trailer Owner Information</button>`
+            :`<button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>`}
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </section>`;
+  }
+
+  const priorTruck=window.truck;
+  window.truck=async function(){
+    const out=await priorTruck.apply(this,arguments);
+    const host=document.getElementById('truck');
+    if(host){
+      host.querySelectorAll('#trailerRequesterAgreementV78202,#trailerOwnerRequesterAgreeV78210,#trailerAgreementBottomV78219').forEach(el=>el.remove());
+      const html=trailerAgreementBottomPanel();
+      if(html)host.insertAdjacentHTML('beforeend',html);
+    }
+    return out;
+  };
+  window.__hcVersion='V7.8.219';
+})();
+</script>
