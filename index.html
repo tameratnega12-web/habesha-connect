@@ -2743,7 +2743,7 @@ async function loadSupabaseTaxiLimo(){
   }catch(e){data.taxiLimoSyncErrors.push('taxi_limo_driver_assignments: '+(e.message||e));console.warn('Taxi/Limo assignments load failed',e);}
   try{
     let rides=await hcSupabase.from('taxi_ride_requests').select('*').order('created_at',{ascending:false});
-    if(rides.error){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+rides.error.message);}else{data.taxiRideRequests=(rides.data||[]).map(r=>{let d=r.details||{};return {dbId:r.id,id:r.id,riderName:r.rider_name||d.riderName||'',riderEmail:r.rider_email||d.riderEmail||'',riderPhone:r.rider_phone||d.riderPhone||'',pickup:r.pickup||d.pickup||'',destination:r.destination||d.destination||'',rideDate:r.ride_date||d.rideDate||'',rideTime:r.ride_time||d.rideTime||'',passengers:r.passengers||d.passengers||'',notes:r.notes||d.notes||'',status:taxiUiStatus(r.status),driverName:r.driver_name||d.driverName||'',driverEmail:r.driver_email||d.driverEmail||'',driverPhone:r.driver_phone||d.driverPhone||'',driverAvailability:d.driverAvailability||'',declinedBy:d.declinedBy||[],createdAt:r.created_at||''};});}
+    if(rides.error){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+rides.error.message);}else{data.taxiRideRequests=(rides.data||[]).map(r=>{let d=r.details||{};return {dbId:r.id,id:r.id,riderName:r.rider_name||d.riderName||'',riderEmail:r.rider_email||d.riderEmail||'',riderPhone:r.rider_phone||d.riderPhone||'',pickup:r.pickup_location||r.pickup||d.pickup||d.pickup_location||'',destination:r.dropoff_location||r.destination||d.destination||d.dropoff_location||'',rideDate:r.ride_date||d.rideDate||'',rideTime:r.ride_time||d.rideTime||'',passengers:r.passengers||d.passengers||'',notes:r.notes||d.notes||'',status:taxiUiStatus(r.status),driverName:r.driver_name||d.driverName||'',driverEmail:r.driver_email||d.driverEmail||'',driverPhone:r.driver_phone||d.driverPhone||'',driverAvailability:d.driverAvailability||'',declinedBy:d.declinedBy||[],createdAt:r.created_at||''};});}
   }catch(e){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+(e.message||e));console.warn('Taxi/Limo ride requests load failed',e);}
   persistOnly();
 }
@@ -2811,7 +2811,7 @@ async function updateTaxiAssignmentDb(a,fields){
 
 async function insertTaxiRideDb(r){
   if(!authReady())return {error:null,data:null};
-  let payload={local_ref:r.id,rider_name:r.riderName,rider_email:r.riderEmail,rider_phone:r.riderPhone,pickup:r.pickup,destination:r.destination,ride_date:r.rideDate||null,ride_time:r.rideTime||'',passengers:r.passengers||'',notes:r.notes||'',status:r.status||'Pending Admin Approval',details:r};
+  let payload={local_ref:r.id,rider_name:r.riderName,rider_email:r.riderEmail,rider_phone:r.riderPhone,pickup:r.pickup,destination:r.destination,pickup_location:r.pickup,dropoff_location:r.destination,ride_date:r.rideDate||null,ride_time:r.rideTime||'',passengers:r.passengers||'',notes:r.notes||'',status:r.status||'Pending Admin Approval',details:r};
   return await hcSupabase.from('taxi_ride_requests').insert(payload).select().single();
 }
 async function updateTaxiRideDb(r,fields){
