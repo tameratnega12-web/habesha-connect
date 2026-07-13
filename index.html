@@ -7545,3 +7545,55 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.259';
 })();
 </script>
+
+
+<script id="v78260-trailer-requester-agree-owner-info-reliability-fix">
+/* V7.8.260 — Trailer rental requester agreement only.
+   After the trailer owner accepts, the driver/other truck owner sees Agree.
+   Clicking Agree saves the agreement and immediately releases owner information. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>norm(a)===norm(b);
+  const findTrailer=id=>(data.trailerRentals||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const ownerContact=item=>{
+    const user=(data.users||[]).find(u=>sameEmail(u.email,item.ownerEmail))||{};
+    return {
+      name:item.ownerName||user.name||'Trailer Owner',
+      phone:item.ownerPhone||user.phone||'Not provided',
+      email:item.ownerEmail||user.email||'Not provided'
+    };
+  };
+
+  window.renterAgreeTrailer=async function(id){
+    if(!requireLogin())return;
+    const item=findTrailer(id);
+    if(!item)return alert('Trailer rental not found.');
+    if(!currentUser||!sameEmail(item.renterEmail,currentUser.email))return alert('Only the accepted requester can agree.');
+    if(String(item.status||'')!=='Owner Accepted - Waiting Renter Agreement')return alert('This trailer request is not waiting for your agreement.');
+
+    const old={...item};
+    item.status='Renter Agreed';
+    item.renterAgreedAt=new Date().toLocaleString();
+    const res=await updateTrailerRentalDb(item,{status:'Renter Agreed'});
+    if(res&&res.error){Object.assign(item,old);return alert('Could not save your agreement: '+res.error.message);}
+
+    const contact=ownerContact(item);
+    addNote(item.ownerEmail,(item.renterName||'The requester')+' agreed to rent your trailer.');
+    try{await Promise.resolve(sendEmailNotice({to:item.ownerEmail,name:contact.name,subject:'Trailer requester agreed',summary:'The accepted requester agreed to rent your trailer. Your contact information was released to the requester.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Trailer:item.trailerType,Requester:item.renterName,RequesterEmail:item.renterEmail,Status:'Renter Agreed'}}));}catch(e){console.warn('Trailer owner agreement email failed',e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Trailer requester agreed','The accepted trailer requester clicked Agree and the trailer owner information was released.',{Trailer:item.trailerType,Owner:contact.name,OwnerEmail:contact.email,Requester:item.renterName,RequesterEmail:item.renterEmail,Status:'Renter Agreed'},'admin'));}catch(e){console.warn('Trailer agreement admin email failed',e);}
+
+    persistOnly();
+    home();
+    contactAlert(contact.name,contact.phone,contact.email,'Trailer Owner Information');
+  };
+
+  window.viewTrailerOwnerInformation=function(id){
+    const item=findTrailer(id);
+    if(!item||!currentUser||!sameEmail(item.renterEmail,currentUser.email)||String(item.status||'')!=='Renter Agreed')return alert('Trailer owner information is not available.');
+    const contact=ownerContact(item);
+    contactAlert(contact.name,contact.phone,contact.email,'Trailer Owner Information');
+  };
+
+  window.__hcVersion='V7.8.260';
+})();
+</script>
