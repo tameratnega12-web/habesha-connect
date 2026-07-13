@@ -424,8 +424,22 @@ async function backgroundPageSync(p,force=false){
  }
 }
 function refreshCurrentPage(){backgroundPageSync(currentPage,true);}
-window.addEventListener('focus',()=>refreshCurrentPage());
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshCurrentPage();});
+// V7.8.248: Do not rebuild the Business Directory while the owner profile editor is open.
+// On phones, choosing a photo temporarily blurs the browser; focus/visibility then returns
+// before the file input change event finishes. Refreshing at that moment closes the form
+// and clears the selected gallery photo. Other pages keep their normal focus refresh.
+function businessProfileEditorOpen248(){
+ return currentPage==='business' && !!($('bizName') || $('bizGalleryFiles') || window.__businessGallerySaveInProgress);
+}
+window.addEventListener('focus',()=>{
+ if(businessProfileEditorOpen248())return;
+ refreshCurrentPage();
+});
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState!=='visible')return;
+ if(businessProfileEditorOpen248())return;
+ refreshCurrentPage();
+});
 async function show(p,pushHistory=true){
  if(!pages.includes(p))p='home';
  if(!isAllowedPage(p)){p=currentUser?'home':'account'}
