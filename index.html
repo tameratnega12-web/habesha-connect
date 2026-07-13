@@ -6890,6 +6890,7 @@ window.__hcVersion='V7.8.213';
   const priorSaveBusinessProfile241=window.saveBusinessProfile;
   const priorBusinessCard241=window.businessCard;
   let removedGalleryPaths241=[];
+  let pendingGalleryFiles249=[];
 
   function esc241(v){return typeof bmEsc==='function'?bmEsc(v):String(v||'').replace(/[&<>"']/g,'');}
   function gallery241(b){return Array.isArray(b&&b.galleryPhotos)?b.galleryPhotos.filter(x=>x&&x.url):[];}
@@ -6918,7 +6919,7 @@ window.__hcVersion='V7.8.213';
   }
 
   window.businessProfileForm=function(b){
-    b=b||{};removedGalleryPaths241=[];
+    b=b||{};removedGalleryPaths241=[];pendingGalleryFiles249=[];
     let html=typeof priorBusinessProfileForm241==='function'?priorBusinessProfileForm241(b):'';
     const photos=gallery241(b);
     const block=`<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Photo Gallery</h4>
@@ -6927,6 +6928,7 @@ window.__hcVersion='V7.8.213';
       <div id="bizGalleryExisting">${renderExistingGallery241(photos)}</div>
       <label style="margin-top:12px"><b>Add Gallery Photos</b></label>
       <input id="bizGalleryFiles" type="file" accept="image/*" multiple onchange="previewBusinessGallery241(this)">
+      <p class="muted" style="margin:6px 0 0">You can select several photos at once, or use Choose Files again to add more before saving.</p>
       <div id="bizGallerySelectedPreview" style="margin-top:10px"></div>
     </div>`;
     return html.replace('<label>About the Business</label>',block+'<label>About the Business</label>');
@@ -6934,11 +6936,21 @@ window.__hcVersion='V7.8.213';
 
   window.previewBusinessGallery241=function(input){
     const existing=(()=>{try{return JSON.parse($('bizGalleryJson').value||'[]')}catch(e){return []}})();
-    const files=Array.from(input&&input.files||[]);
-    const error=files.map(validateGalleryFile241).find(Boolean);
-    if(error){input.value='';return alert(error);}
-    if(existing.length+files.length>MAX_GALLERY_PHOTOS){input.value='';return alert('You can keep a maximum of '+MAX_GALLERY_PHOTOS+' gallery photos. Delete an existing photo or select fewer new photos.');}
-    renderSelectedGallery241(files);
+    const chosen=Array.from(input&&input.files||[]);
+    const error=chosen.map(validateGalleryFile241).find(Boolean);
+    if(error){if(input)input.value='';return alert(error);}
+    for(const file of chosen){
+      const duplicate=pendingGalleryFiles249.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified);
+      if(!duplicate)pendingGalleryFiles249.push(file);
+    }
+    if(existing.length+pendingGalleryFiles249.length>MAX_GALLERY_PHOTOS){
+      pendingGalleryFiles249=pendingGalleryFiles249.slice(0,Math.max(0,MAX_GALLERY_PHOTOS-existing.length));
+      if(input)input.value='';
+      renderSelectedGallery241(pendingGalleryFiles249);
+      return alert('You can keep a maximum of '+MAX_GALLERY_PHOTOS+' gallery photos.');
+    }
+    if(input)input.value='';
+    renderSelectedGallery241(pendingGalleryFiles249);
   };
 
   window.removeExistingGalleryPhoto241=function(index){
@@ -6949,7 +6961,7 @@ window.__hcVersion='V7.8.213';
     photos.splice(index,1);
     $('bizGalleryJson').value=JSON.stringify(photos);
     $('bizGalleryExisting').innerHTML=renderExistingGallery241(photos);
-    const input=$('bizGalleryFiles');if(input)previewBusinessGallery241(input);
+    renderSelectedGallery241(pendingGalleryFiles249);
   };
 
   async function uploadGalleryPhoto241(rec,file,index){
@@ -6964,8 +6976,7 @@ window.__hcVersion='V7.8.213';
   }
 
   window.saveBusinessProfile=async function(){
-    const input=$('bizGalleryFiles');
-    const files=Array.from(input&&input.files||[]);
+    const files=pendingGalleryFiles249.slice();
     const error=files.map(validateGalleryFile241).find(Boolean);if(error)return alert(error);
     let kept=[];try{kept=JSON.parse($('bizGalleryJson')?$('bizGalleryJson').value:'[]')}catch(e){kept=[]}
     if(kept.length+files.length>MAX_GALLERY_PHOTOS)return alert('You can keep a maximum of '+MAX_GALLERY_PHOTOS+' gallery photos.');
@@ -6992,6 +7003,7 @@ window.__hcVersion='V7.8.213';
         if(del&&del.error)console.warn('Gallery photo cleanup failed',del.error);
       }
       removedGalleryPaths241=[];
+      pendingGalleryFiles249=[];
       await loadBusinessFromSupabase({force:true});
       business();
       alert('Business profile and gallery photos were saved. Admin approval is required before customers see the update.');
