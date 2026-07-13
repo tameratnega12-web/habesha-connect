@@ -7088,3 +7088,152 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.240';
 })();
 </script>
+
+<script>
+/* V7.8.241 Business photo gallery + large mobile photo viewer */
+(function(){
+  const PHOTO_BUCKET='business-media';
+  const MAX_GALLERY_PHOTOS=6;
+  const MAX_GALLERY_BYTES=5*1024*1024;
+  const priorBusinessProfileForm241=window.businessProfileForm;
+  const priorSaveBusinessProfile241=window.saveBusinessProfile;
+  const priorBusinessCard241=window.businessCard;
+  let removedGalleryPaths241=[];
+
+  function esc241(v){return typeof bmEsc==='function'?bmEsc(v):String(v||'').replace(/[&<>"']/g,'');}
+  function gallery241(b){return Array.isArray(b&&b.galleryPhotos)?b.galleryPhotos.filter(x=>x&&x.url):[];}
+  function fileExt241(file){const ext=(String(file&&file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');return ext||'jpg';}
+  function validateGalleryFile241(file){
+    if(!file)return '';
+    if(!String(file.type||'').startsWith('image/'))return 'Every gallery file must be an image.';
+    if(file.size>MAX_GALLERY_BYTES)return 'Each gallery photo must be 5 MB or smaller.';
+    return '';
+  }
+  function encodePhoto241(url){return encodeURIComponent(String(url||''));}
+  function photoTile241(photo,index,editable){
+    return `<div class="biz-gallery-tile" data-gallery-index="${index}" style="position:relative;overflow:hidden;border-radius:12px;aspect-ratio:1/1;background:#eef2f7">
+      <img src="${esc241(photo.url)}" alt="Business photo ${index+1}" onclick="openBusinessPhotoViewer241(decodeURIComponent('${encodePhoto241(photo.url)}'))" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block">
+      ${editable?`<button type="button" class="btn bad" onclick="removeExistingGalleryPhoto241(${index})" style="position:absolute;right:6px;top:6px;padding:6px 9px">Delete</button>`:''}
+    </div>`;
+  }
+  function renderExistingGallery241(photos){
+    if(!photos.length)return '<p class="muted">No gallery photos uploaded yet.</p>';
+    return `<div class="biz-gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">${photos.map((p,i)=>photoTile241(p,i,true)).join('')}</div>`;
+  }
+  function renderSelectedGallery241(files){
+    const holder=$('bizGallerySelectedPreview');if(!holder)return;
+    if(!files.length){holder.innerHTML='';return;}
+    holder.innerHTML=`<p><b>New photos selected:</b> ${files.length}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">${files.map((f,i)=>`<img src="${URL.createObjectURL(f)}" alt="Selected business photo ${i+1}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px">`).join('')}</div>`;
+  }
+
+  window.businessProfileForm=function(b){
+    b=b||{};removedGalleryPaths241=[];
+    let html=typeof priorBusinessProfileForm241==='function'?priorBusinessProfileForm241(b):'';
+    const photos=gallery241(b);
+    const block=`<div class="card" style="background:#f8fafc"><h4 style="margin-top:0">Business Photo Gallery</h4>
+      <p class="muted">Upload up to ${MAX_GALLERY_PHOTOS} photos of food, products, work, the store, or services. Each photo can be up to 5 MB. Customers can tap any photo to view it full size.</p>
+      <input id="bizGalleryJson" type="hidden" value="${esc241(JSON.stringify(photos))}">
+      <div id="bizGalleryExisting">${renderExistingGallery241(photos)}</div>
+      <label style="margin-top:12px"><b>Add Gallery Photos</b></label>
+      <input id="bizGalleryFiles" type="file" accept="image/*" multiple onchange="previewBusinessGallery241(this)">
+      <div id="bizGallerySelectedPreview" style="margin-top:10px"></div>
+    </div>`;
+    return html.replace('<label>About the Business</label>',block+'<label>About the Business</label>');
+  };
+
+  window.previewBusinessGallery241=function(input){
+    const existing=(()=>{try{return JSON.parse($('bizGalleryJson').value||'[]')}catch(e){return []}})();
+    const files=Array.from(input&&input.files||[]);
+    const error=files.map(validateGalleryFile241).find(Boolean);
+    if(error){input.value='';return alert(error);}
+    if(existing.length+files.length>MAX_GALLERY_PHOTOS){input.value='';return alert('You can keep a maximum of '+MAX_GALLERY_PHOTOS+' gallery photos. Delete an existing photo or select fewer new photos.');}
+    renderSelectedGallery241(files);
+  };
+
+  window.removeExistingGalleryPhoto241=function(index){
+    let photos=[];try{photos=JSON.parse($('bizGalleryJson').value||'[]')}catch(e){}
+    const photo=photos[index];if(!photo)return;
+    if(!confirm('Delete this gallery photo when you save the profile?'))return;
+    if(photo.path)removedGalleryPaths241.push(photo.path);
+    photos.splice(index,1);
+    $('bizGalleryJson').value=JSON.stringify(photos);
+    $('bizGalleryExisting').innerHTML=renderExistingGallery241(photos);
+    const input=$('bizGalleryFiles');if(input)previewBusinessGallery241(input);
+  };
+
+  async function uploadGalleryPhoto241(rec,file,index){
+    if(!authReady())throw new Error('Supabase is not connected.');
+    if(!rec||!rec.dbId)throw new Error('The business must be saved before gallery photos can upload.');
+    const path=String(rec.dbId)+'/gallery-'+Date.now()+'-'+index+'.'+fileExt241(file);
+    const up=await hcSupabase.storage.from(PHOTO_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+    if(up.error)throw up.error;
+    const pub=hcSupabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    const url=pub&&pub.data&&pub.data.publicUrl;if(!url)throw new Error('Supabase did not return a gallery photo URL.');
+    return {path:path,url:url};
+  }
+
+  window.saveBusinessProfile=async function(){
+    const input=$('bizGalleryFiles');
+    const files=Array.from(input&&input.files||[]);
+    const error=files.map(validateGalleryFile241).find(Boolean);if(error)return alert(error);
+    let kept=[];try{kept=JSON.parse($('bizGalleryJson')?$('bizGalleryJson').value:'[]')}catch(e){kept=[]}
+    if(kept.length+files.length>MAX_GALLERY_PHOTOS)return alert('You can keep a maximum of '+MAX_GALLERY_PHOTOS+' gallery photos.');
+    const existingId=$('bizId')?$('bizId').value:'';
+    const enteredName=$('bizName')?String($('bizName').value||'').trim():'';
+    await priorSaveBusinessProfile241();
+    if(!files.length&&!removedGalleryPaths241.length)return;
+    await loadBusinessFromSupabase({force:true});
+    let rec=existingId?bmFindProfileByKey(existingId):null;
+    if(!rec){
+      const email=cleanEmail(currentUser&&currentUser.email||'');
+      rec=bmMyProfiles().filter(x=>cleanEmail(x.ownerEmail||x.owner_email||x.createdBy)===email&&String(x.businessName||x.name||'').trim()===enteredName).sort((a,b)=>String(b.updatedAt||b.time||b.date||'').localeCompare(String(a.updatedAt||a.time||a.date||'')))[0]||null;
+    }
+    if(!rec||!rec.dbId)return alert('The profile was saved, but gallery photos must wait until the business ID is available. Refresh, edit the profile, and upload them again.');
+    try{
+      const uploaded=[];
+      for(let i=0;i<files.length;i++)uploaded.push(await uploadGalleryPhoto241(rec,files[i],i));
+      rec.galleryPhotos=kept.concat(uploaded).slice(0,MAX_GALLERY_PHOTOS);
+      rec.status='Pending Admin Approval';
+      const saved=await syncBusinessRecordToSupabase(rec);if(saved&&saved.error)throw saved.error;
+      if(removedGalleryPaths241.length){
+        const del=await hcSupabase.storage.from(PHOTO_BUCKET).remove(removedGalleryPaths241);
+        if(del&&del.error)console.warn('Gallery photo cleanup failed',del.error);
+      }
+      removedGalleryPaths241=[];
+      await loadBusinessFromSupabase({force:true});
+      alert('Business profile and gallery photos were saved. Admin approval is required before customers see the update.');
+    }catch(e){
+      console.error('Business gallery upload failed',e);
+      alert('The business profile was saved, but the gallery update failed: '+(e.message||e));
+    }
+  };
+
+  function publicGallery241(b){
+    const photos=gallery241(b);if(!photos.length)return '';
+    return `<div class="biz-public-gallery" style="margin:16px 0"><h4>Business Photos</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">${photos.map((p,i)=>photoTile241(p,i,false)).join('')}</div></div>`;
+  }
+
+  window.businessCard=function(b,mode){
+    let html=typeof priorBusinessCard241==='function'?priorBusinessCard241(b,mode):'';
+    const gallery=publicGallery241(b);
+    if(gallery)html=html.replace('<div class="actions">',gallery+'<div class="actions">');
+    html=html.replace(/<img src="([^"]+)" alt="Business cover"([^>]*)>/,function(_,url,rest){return `<img src="${url}" alt="Business cover"${rest} onclick="openBusinessPhotoViewer241(decodeURIComponent('${encodePhoto241(url)}'))">`;});
+    html=html.replace(/<img src="([^"]+)" alt="Business logo"([^>]*)>/,function(_,url,rest){return `<img src="${url}" alt="Business logo"${rest} onclick="openBusinessPhotoViewer241(decodeURIComponent('${encodePhoto241(url)}'))">`;});
+    return html;
+  };
+
+  window.openBusinessPhotoViewer241=function(url){
+    let modal=$('businessPhotoViewer241');
+    if(!modal){
+      modal=document.createElement('div');modal.id='businessPhotoViewer241';
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+      modal.innerHTML='<button type="button" aria-label="Close photo" onclick="closeBusinessPhotoViewer241()" style="position:absolute;right:16px;top:12px;font-size:34px;background:transparent;color:white;border:0;cursor:pointer">×</button><img id="businessPhotoViewerImage241" alt="Large business photo" style="max-width:96vw;max-height:90vh;object-fit:contain;border-radius:10px">';
+      modal.onclick=function(e){if(e.target===modal)closeBusinessPhotoViewer241();};document.body.appendChild(modal);
+    }
+    $('businessPhotoViewerImage241').src=url;modal.style.display='flex';document.body.style.overflow='hidden';
+  };
+  window.closeBusinessPhotoViewer241=function(){const modal=$('businessPhotoViewer241');if(modal)modal.style.display='none';document.body.style.overflow='';};
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeBusinessPhotoViewer241();});
+  window.__hcVersion='V7.8.241';
+})();
+</script>
