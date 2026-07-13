@@ -6291,3 +6291,49 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.222';
 })();
 </script>
+
+
+<script id="v78227-taxi-ride-gps-route-buttons">
+/* V7.8.227 — Taxi/Limo customer ride GPS and route mileage links only. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function selectedTaxiDriver(){return !!currentUser && ['taxi_limo_driver','taxi_driver'].includes(String(currentUser.role||'').trim().toLowerCase());}
+  function enc(v){return encodeURIComponent(String(v||'').trim());}
+  function routeUrl(r){
+    if(!r||!r.pickup||!r.destination)return '';
+    return 'https://www.google.com/maps/dir/?api=1&origin='+enc(r.pickup)+'&destination='+enc(r.destination)+'&travelmode=driving';
+  }
+  function pickupUrl(r){
+    if(!r||!r.pickup)return '';
+    return 'https://www.google.com/maps/dir/?api=1&destination='+enc(r.pickup)+'&travelmode=driving';
+  }
+  window.openTaxiRideRoute=function(id,mode){
+    const k=String(id||'');
+    const r=(data.taxiRideRequests||[]).find(x=>String(x.id||'')===k||String(x.dbId||'')===k);
+    if(!r)return alert('Taxi ride not found.');
+    const url=mode==='pickup'?pickupUrl(r):routeUrl(r);
+    if(!url)return alert('Pickup and destination addresses are required.');
+    window.open(url,'_blank','noopener,noreferrer');
+  };
+
+  const priorActions=window.taxiRideActions;
+  window.taxiRideActions=function(r){
+    let base=typeof priorActions==='function'?priorActions(r):'-';
+    if(!selectedTaxiDriver()||!r)return base;
+    const me=norm(currentUser.email);
+    const out=[];
+    const assigned=norm(r.driverEmail)===me;
+    const available=r.status==='Approved - Waiting Driver'&&!norm(r.driverEmail);
+    if(available&&r.pickup&&r.destination){
+      out.push(`<button class="btn ghost" onclick="openTaxiRideRoute('${r.id}','route')">Route & Miles</button>`);
+    }
+    if(assigned&&['Driver Approved - Contact Shared','Driver Arrived','In Progress','Completed - Waiting Admin Verification','Completed - Admin Verified','Payment Received / History'].includes(r.status)){
+      if(r.pickup)out.push(`<button class="btn ghost" onclick="openTaxiRideRoute('${r.id}','pickup')">GPS to Pickup</button>`);
+      if(r.pickup&&r.destination)out.push(`<button class="btn ghost" onclick="openTaxiRideRoute('${r.id}','route')">Full Route & Miles</button>`);
+    }
+    if(base&&base!=='-')out.push(base);
+    return out.join(' ')||'-';
+  };
+  window.__hcVersion='V7.8.227';
+})();
+</script>
