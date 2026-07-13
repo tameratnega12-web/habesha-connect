@@ -6129,8 +6129,8 @@ window.__hcVersion='V7.8.213';
 </script>
 
 
-<script id="v78221-taxi-driver-home-currentuser-fix">
-/* V7.8.221 — Taxi/Limo Driver home buttons only.
+<script id="v78222-taxi-driver-selected-role-only-fix">
+/* V7.8.222 — Taxi/Limo Driver home buttons only for the selected Taxi/Limo Driver role.
    Use the project's actual currentUser global instead of window.currentUser. */
 (function(){
   function signedInUser(){
@@ -6146,7 +6146,9 @@ window.__hcVersion='V7.8.213';
       || null;
   }
   function isTaxiDriver(user){
-    return !!user && (['taxi_limo_driver','taxi_driver'].includes(user.role) || !!taxiDriverRecord(user));
+    // Show Taxi/Limo Driver home actions only when that role is currently selected.
+    // A past Taxi/Limo driver record must not add these buttons to the user's other role pages.
+    return !!user && ['taxi_limo_driver','taxi_driver'].includes(String(user.role||'').trim().toLowerCase());
   }
 
   window.taxiDriverHomeActions=function(){
@@ -6171,6 +6173,6 @@ window.__hcVersion='V7.8.213';
       return result;
     };
   }
-  window.__hcVersion='V7.8.221';
+  window.__hcVersion='V7.8.222';
 })();
 </script>
