@@ -6127,3 +6127,50 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.220';
 })();
 </script>
+
+
+<script id="v78221-taxi-driver-home-currentuser-fix">
+/* V7.8.221 — Taxi/Limo Driver home buttons only.
+   Use the project's actual currentUser global instead of window.currentUser. */
+(function(){
+  function signedInUser(){
+    try{return (typeof currentUser!=='undefined' && currentUser)?currentUser:null;}
+    catch(e){return null;}
+  }
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function taxiDriverRecord(user){
+    if(!user) return null;
+    const email=norm(user.email);
+    return (data.taxiDriverApps||[]).find(a=>norm(a.email||a.driverEmail)===email)
+      || (data.taxiLimoDriverAssignments||[]).find(a=>norm(a.driverEmail)===email)
+      || null;
+  }
+  function isTaxiDriver(user){
+    return !!user && (['taxi_limo_driver','taxi_driver'].includes(user.role) || !!taxiDriverRecord(user));
+  }
+
+  window.taxiDriverHomeActions=function(){
+    const user=signedInUser();
+    if(!isTaxiDriver(user)) return '';
+    return `<section id="taxiDriverHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚖 Taxi/Limo Driver Quick Actions</h2><p class="muted">Apply as a driver, find Taxi/Limo jobs, open customer rides, and review your ride activity.</p></div><div class="grid"><div class="card"><h3>📝 Apply as Taxi/Limo Driver</h3><p class="muted">Submit or review your Taxi/Limo driver application and availability profile.</p><button class="btn primary" onclick="goTaxiSection('applyDriver')">Apply as Taxi/Limo Driver</button></div><div class="card"><h3>🚕 Available Taxi/Limo Jobs</h3><p class="muted">Review Taxi/Limo owner hire requests and available job connections.</p><button class="btn primary" onclick="goTaxiSection('availableJobs')">Available Taxi/Limo Jobs</button></div><div class="card"><h3>🚖 Open Customer Rides</h3><p class="muted">See approved customer ride requests available to accept.</p><button class="btn primary" onclick="goTaxiSection('openRides')">Open Customer Ride</button></div><div class="card"><h3>📋 My Ride Activity</h3><p class="muted">Review your accepted and completed ride activity.</p><button class="btn primary" onclick="goTaxiSection('rideActivity')">My Ride Activity</button></div></div></section>`;
+  };
+
+  const priorTruckDriverHomeActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    const user=signedInUser();
+    if(isTaxiDriver(user)) return '';
+    return typeof priorTruckDriverHomeActions==='function'?priorTruckDriverHomeActions():'';
+  };
+
+  const priorTaxiLoad=window.loadSupabaseTaxiLimo;
+  if(typeof priorTaxiLoad==='function'){
+    window.loadSupabaseTaxiLimo=async function(){
+      const result=await priorTaxiLoad.apply(this,arguments);
+      const user=signedInUser();
+      if(user && location.hash==='#home' && typeof home==='function') home();
+      return result;
+    };
+  }
+  window.__hcVersion='V7.8.221';
+})();
+</script>
