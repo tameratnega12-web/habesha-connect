@@ -8670,3 +8670,103 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.266';
 })();
 </script>
+
+<script id="v78271-taxi-driver-agree-owner-contact">
+/* V7.8.271 — Taxi/Limo hiring only.
+   Owner sends hire request -> driver clicks Agree -> owner contact is released.
+   Existing admin approval and employment flow remains unchanged. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function sameEmail(a,b){return !!norm(a)&&norm(a)===norm(b);}
+  function sid(v){return String(v==null?'':v).trim();}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function assignment(id){const key=sid(id);return (data.taxiLimoDriverAssignments||[]).find(a=>sid(a.id)===key||sid(a.dbId)===key);}
+  function ownerFor(a){
+    return (data.taxiLimoOwners||[]).find(o=>sameEmail(o.ownerEmail,a&&a.ownerEmail))||{};
+  }
+  function ownerContact(a){
+    const o=ownerFor(a);
+    return {
+      name:a?.ownerName||o.ownerName||'Not provided',
+      company:o.companyName||'Not provided',
+      phone:o.phone||a?.ownerPhone||'Not provided',
+      email:a?.ownerEmail||o.ownerEmail||'Not provided'
+    };
+  }
+  function showOwnerContact(a){
+    if(!a)return alert('Owner information is not available.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only the selected driver can view this owner information.');
+    if(!['Pending Admin Approval','Approved'].includes(String(a.status||'')))return alert('Please click Agree first.');
+    const c=ownerContact(a);
+    alert('Taxi/Limo Owner Information\n\nName: '+c.name+'\nCompany: '+c.company+'\nPhone: '+c.phone+'\nEmail: '+c.email+'\nVehicle: '+(a.vehicleLabel||'Not provided'));
+  }
+  window.viewTaxiOwnerInformation=function(id){showOwnerContact(assignment(id));};
+
+  window.taxiDriverAgreeHire=async function(id){
+    const a=assignment(id);
+    if(!a)return alert('Hire request not found.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only this driver can agree to the hire request.');
+    if(a.status!=='Waiting Driver Acceptance'){
+      if(['Pending Admin Approval','Approved'].includes(String(a.status||'')))return showOwnerContact(a);
+      return alert('This hire request is not waiting for your agreement.');
+    }
+    const res=await updateTaxiAssignmentDb(a,{status:'Pending Admin Approval',driver_responded_at:new Date().toISOString()});
+    if(res&&res.error)return alert('Could not save your agreement: '+res.error.message);
+    a.status='Pending Admin Approval';
+    a.driverAcceptedAt=new Date().toLocaleString();
+    addNote(a.ownerEmail,(a.driverName||'The Taxi/Limo driver')+' agreed to your hire request. Waiting for admin approval.');
+    try{await Promise.resolve(sendEmailNotice({to:a.ownerEmail,name:a.ownerName,subject:'Taxi/Limo driver agreed to your hire request',summary:'The selected driver agreed to your Taxi/Limo hire request. Admin approval is now pending.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Driver:a.driverName,Vehicle:a.vehicleLabel,Status:'Pending Admin Approval'}}));}catch(e){console.warn(e);}
+    try{await Promise.resolve(sendAdminEmailNotice('Taxi/Limo driver agreement needs approval','A Taxi/Limo driver agreed to an owner hire request. Final admin approval is required.',{Owner:a.ownerName,OwnerEmail:a.ownerEmail,Driver:a.driverName,DriverEmail:a.driverEmail,Vehicle:a.vehicleLabel,Status:a.status},'admin'));}catch(e){console.warn(e);}
+    persistOnly();
+    showOwnerContact(a);
+    try{await loadSupabaseTaxiLimo();}catch(e){console.warn(e);}
+    if(typeof taxi==='function')taxi();
+  };
+  // Preserve compatibility: all older Accept buttons now use the new Agree behavior.
+  window.taxiDriverAcceptHire=window.taxiDriverAgreeHire;
+
+  function pendingForDriver(){
+    if(!currentUser||!['taxi_limo_driver','taxi_driver'].includes(norm(currentUser.role)))return [];
+    return (data.taxiLimoDriverAssignments||[]).filter(a=>sameEmail(a.driverEmail,currentUser.email)&&a.status==='Waiting Driver Acceptance');
+  }
+  function driverAgreePanel(){
+    const rows=pendingForDriver();
+    if(!rows.length)return '';
+    return `<section id="taxiDriverAgreeOwnerV78271" class="card" style="margin-top:18px;border:2px solid #16a34a"><h2>🚕 Taxi/Limo Owner Hire Request — Agreement Required</h2><p class="muted">Click Agree to accept the request and receive the Taxi/Limo owner information.</p><div class="grid">${rows.map(a=>`<div class="card"><h3>${esc(a.ownerName||'Taxi/Limo Owner')}</h3><p><b>Vehicle:</b> ${esc(a.vehicleLabel||'Not provided')}</p><button class="btn good" type="button" onclick="taxiDriverAgreeHire('${esc(a.id)}')">Agree</button><button class="btn bad" type="button" onclick="taxiDriverDeclineHire('${esc(a.id)}')">Decline</button></div>`).join('')}</div></section>`;
+  }
+  const priorDriverHome=window.taxiDriverHomeActions;
+  window.taxiDriverHomeActions=function(){
+    const base=typeof priorDriverHome==='function'?priorDriverHome.apply(this,arguments):'';
+    return driverAgreePanel()+base;
+  };
+
+  function refreshTaxiHireButtons(root){
+    (root||document).querySelectorAll('button[onclick*="taxiDriverAcceptHire"],button[onclick*="taxiDriverAgreeHire"]').forEach(btn=>{
+      const call=btn.getAttribute('onclick')||'';
+      btn.setAttribute('onclick',call.replace(/taxiDriverAcceptHire/g,'taxiDriverAgreeHire'));
+      if(btn.textContent.trim().toLowerCase()==='accept')btn.textContent='Agree';
+      btn.type='button';
+    });
+    if(!currentUser||!['taxi_limo_driver','taxi_driver'].includes(norm(currentUser.role)))return;
+    (data.taxiLimoDriverAssignments||[]).filter(a=>sameEmail(a.driverEmail,currentUser.email)&&['Pending Admin Approval','Approved'].includes(a.status)).forEach(a=>{
+      const rows=[...(root||document).querySelectorAll('tr')];
+      rows.forEach(row=>{
+        const text=norm(row.textContent);
+        if(text.includes(norm(a.ownerName))&&text.includes(norm(a.vehicleLabel))){
+          const cell=row.lastElementChild;
+          if(cell&&!cell.querySelector('[data-taxi-owner-contact]'))cell.innerHTML=`<button class="btn primary" type="button" data-taxi-owner-contact="1" onclick="viewTaxiOwnerInformation('${esc(a.id)}')">View Owner Information</button>`;
+        }
+      });
+    });
+  }
+  const priorTaxi=window.taxi;
+  window.taxi=async function(){
+    const out=await priorTaxi.apply(this,arguments);
+    setTimeout(()=>refreshTaxiHireButtons(document),0);
+    return out;
+  };
+  document.addEventListener('DOMContentLoaded',()=>refreshTaxiHireButtons(document));
+  new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{if(n.nodeType===1)refreshTaxiHireButtons(n);}))).observe(document.documentElement,{childList:true,subtree:true});
+  window.__hcVersion='V7.8.271';
+})();
+</script>
