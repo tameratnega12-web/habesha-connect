@@ -6246,6 +6246,77 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+
+<script id="v78267-taxi-limo-supabase-flow-match-fix">
+/* V7.8.267 — Taxi/Limo only: one final action renderer aligned with Supabase statuses.
+   Owner/driver hiring statuses remain:
+   Waiting Driver Acceptance -> Pending Admin Approval -> Approved/Declined.
+   Customer ride statuses remain:
+   Pending Admin Approval -> Approved - Waiting Driver -> Driver Accepted - Waiting Admin Approval
+   -> Driver Approved - Contact Shared -> Driver Arrived -> In Progress
+   -> Completed - Waiting Admin Verification -> Completed - Admin Verified -> Payment Received / History. */
+(function(){
+  function norm267(v){return String(v||'').trim().toLowerCase();}
+  function taxiDriver267(){return !!currentUser&&['taxi_limo_driver','taxi_driver'].includes(String(currentUser.role||'').trim().toLowerCase());}
+  function approvedDriver267(){return taxiDriver267()&&(data.taxiDriverApps||[]).find(a=>norm267(a.email||a.driverEmail)===norm267(currentUser.email)&&a.status==='Approved');}
+  function declined267(r,me){return (r.declinedBy||[]).map(norm267).includes(me);}
+
+  window.taxiRideActions=function(r){
+    if(!currentUser||!r)return '-';
+    const me=norm267(currentUser.email), out=[];
+    const customer=norm267(r.riderEmail)===me;
+    const assigned=taxiDriver267()&&norm267(r.driverEmail)===me;
+
+    if(customer&&r.status==='Pending Admin Approval'){
+      out.push(`<button class="btn bad" type="button" onclick="cancelTaxiRide('${r.id}')">Cancel</button>`);
+    }
+
+    if(taxiDriver267()&&approvedDriver267()&&r.status==='Approved - Waiting Driver'&&!norm267(r.driverEmail)&&!declined267(r,me)){
+      const acceptFn=typeof window.driverAcceptTaxiNotifyCustomer==='function'?'driverAcceptTaxiNotifyCustomer':'driverAcceptTaxi';
+      out.push(`<button class="btn primary" type="button" onclick="${acceptFn}('${r.id}')">Accept Ride &amp; Notify Customer</button>`);
+      out.push(`<button class="btn bad" type="button" onclick="driverDeclineTaxi('${r.id}')">Decline</button>`);
+      if(r.pickup&&r.destination&&typeof window.openTaxiRideRoute==='function')out.push(`<button class="btn ghost" type="button" onclick="openTaxiRideRoute('${r.id}','route')">Route &amp; Miles</button>`);
+    }
+
+    if(customer&&r.status==='Driver Accepted - Waiting Admin Approval'&&r.adminApproved){
+      out.push(`<button class="btn primary" type="button" onclick="taxiCustomerAgreeRide('${r.id}')">Agree &amp; View Driver Information</button>`);
+    }
+
+    if(assigned&&['Driver Approved - Contact Shared','Driver Arrived','In Progress','Completed - Waiting Admin Verification','Completed - Admin Verified','Payment Received / History'].includes(r.status)){
+      if(r.pickup&&typeof window.openTaxiRideRoute==='function')out.push(`<button class="btn ghost" type="button" onclick="openTaxiRideRoute('${r.id}','pickup')">GPS to Pickup</button>`);
+      if(r.pickup&&r.destination&&typeof window.openTaxiRideRoute==='function')out.push(`<button class="btn ghost" type="button" onclick="openTaxiRideRoute('${r.id}','route')">Full Route &amp; Miles</button>`);
+    }
+
+    if(assigned&&r.status==='Driver Approved - Contact Shared'){
+      out.push(`<button class="btn ghost" type="button" onclick="taxiArrived('${r.id}')">Arrived</button>`);
+      out.push(`<button class="btn primary" type="button" onclick="taxiStartRide('${r.id}')">Start Ride</button>`);
+    }else if(assigned&&r.status==='Driver Arrived'){
+      out.push(`<button class="btn primary" type="button" onclick="taxiStartRide('${r.id}')">Start Ride</button>`);
+    }else if(assigned&&r.status==='In Progress'){
+      out.push(`<button class="btn primary" type="button" onclick="taxiCompleteRide('${r.id}')">Complete Ride</button>`);
+    }else if(assigned&&r.status==='Completed - Admin Verified'){
+      out.push(`<button class="btn primary" type="button" onclick="taxiPaymentReceived('${r.id}')">Payment Received</button>`);
+    }
+
+    return out.join(' ')||'-';
+  };
+
+  // Normalize records after every Supabase refresh so UI comparisons use the same identity/status values.
+  const priorLoad267=window.loadSupabaseTaxiLimo;
+  if(typeof priorLoad267==='function')window.loadSupabaseTaxiLimo=async function(){
+    const result=await priorLoad267.apply(this,arguments);
+    (data.taxiLimoOwners||[]).forEach(x=>x.ownerEmail=norm267(x.ownerEmail));
+    (data.taxiLimoVehicles||[]).forEach(x=>x.ownerEmail=norm267(x.ownerEmail));
+    (data.taxiDriverApps||[]).forEach(x=>{x.email=norm267(x.email||x.driverEmail);x.ownerEmail=norm267(x.ownerEmail);});
+    (data.taxiLimoDriverAssignments||[]).forEach(x=>{x.ownerEmail=norm267(x.ownerEmail);x.driverEmail=norm267(x.driverEmail);});
+    (data.taxiRideRequests||[]).forEach(x=>{x.riderEmail=norm267(x.riderEmail);x.driverEmail=norm267(x.driverEmail);x.declinedBy=(x.declinedBy||[]).map(norm267).filter(Boolean);});
+    return result;
+  };
+
+  window.__hcVersion='V7.8.267';
+})();
+</script>
 </body>
 </html>
 
