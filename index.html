@@ -6409,6 +6409,118 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.268';
 })();
 </script>
+
+
+<style id="v78269-taxi-limo-mobile-response-fix">
+/* V7.8.269 — Taxi/Limo phone-only interaction/layout support. */
+@media (max-width:760px){
+  #taxiOwnerHomeActions,
+  #taxiDriverHomeActions,
+  #taxiOwnerPanel,
+  #taxiAddVehicle,
+  #taxiMyVehicles,
+  #taxiAvailableDrivers,
+  #taxiPostDriverJob,
+  #taxiOwnerDriverActivity,
+  #taxiDriverApplicationSection,
+  #taxiAvailableJobs,
+  #taxiOpenRides,
+  #taxiRideRequests,
+  #taxiMyRides,
+  #taxiRequestRide{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+  }
+  #taxiOwnerHomeActions .grid,
+  #taxiDriverHomeActions .grid,
+  #taxiOwnerPanel .grid,
+  #taxiAddVehicle .grid,
+  #taxiMyVehicles .grid,
+  #taxiAvailableDrivers .grid,
+  #taxiPostDriverJob .grid,
+  #taxiOwnerDriverActivity .grid,
+  #taxiDriverApplicationSection .grid,
+  #taxiAvailableJobs .grid,
+  #taxiOpenRides .grid,
+  #taxiRideRequests .grid,
+  #taxiMyRides .grid,
+  #taxiRequestRide .grid{grid-template-columns:1fr!important;gap:12px!important}
+  #taxiOwnerHomeActions .row,
+  #taxiDriverHomeActions .row,
+  #taxiOwnerPanel .row,
+  #taxiAddVehicle .row,
+  #taxiDriverApplicationSection .row,
+  #taxiRequestRide .row{grid-template-columns:1fr!important;gap:0!important}
+  #taxiOwnerHomeActions button,
+  #taxiDriverHomeActions button,
+  #taxiOwnerPanel button,
+  #taxiAddVehicle button,
+  #taxiMyVehicles button,
+  #taxiAvailableDrivers button,
+  #taxiPostDriverJob button,
+  #taxiOwnerDriverActivity button,
+  #taxiDriverApplicationSection button,
+  #taxiAvailableJobs button,
+  #taxiOpenRides button,
+  #taxiRideRequests button,
+  #taxiMyRides button,
+  #taxiRequestRide button{
+    display:block!important;
+    width:100%!important;
+    min-height:48px!important;
+    margin:6px 0!important;
+    padding:12px 14px!important;
+    white-space:normal!important;
+    line-height:1.25!important;
+    position:relative!important;
+    z-index:1!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    -webkit-tap-highlight-color:rgba(15,118,110,.18);
+  }
+  #taxiOwnerPanel input,#taxiOwnerPanel select,#taxiOwnerPanel textarea,
+  #taxiAddVehicle input,#taxiAddVehicle select,#taxiAddVehicle textarea,
+  #taxiDriverApplicationSection input,#taxiDriverApplicationSection select,#taxiDriverApplicationSection textarea,
+  #taxiRequestRide input,#taxiRequestRide select,#taxiRequestRide textarea{
+    min-height:46px!important;
+    font-size:16px!important;
+    max-width:100%!important;
+  }
+  #taxiOwnerPanel textarea,#taxiAddVehicle textarea,#taxiDriverApplicationSection textarea,#taxiRequestRide textarea{min-height:96px!important}
+  #taxiOwnerPanel .card,#taxiAddVehicle .card,#taxiDriverApplicationSection .card,#taxiRequestRide .card{padding:14px!important;overflow:visible!important}
+  #taxiOwnerPanel .actions,#taxiAddVehicle .actions,#taxiDriverApplicationSection .actions,#taxiRequestRide .actions,
+  #taxiMyVehicles .actions,#taxiAvailableDrivers .actions,#taxiAvailableJobs .actions,#taxiOpenRides .actions,#taxiRideRequests .actions,#taxiMyRides .actions{
+    display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%!important
+  }
+}
+</style>
+<script id="v78269-taxi-limo-mobile-response-script">
+(function(){
+  const selector='#taxiOwnerHomeActions button,#taxiDriverHomeActions button,#taxiOwnerPanel button,#taxiAddVehicle button,#taxiMyVehicles button,#taxiAvailableDrivers button,#taxiPostDriverJob button,#taxiOwnerDriverActivity button,#taxiDriverApplicationSection button,#taxiAvailableJobs button,#taxiOpenRides button,#taxiRideRequests button,#taxiMyRides button,#taxiRequestRide button';
+  function prepareTaxiMobile(){
+    document.querySelectorAll(selector).forEach(b=>{
+      b.type='button';
+      b.style.pointerEvents='auto';
+      b.style.touchAction='manipulation';
+      if(!b.getAttribute('aria-label'))b.setAttribute('aria-label',(b.textContent||'Taxi/Limo action').trim());
+    });
+  }
+  let queued=false;
+  function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;prepareTaxiMobile();});}
+  document.addEventListener('DOMContentLoaded',schedule);
+  document.addEventListener('touchstart',e=>{const b=e.target.closest?.(selector);if(b){b.type='button';b.style.pointerEvents='auto';}}, {capture:true,passive:true});
+  const observer=new MutationObserver(schedule);
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  const priorTaxi=window.taxi;
+  if(typeof priorTaxi==='function')window.taxi=function(){const r=priorTaxi.apply(this,arguments);schedule();setTimeout(schedule,60);return r;};
+  const priorRender=window.taxiRenderOnly;
+  if(typeof priorRender==='function')window.taxiRenderOnly=function(){const r=priorRender.apply(this,arguments);schedule();setTimeout(schedule,60);return r;};
+  prepareTaxiMobile();
+  window.__hcVersion='V7.8.269';
+})();
+</script>
 </body>
 </html>
 
