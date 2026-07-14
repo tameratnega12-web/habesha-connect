@@ -6770,6 +6770,79 @@ window.__hcVersion='V7.8.213';
  #hsV78274HomePriority .card{overflow:visible!important}
 }
 </style>
+
+<script id="v78276-job-seeker-owner-info-phone-fix">
+/* V7.8.276 — Job Seekers mobile owner-information button fix only. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const findApp=id=>(data.jobApplications||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const findJob=a=>(data.jobs||[]).find(j=>String(j.id)===String(a?.jobId)||String(j.dbId||'')===String(a?.jobDbId||''))||{};
+
+  function contactFor(a){
+    const j=findJob(a);
+    return {
+      name:a?.employerName||j.employerName||j.company||'Business Owner',
+      phone:j.contactPhone||a?.employerPhone||'Not provided',
+      email:j.contactEmail||a?.employerEmail||'Not provided'
+    };
+  }
+
+  function showOwnerInfo276(id){
+    const a=findApp(id);
+    if(!a)return alert('Application not found.');
+    if(!currentUser||norm(a.applicantEmail)!==norm(currentUser.email))return alert('Only the accepted job seeker can view this information.');
+    if(a.status!=='Applicant Agreed')return alert('Please click Agree first.');
+    const c=contactFor(a);
+    let box=document.getElementById('jobOwnerInfoBox276');
+    if(!box){
+      box=document.createElement('div');
+      box.id='jobOwnerInfoBox276';
+      box.setAttribute('role','dialog');
+      box.setAttribute('aria-modal','true');
+      document.body.appendChild(box);
+    }
+    const phoneLink=c.phone&&c.phone!=='Not provided'?`<a class="btn primary" href="tel:${String(c.phone).replace(/[^+\d]/g,'')}">Call Owner</a>`:'';
+    const emailLink=c.email&&c.email!=='Not provided'?`<a class="btn ghost" href="mailto:${String(c.email).replace(/"/g,'&quot;')}">Email Owner</a>`:'';
+    box.innerHTML=`<div class="job-owner-dialog276"><h2>📞 Business Owner Information</h2><p><b>Name:</b> ${String(c.name)}</p><p><b>Phone:</b> ${String(c.phone)}</p><p><b>Email:</b> ${String(c.email)}</p><div class="actions">${phoneLink}${emailLink}<button class="btn dark" type="button" data-close-job-owner-276>Close</button></div></div>`;
+    box.style.display='flex';
+  }
+
+  window.viewAcceptedJobOwnerInformation=showOwnerInfo276;
+
+  document.addEventListener('click',function(e){
+    const close=e.target.closest('[data-close-job-owner-276]');
+    if(close){const box=document.getElementById('jobOwnerInfoBox276');if(box)box.style.display='none';return;}
+    const b=e.target.closest('button[onclick*="viewAcceptedJobOwnerInformation"]');
+    if(!b)return;
+    const m=(b.getAttribute('onclick')||'').match(/viewAcceptedJobOwnerInformation\(['"]([^'"]+)['"]\)/);
+    if(!m)return;
+    e.preventDefault();e.stopPropagation();showOwnerInfo276(m[1]);
+  },true);
+
+  let start=null;
+  document.addEventListener('touchstart',function(e){
+    const b=e.target.closest('button[onclick*="viewAcceptedJobOwnerInformation"]');
+    if(!b)return;
+    const t=e.changedTouches&&e.changedTouches[0];
+    start=t?{x:t.clientX,y:t.clientY,b}:null;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    const b=e.target.closest('button[onclick*="viewAcceptedJobOwnerInformation"]');
+    if(!b||!start||start.b!==b)return;
+    const t=e.changedTouches&&e.changedTouches[0];
+    const moved=t&&(Math.abs(t.clientX-start.x)>12||Math.abs(t.clientY-start.y)>12);
+    start=null;if(moved)return;
+    const m=(b.getAttribute('onclick')||'').match(/viewAcceptedJobOwnerInformation\(['"]([^'"]+)['"]\)/);
+    if(!m)return;
+    e.preventDefault();e.stopPropagation();showOwnerInfo276(m[1]);
+  },{passive:false,capture:true});
+
+  const style=document.createElement('style');
+  style.textContent=`#jobOwnerInfoBox276{display:none;position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:18px}.job-owner-dialog276{width:min(520px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)}@media(max-width:700px){button[onclick*="viewAcceptedJobOwnerInformation"]{width:100%;min-height:54px;touch-action:manipulation}.job-owner-dialog276 .actions{display:grid;grid-template-columns:1fr;gap:10px}.job-owner-dialog276 .btn{width:100%;min-height:50px;text-align:center}}`;
+  document.head.appendChild(style);
+  window.__hcVersion='V7.8.276';
+})();
+</script>
 </body>
 </html>
 
