@@ -10269,3 +10269,59 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.289';
 })();
 </script>
+
+<script id="v78291-new-activity-absolute-top-home-only">
+/* V7.8.291 — Layout-only correction.
+   On the main user Home page, move the entire existing "Your New Activity"
+   section to the first position. No transaction, button, status, Supabase,
+   email, form, or category-page logic is changed. */
+(function(){
+  'use strict';
+
+  function moveWholeNewActivityToTop(){
+    const home=document.getElementById('home');
+    if(!home||!window.currentUser||currentUser.role==='admin')return;
+    const activity=home.querySelector('#personalizedHomeActivity');
+    if(!activity)return;
+
+    // Move the complete section (heading plus all activity cards) to the
+    // absolute first position of the main Home dashboard.
+    if(home.firstElementChild!==activity){
+      home.insertBefore(activity,home.firstElementChild);
+    }
+  }
+
+  function schedule(){
+    requestAnimationFrame(()=>requestAnimationFrame(moveWholeNewActivityToTop));
+  }
+
+  const previousRender=window.renderPage;
+  if(typeof previousRender==='function')window.renderPage=async function(){
+    const result=await previousRender.apply(this,arguments);
+    schedule();
+    return result;
+  };
+
+  const previousHome=window.home;
+  if(typeof previousHome==='function')window.home=function(){
+    const result=previousHome.apply(this,arguments);
+    schedule();
+    return result;
+  };
+
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(moveWholeNewActivityToTop,25);
+  });
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const home=document.getElementById('home');
+    if(home)observer.observe(home,{childList:true,subtree:true});
+    moveWholeNewActivityToTop();
+  });
+
+  window.__hcNewActivityAbsoluteTopV291=moveWholeNewActivityToTop;
+  window.__hcVersion='V7.8.291';
+})();
+</script>
