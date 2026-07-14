@@ -9655,6 +9655,32 @@ window.__hcVersion='V7.8.213';
     if(file.size>MAX_MARKET_PHOTO_BYTES)return 'Each Marketplace photo must be 5 MB or smaller.';
     return '';
   }
+  async function normalizeMarketPhoto281(file,index){
+    // Convert phone images (including iPhone HEIC when the browser can decode it)
+    // to a browser-friendly JPEG before Storage upload.
+    return await new Promise((resolve,reject)=>{
+      const objectUrl=URL.createObjectURL(file);
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const max=1600;
+          let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+          if(!w||!h)throw new Error('The selected photo could not be read.');
+          if(w>h&&w>max){h=Math.round(h*max/w);w=max;}
+          else if(h>max){w=Math.round(w*max/h);h=max;}
+          const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+          const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
+          canvas.toBlob(blob=>{
+            URL.revokeObjectURL(objectUrl);
+            if(!blob)return reject(new Error('The selected photo could not be converted.'));
+            resolve(new File([blob],'marketplace-'+Date.now()+'-'+index+'.jpg',{type:'image/jpeg',lastModified:Date.now()}));
+          },'image/jpeg',0.82);
+        }catch(e){URL.revokeObjectURL(objectUrl);reject(e);}
+      };
+      img.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error('This phone photo format could not be opened. Please choose JPEG, PNG, or take a screenshot of the photo.'));};
+      img.src=objectUrl;
+    });
+  }
   function renderSelected280(){
     const box=$('mPhotoPreview');if(!box)return;
     if(!pendingMarketPhotoFiles280.length){box.innerHTML='';return;}
@@ -9683,13 +9709,25 @@ window.__hcVersion='V7.8.213';
   async function upload280(listing,file,index,uid){
     if(!authReady())throw new Error('Supabase is not connected.');
     if(!listing||!listing.dbId)throw new Error('The Marketplace listing ID was not returned by Supabase.');
-    const path=String(uid)+'/'+String(listing.dbId)+'/market-'+Date.now()+'-'+index+'.'+ext280(file);
-    const up=await hcSupabase.storage.from(MARKET_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+    const normalized=await normalizeMarketPhoto281(file,index);
+    const path=String(uid)+'/'+String(listing.dbId)+'/market-'+Date.now()+'-'+index+'.jpg';
+    const up=await hcSupabase.storage.from(MARKET_BUCKET).upload(path,normalized,{cacheControl:'3600',upsert:false,contentType:'image/jpeg'});
     if(up.error)throw up.error;
     const pub=hcSupabase.storage.from(MARKET_BUCKET).getPublicUrl(path);
     const url=pub&&pub.data&&pub.data.publicUrl;
     if(!url)throw new Error('Supabase did not return a Marketplace photo URL.');
     return url;
+  }
+
+  async function attachMarketplacePhotos281(listingId,urls){
+    let direct=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('id,photo_urls').single();
+    if(!direct.error&&direct.data)return direct;
+    // Secure RPC fallback for projects whose older RLS policies block owner updates.
+    const rpc=await hcSupabase.rpc('marketplace_set_listing_photos',{p_listing_id:listingId,p_photo_urls:urls});
+    if(rpc.error)throw direct.error||rpc.error;
+    const verify=await hcSupabase.from('marketplace_listings').select('id,photo_urls').eq('id',listingId).single();
+    if(verify.error)throw verify.error;
+    return verify;
   }
 
   window.addMarket=async function(){
@@ -9717,9 +9755,12 @@ window.__hcVersion='V7.8.213';
       const uploaded=[];
       for(let i=0;i<files.length;i++)uploaded.push(await upload280(item,files[i],i,uid));
       item.photos=[...uploaded,...linkPhotos].slice(0,MAX_MARKET_PHOTOS);
-      const update=await hcSupabase.from('marketplace_listings').update({photo_urls:item.photos}).eq('id',item.dbId).select().single();
+      const update=await attachMarketplacePhotos281(item.dbId,item.photos);
       if(update.error)throw update.error;
-      if(update.data)Object.assign(item,mapSupabaseMarketListing(update.data));
+      const savedUrls=Array.isArray(update.data&&update.data.photo_urls)?update.data.photo_urls:[];
+      if(item.photos.length&&savedUrls.length!==item.photos.length)throw new Error('The listing saved, but Supabase did not attach all Marketplace photos.');
+      if(update.data&&update.data.title)Object.assign(item,mapSupabaseMarketListing(update.data));
+      else item.photos=savedUrls;
       data.market=(data.market||[]).filter(x=>String(x.id)!==String(item.id)&&String(x.dbId)!==String(item.dbId));
       data.market.unshift(item);persistOnly();
       addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
@@ -9745,6 +9786,6 @@ window.__hcVersion='V7.8.213';
   document.addEventListener('DOMContentLoaded',prepare280);
   new MutationObserver(()=>{if(currentPage==='marketplace')prepare280();}).observe(document.documentElement,{childList:true,subtree:true});
   const style=document.createElement('style');style.textContent='@media(max-width:700px){#marketplace #mPhotoFiles{min-height:50px;font-size:16px}#marketplace #mPhotoPreview button{min-height:40px;min-width:70px}#marketplace button[onclick*="addMarket"]{width:100%;min-height:52px;touch-action:manipulation}}';document.head.appendChild(style);
-  window.__hcVersion='V7.8.280';
+  window.__hcVersion='V7.8.281';
 })();
 </script>
