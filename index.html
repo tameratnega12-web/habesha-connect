@@ -6317,6 +6317,98 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.267';
 })();
 </script>
+
+<script id="v78268-taxi-limo-button-response-and-vehicle-submit-fix">
+/* V7.8.268 — Taxi/Limo only.
+   Make every Taxi/Limo button a non-submit button, expose runtime errors to the user,
+   and provide one reliable Supabase-backed Add Vehicle action. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const val=id=>String(document.getElementById(id)?.value||'').trim();
+
+  function prepareTaxiButtons(){
+    const root=document.getElementById('page');
+    if(!root)return;
+    root.querySelectorAll('#taxiOwnerHomeActions button,#taxiDriverHomeActions button,#taxiOwnerPanel button,#taxiAddVehicle button,#taxiMyVehicles button,#taxiAvailableDrivers button,#taxiPostDriverJob button,#taxiOwnerDriverActivity button,#taxiDriverApplicationSection button,#taxiAvailableJobs button,#taxiOpenRides button,#taxiRideRequests button,#taxiMyRides button,#taxiRequestRide button').forEach(b=>b.type='button');
+  }
+
+  const priorRender=window.taxiRenderOnly;
+  if(typeof priorRender==='function')window.taxiRenderOnly=function(){
+    const out=priorRender.apply(this,arguments);
+    prepareTaxiButtons();
+    setTimeout(prepareTaxiButtons,0);
+    return out;
+  };
+
+  window.addTaxiVehicle=async function(){
+    const button=document.querySelector('#taxiAddVehicle button');
+    if(button?.dataset.busy==='1')return;
+    try{
+      if(!currentUser||currentUser.role!=='taxi_limo_owner')return alert('Taxi/Limo owner only.');
+      const owner=(data.taxiLimoOwners||[]).find(o=>sameEmail(o.ownerEmail,currentUser.email));
+      if(!owner)return alert('Taxi/Limo owner application was not found. Open Owner Application first.');
+      if(owner.status!=='Approved')return alert('Admin must approve your Taxi/Limo owner application before you add a vehicle.');
+
+      const vehicleType=val('taxiVehicleType');
+      const make=val('taxiVehicleMake');
+      const model=val('taxiVehicleModel');
+      const year=val('taxiVehicleYear');
+      const color=val('taxiVehicleColor');
+      const plate=val('taxiVehiclePlate');
+      const seats=val('taxiVehicleSeats');
+      const insurance=val('taxiVehicleInsurance');
+      const registration=val('taxiVehicleRegistration');
+      const notes=val('taxiVehicleNotes');
+      if(!vehicleType||!make||!model||!year||!color||!plate||!seats||!insurance||!registration){
+        return alert('Please complete vehicle type, make, model, year, color, plate number, passenger seats, insurance, and registration information.');
+      }
+      const numericYear=Number(year), numericSeats=Number(seats);
+      if(!Number.isInteger(numericYear)||numericYear<1900||numericYear>2100)return alert('Enter a valid vehicle year.');
+      if(!Number.isInteger(numericSeats)||numericSeats<1||numericSeats>30)return alert('Enter a valid passenger seat number.');
+      const duplicate=(data.taxiLimoVehicles||[]).find(v=>sameEmail(v.ownerEmail,currentUser.email)&&norm(v.plate)===norm(plate)&&v.status!=='Declined');
+      if(duplicate)return alert('A vehicle with this license plate is already submitted.');
+
+      if(button){button.dataset.busy='1';button.disabled=true;button.textContent='Submitting Vehicle...';}
+      const docs=[`Color: ${color}`,`Passenger Seats: ${seats}`,`Insurance: ${insurance}`,`Registration: ${registration}`,notes?`Additional Notes: ${notes}`:''].filter(Boolean).join('\n');
+      const v={id:'TLV'+Date.now().toString().slice(-6),ownerId:owner.dbId||owner.id,ownerName:owner.ownerName||currentUser.name||'',ownerEmail:owner.ownerEmail||currentUser.email,companyName:owner.companyName||'',vehicleType,make,model,year,color,plate,seats,insurance,registration,notes,docs,status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+      const res=await insertTaxiVehicleDb(v);
+      if(res?.error)throw new Error(res.error.message||'Supabase rejected the vehicle submission.');
+      if(res?.data){v.id=String(res.data.id);v.dbId=String(res.data.id);}
+      data.taxiLimoVehicles=data.taxiLimoVehicles||[];
+      data.taxiLimoVehicles.unshift(v);
+      try{await Promise.resolve(sendAdminEmailNotice('Taxi/Limo vehicle waiting for approval','A taxi/limo owner added a vehicle for approval.',{Owner:v.ownerName,Company:v.companyName,Vehicle:`${year} ${make} ${model}`,Type:vehicleType,Color:color,Plate:plate,PassengerSeats:seats,Insurance:insurance,Registration:registration,Notes:notes||'None'},'admin'));}catch(e){console.warn('Taxi vehicle admin email failed',e);}
+      try{persistOnly();}catch(e){console.warn(e);}
+      await loadSupabaseTaxiLimo();
+      alert('Vehicle submitted for Admin approval.');
+      taxi();
+    }catch(e){
+      console.error('Taxi/Limo vehicle submission failed',e);
+      alert('Vehicle submission could not be completed: '+(e?.message||e));
+    }finally{
+      if(button){button.dataset.busy='0';button.disabled=false;button.textContent='Submit Vehicle for Admin Approval';}
+      prepareTaxiButtons();
+    }
+  };
+
+  // Show a visible error instead of a silent click failure for Taxi/Limo actions.
+  const actionNames=['applyTaxiOwner','adminApproveTaxiOwner','adminDeclineTaxiOwner','adminApproveTaxiVehicle','adminDeclineTaxiVehicle','applyTaxiDriver','adminApproveTaxiDriver','adminDeclineTaxiDriver','assignTaxiDriverToVehicle','taxiDriverAcceptHire','taxiDriverDeclineHire','adminApproveTaxiAssignment','adminDeclineTaxiAssignment','taxiOwnerEndEmployment','taxiDriverLeaveEmployer','submitTaxiRide','adminApproveTaxiRide','adminDeclineTaxiRide','driverAcceptTaxi','driverAcceptTaxiNotifyCustomer','driverDeclineTaxi','adminApproveTaxiAcceptance','adminDeclineTaxiAcceptance','taxiCustomerAgreeRide','taxiArrived','taxiStartRide','taxiCompleteRide','adminVerifyTaxiComplete','taxiPaymentReceived','cancelTaxiRide'];
+  actionNames.forEach(name=>{
+    const original=window[name];
+    if(typeof original!=='function'||original.__v78268Wrapped)return;
+    const wrapped=async function(){try{return await original.apply(this,arguments);}catch(e){console.error(name+' failed',e);alert('Taxi/Limo action could not be completed: '+(e?.message||e));}};
+    wrapped.__v78268Wrapped=true;
+    window[name]=wrapped;
+  });
+
+  document.addEventListener('click',e=>{
+    const b=e.target.closest?.('#taxiOwnerHomeActions button,#taxiDriverHomeActions button,#taxiOwnerPanel button,#taxiAddVehicle button,#taxiMyVehicles button,#taxiAvailableDrivers button,#taxiPostDriverJob button,#taxiOwnerDriverActivity button,#taxiDriverApplicationSection button,#taxiAvailableJobs button,#taxiOpenRides button,#taxiRideRequests button,#taxiMyRides button,#taxiRequestRide button');
+    if(b)b.type='button';
+  },true);
+  prepareTaxiButtons();
+  window.__hcVersion='V7.8.268';
+})();
+</script>
 </body>
 </html>
 
