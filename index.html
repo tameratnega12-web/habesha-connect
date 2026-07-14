@@ -7352,6 +7352,89 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+
+<script id="v78290-new-activity-above-home-quick-actions">
+/* V7.8.290 — Main Home layout only.
+   Move the existing Your New Activity section directly above the current
+   user's Quick Actions section. No action, status, Supabase, form, email,
+   category-page, or transaction-flow changes. */
+(function(){
+  'use strict';
+
+  function directChild(root,node){
+    let cur=node;
+    while(cur&&cur.parentElement&&cur.parentElement!==root)cur=cur.parentElement;
+    return cur&&cur.parentElement===root?cur:null;
+  }
+
+  function findQuickActions(root){
+    if(!root)return null;
+    const known=[
+      '#travelerHomeActions','#senderHomeActions','#propertyOwnerHomeActions',
+      '#rentalSeekerHomeActions','#truckOwnerHomeActions','#truckDriverHomeActions',
+      '#taxiOwnerHomeActions','#taxiDriverHomeActions','#homeServiceProviderHomeActions',
+      '#homeServiceCustomerHomeActions','#businessOwnerHomeActions',
+      '#jobSeekerHomeActions','#marketplaceHomeActions','#customerHomeActions',
+      '#eventOrganizerHomeActions'
+    ];
+    for(const selector of known){
+      const hit=root.querySelector(selector);
+      if(hit)return directChild(root,hit)||hit;
+    }
+    const heading=[...root.querySelectorAll('h1,h2,h3,h4')].find(el=>/quick\s+actions/i.test(String(el.textContent||'')));
+    if(!heading)return null;
+    const section=heading.closest('section');
+    if(section&&root.contains(section))return directChild(root,section)||section;
+    const card=heading.closest('.card');
+    return directChild(root,card)||card;
+  }
+
+  function placeNewActivity(){
+    const home=document.getElementById('home');
+    if(!home||!window.currentUser||currentUser.role==='admin')return;
+    const activity=home.querySelector('#personalizedHomeActivity');
+    const quick=findQuickActions(home);
+    if(!activity||!quick||activity===quick||activity.contains(quick))return;
+    const activityBlock=directChild(home,activity)||activity;
+    const quickBlock=directChild(home,quick)||quick;
+    if(!quickBlock.parentElement)return;
+    if(activityBlock.nextElementSibling!==quickBlock){
+      quickBlock.parentElement.insertBefore(activityBlock,quickBlock);
+    }
+  }
+
+  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(placeNewActivity));}
+
+  const priorRender=window.renderPage;
+  if(typeof priorRender==='function')window.renderPage=async function(){
+    const result=await priorRender.apply(this,arguments);
+    schedule();
+    return result;
+  };
+  const priorHome=window.home;
+  if(typeof priorHome==='function')window.home=function(){
+    const result=priorHome.apply(this,arguments);
+    schedule();
+    return result;
+  };
+
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(placeNewActivity,60);
+  });
+  document.addEventListener('DOMContentLoaded',()=>{
+    const home=document.getElementById('home');
+    if(home)observer.observe(home,{childList:true,subtree:true});
+    placeNewActivity();
+  });
+
+  window.__hcNewActivityAboveHomeQuickActionsV290=placeNewActivity;
+  window.__hcVersion='V7.8.290';
+})();
+</script>
+
 </body>
 </html>
 
