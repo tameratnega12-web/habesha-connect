@@ -6982,6 +6982,124 @@ window.__hcVersion='V7.8.213';
 @media(max-width:760px){.cleanup-dialog279{padding:20px}.cleanup-dialog279 .actions>*{width:100%;min-height:54px;display:flex;align-items:center;justify-content:center}}
 </style>
 
+
+<script id="v78282-marketplace-photo-event-pattern-fix">
+/* V7.8.282 — Marketplace photo upload follows the proven Event Organizer sequence.
+   Scope: Marketplace photo selection, Storage upload, URL attachment, and rendering only. */
+(function(){
+  const MARKET_PHOTO_BUCKET_282='marketplace-media';
+  const MAX_MARKET_PHOTOS_282=6;
+  const MAX_MARKET_PHOTO_BYTES_282=5*1024*1024;
+  let selectedMarketFiles282=[];
+  let submittingMarket282=false;
+  const objectUrls282=[];
+
+  function revokePreviews282(){while(objectUrls282.length){try{URL.revokeObjectURL(objectUrls282.pop());}catch(_){}}}
+  function extension282(file){const x=(String(file&&file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');return x||'jpg';}
+  function validate282(file){
+    if(!file)return '';
+    const type=String(file.type||'').toLowerCase();
+    const name=String(file.name||'').toLowerCase();
+    const imageByName=/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+    if(!(type.startsWith('image/')||imageByName))return 'Every Marketplace photo must be an image.';
+    if(Number(file.size||0)>MAX_MARKET_PHOTO_BYTES_282)return 'Each Marketplace photo must be 5 MB or smaller.';
+    return '';
+  }
+  function renderSelected282(){
+    const box=$('mPhotoPreview');if(!box)return;
+    revokePreviews282();
+    if(!selectedMarketFiles282.length){box.innerHTML='';return;}
+    box.innerHTML=`<p><b>New photos selected:</b> ${selectedMarketFiles282.length}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">${selectedMarketFiles282.map((f,i)=>{const u=URL.createObjectURL(f);objectUrls282.push(u);return `<div style="position:relative"><img src="${u}" alt="Selected Marketplace photo ${i+1}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb"><button type="button" class="btn bad" onclick="removeSelectedMarketPhoto282(${i})" style="position:absolute;right:5px;top:5px;padding:5px 8px">Delete</button></div>`;}).join('')}</div>`;
+  }
+  window.previewMarketPhotos=function(input){
+    input=input||$('mPhotoFiles');
+    const chosen=Array.from(input&&input.files||[]);
+    const err=chosen.map(validate282).find(Boolean);
+    if(err){if(input)input.value='';return alert(err);}
+    for(const file of chosen){
+      const duplicate=selectedMarketFiles282.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified);
+      if(!duplicate)selectedMarketFiles282.push(file);
+    }
+    if(selectedMarketFiles282.length>MAX_MARKET_PHOTOS_282){
+      selectedMarketFiles282=selectedMarketFiles282.slice(0,MAX_MARKET_PHOTOS_282);
+      if(input)input.value='';renderSelected282();
+      return alert('You can upload a maximum of '+MAX_MARKET_PHOTOS_282+' Marketplace photos.');
+    }
+    if(input)input.value='';renderSelected282();
+  };
+  window.removeSelectedMarketPhoto282=function(index){selectedMarketFiles282.splice(index,1);renderSelected282();};
+  window.removeSelectedMarketPhoto280=window.removeSelectedMarketPhoto282;
+
+  async function uploadMarketplacePhoto282(listing,file,index){
+    if(!authReady())throw new Error('Supabase is not connected.');
+    if(!listing||!listing.dbId)throw new Error('The Marketplace listing ID was not returned by Supabase.');
+    const path=String(listing.dbId)+'/market-'+Date.now()+'-'+index+'.'+extension282(file);
+    const result=await hcSupabase.storage.from(MARKET_PHOTO_BUCKET_282).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+    if(result.error)throw result.error;
+    const pub=hcSupabase.storage.from(MARKET_PHOTO_BUCKET_282).getPublicUrl(path);
+    const url=pub&&pub.data&&pub.data.publicUrl;
+    if(!url)throw new Error('Supabase did not return a Marketplace photo URL.');
+    return {path,url};
+  }
+
+  async function attachMarketplacePhotos282(listingId,urls){
+    const direct=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('*').single();
+    if(!direct.error&&direct.data)return direct.data;
+    const rpc=await hcSupabase.rpc('marketplace_attach_photos_v78282',{p_listing_id:listingId,p_photo_urls:urls});
+    if(rpc.error)throw direct.error||rpc.error;
+    const verify=await hcSupabase.from('marketplace_listings').select('*').eq('id',listingId).single();
+    if(verify.error)throw verify.error;
+    return verify.data;
+  }
+
+  window.addMarket=async function(){
+    if(submittingMarket282)return;
+    if(!requireLogin())return;
+    const title=($('mTitle')?.value||'').trim();
+    const price=Number($('mPrice')?.value||0);
+    const city=($('mCity')?.value||'').trim();
+    if(!title||!price||!city)return alert('Please enter item title, price, and city.');
+    const files=selectedMarketFiles282.slice();
+    const err=files.map(validate282).find(Boolean);if(err)return alert(err);
+    const linkPhotos=($('mPhotos')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+    if(files.length+linkPhotos.length>MAX_MARKET_PHOTOS_282)return alert('You can add a maximum of '+MAX_MARKET_PHOTOS_282+' Marketplace photos total.');
+    const button=document.querySelector('#marketplace button[onclick*="addMarket"]');
+    submittingMarket282=true;
+    if(button){button.disabled=true;button.dataset.oldText=button.textContent;button.textContent=files.length?'Uploading Photos...':'Submitting...';}
+    try{
+      const item={id:'M'+Date.now().toString().slice(-8),title,category:$('mCategory')?.value||'Other',condition:$('mCondition')?.value||'Good',price,city,description:$('mDesc')?.value||'',photos:[],seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+      const first=await insertMarketListingDb(item);if(first.error)throw first.error;
+      if(first.data)Object.assign(item,mapSupabaseMarketListing(first.data));
+      if(!item.dbId)throw new Error('The Marketplace listing was saved, but its database ID was not returned.');
+      const uploaded=[];
+      for(let i=0;i<files.length;i++)uploaded.push(await uploadMarketplacePhoto282(item,files[i],i));
+      const urls=[...uploaded.map(x=>x.url),...linkPhotos].slice(0,MAX_MARKET_PHOTOS_282);
+      const savedRow=await attachMarketplacePhotos282(item.dbId,urls);
+      const saved=mapSupabaseMarketListing(savedRow);
+      if(urls.length!==saved.photos.length)throw new Error('Supabase saved the listing but did not attach every Marketplace photo.');
+      data.market=(data.market||[]).filter(x=>String(x.dbId||x.id)!==String(saved.dbId||saved.id));
+      data.market.unshift(saved);persistOnly();
+      addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
+      try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a Marketplace item with photos and admin approval is required.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(saved.photos.length),Status:saved.status},'marketplace'));}catch(e){console.warn('Marketplace admin email failed',e);}
+      selectedMarketFiles282=[];revokePreviews282();
+      await loadSupabaseMarketplace();
+      const confirmed=(data.market||[]).find(x=>String(x.dbId||x.id)===String(saved.dbId||saved.id));
+      if(urls.length&&(!confirmed||!Array.isArray(confirmed.photos)||confirmed.photos.length!==urls.length))throw new Error('The photos uploaded, but the Marketplace reload did not return them. Please run the V7.8.282 SQL.');
+      marketplace();
+      alert(urls.length?'Item and photos submitted for admin approval.':'Item submitted for admin approval.');
+    }catch(e){console.error('Marketplace V7.8.282 photo upload failed',e);alert('Marketplace photo upload failed: '+(e.message||e));}
+    finally{submittingMarket282=false;if(button&&document.body.contains(button)){button.disabled=false;button.textContent=button.dataset.oldText||'Submit Item';}}
+  };
+
+  function prepare282(){
+    const input=$('mPhotoFiles');if(input){input.accept='image/*';input.multiple=true;input.onchange=function(){window.previewMarketPhotos(this);};}
+    const btn=document.querySelector('#marketplace button[onclick*="addMarket"]');if(btn)btn.type='button';
+  }
+  document.addEventListener('DOMContentLoaded',prepare282);
+  new MutationObserver(()=>{if(currentPage==='marketplace')prepare282();}).observe(document.documentElement,{childList:true,subtree:true});
+  window.__hcVersion='V7.8.282';
+})();
+</script>
 </body>
 </html>
 
