@@ -2968,7 +2968,7 @@ function taxiRenderOnly(){
  let myRidesCard=`<div class="card" id="taxiMyRides"><h3>My Ride Activity</h3><table><tr><th>Customer</th><th>Pickup</th><th>Destination</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${myRideRows}</table></div>`;
  let driverForm='';
  if(currentUser.role==='taxi_limo_driver'||currentUser.role==='taxi_driver'){
-   driverForm=!myApp?`<section id="taxiDriverApplicationSection"><div class="card"><h3>Apply as Taxi/Limo Driver</h3><p class="muted">Drivers apply first and show availability. Vehicle information is not needed because the owner provides the taxi/limo vehicle.</p><label>Driver License Number</label><input id="taxiLicense" placeholder="License number"><label>Years of Driving Experience</label><input id="taxiExperience" placeholder="Example: 5 years"><label>Availability</label><select id="taxiAvailability"><option>Full-time</option><option>Part-time</option><option>Weekdays</option><option>Weekends</option><option>Temporary</option><option>Monthly</option><option>Yearly</option><option>On Call</option></select><label>City / Service Area</label><input id="taxiArea" placeholder="Atlanta, Clarkston, airport..."><label>Notes</label><textarea id="taxiDriverNotes" placeholder="Airport experience, limo experience, preferred schedule, languages, etc."></textarea><button class="btn primary" onclick="applyTaxiDriver()">Submit Driver Application</button></div></section>`:`<section id="taxiDriverApplicationSection"><div class="card" id="taxiDriverPanel"><h3>Taxi/Limo Driver Profile</h3><p>Status: ${taxiBadge(myApp.ownerEmail?'Hired / Not Available':myApp.status)}</p><p class="muted">${myApp.ownerEmail?'You are currently hired and hidden from other Taxi/Limo Owner dashboards. If the job ends, click Leave Current Employer to become available again.':(myApp.status==='Approved'?'Owners can see your approved driver profile and send you a hire request.':'Wait for admin approval before owners can see your profile.')}</p><p class="small"><b>Availability:</b> ${myApp.availability||'Not entered'}<br><b>Service Area:</b> ${myApp.area||''}<br><b>Experience:</b> ${myApp.experience||''}<br><b>Current Vehicle:</b> ${myApp.assignedVehicle||'Not assigned'}</p>${myApp.ownerEmail?`<button class="btn bad" onclick="taxiDriverLeaveEmployer()">Leave Current Employer</button>`:''}</div></section>`;
+   driverForm=!myApp?`<section id="taxiDriverApplicationSection"><div class="card"><h3>Apply as Taxi/Limo Driver</h3><p class="muted">Drivers apply first and show availability. Vehicle information is not needed because the owner provides the taxi/limo vehicle.</p><label>Driver License Number</label><input id="taxiLicense" placeholder="License number"><label>Years of Driving Experience</label><input id="taxiExperience" placeholder="Example: 5 years"><label>Availability</label><select id="taxiAvailability"><option>Full-time</option><option>Part-time</option><option>Weekdays</option><option>Weekends</option><option>Temporary</option><option>Monthly</option><option>Yearly</option><option>On Call</option></select><label>City / Service Area</label><input id="taxiArea" placeholder="Atlanta, Clarkston, airport..."><label>Notes</label><textarea id="taxiDriverNotes" placeholder="Airport experience, limo experience, preferred schedule, languages, etc."></textarea><button id="taxiSubmitDriverApplicationV78270" type="button" class="btn primary" onclick="applyTaxiDriver()">Submit Driver Application</button></div></section>`:`<section id="taxiDriverApplicationSection"><div class="card" id="taxiDriverPanel"><h3>Taxi/Limo Driver Profile</h3><p>Status: ${taxiBadge(myApp.ownerEmail?'Hired / Not Available':myApp.status)}</p><p class="muted">${myApp.ownerEmail?'You are currently hired and hidden from other Taxi/Limo Owner dashboards. If the job ends, click Leave Current Employer to become available again.':(myApp.status==='Approved'?'Owners can see your approved driver profile and send you a hire request.':'Wait for admin approval before owners can see your profile.')}</p><p class="small"><b>Availability:</b> ${myApp.availability||'Not entered'}<br><b>Service Area:</b> ${myApp.area||''}<br><b>Experience:</b> ${myApp.experience||''}<br><b>Current Vehicle:</b> ${myApp.assignedVehicle||'Not assigned'}</p>${myApp.ownerEmail?`<button class="btn bad" onclick="taxiDriverLeaveEmployer()">Leave Current Employer</button>`:''}</div></section>`;
  }
  let myVehicles=vehicles.filter(v=>v.ownerEmail===currentUser.email);
  let myAssignments=assignments.filter(a=>a.ownerEmail===currentUser.email||a.driverEmail===currentUser.email);
@@ -6519,6 +6519,39 @@ window.__hcVersion='V7.8.213';
   if(typeof priorRender==='function')window.taxiRenderOnly=function(){const r=priorRender.apply(this,arguments);schedule();setTimeout(schedule,60);return r;};
   prepareTaxiMobile();
   window.__hcVersion='V7.8.269';
+})();
+</script>
+
+<script id="v78270-taxi-limo-phone-tap-execution-fix">
+/* V7.8.270 — Taxi/Limo phone tap execution fallback only.
+   Converts a clean phone tap into one normal button click when the browser does not
+   reliably dispatch it. Finger scrolling/movement does not trigger an action. */
+(function(){
+  const selector='#taxiOwnerHomeActions button,#taxiDriverHomeActions button,#taxiOwnerPanel button,#taxiAddVehicle button,#taxiMyVehicles button,#taxiAvailableDrivers button,#taxiPostDriverJob button,#taxiOwnerDriverActivity button,#taxiDriverApplicationSection button,#taxiAvailableJobs button,#taxiOpenRides button,#taxiRideRequests button,#taxiMyRides button,#taxiRequestRide button';
+  let start=null;
+  function phone(){return window.matchMedia&&window.matchMedia('(max-width:760px)').matches;}
+  document.addEventListener('touchstart',function(e){
+    if(!phone())return;
+    const b=e.target.closest?.(selector);
+    const t=e.changedTouches&&e.changedTouches[0];
+    if(!b||!t)return;
+    start={button:b,x:t.clientX,y:t.clientY,time:Date.now()};
+    b.type='button';
+  },{capture:true,passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!phone()||!start)return;
+    const t=e.changedTouches&&e.changedTouches[0];
+    const b=e.target.closest?.(selector);
+    const saved=start;start=null;
+    if(!t||!b||b!==saved.button||b.disabled)return;
+    if(Math.abs(t.clientX-saved.x)>12||Math.abs(t.clientY-saved.y)>12||Date.now()-saved.time>1200)return;
+    e.preventDefault();
+    if(b.dataset.mobileTapBusy270==='1')return;
+    b.dataset.mobileTapBusy270='1';
+    try{b.click();}finally{setTimeout(()=>{delete b.dataset.mobileTapBusy270;},450);}
+  },{capture:true,passive:false});
+  document.addEventListener('touchcancel',function(){start=null;},{capture:true,passive:true});
+  window.__hcVersion='V7.8.270';
 })();
 </script>
 </body>
