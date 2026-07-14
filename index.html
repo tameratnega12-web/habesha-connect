@@ -7177,6 +7177,181 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+<style id="v78287-shipping-consent-style">
+#hcShippingConsentModal{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.78);display:flex;align-items:center;justify-content:center;padding:14px}
+#hcShippingConsentModal.hide{display:none!important}
+#hcShippingConsentModal .consent-dialog{background:#fff;color:#111827;width:min(760px,100%);max-height:92dvh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.35);-webkit-overflow-scrolling:touch}
+#hcShippingConsentModal .consent-dialog h2{margin-top:0}
+#hcShippingConsentModal .consent-list{padding-left:22px;line-height:1.55}
+#hcShippingConsentModal .consent-cert{border:2px solid #dc2626;background:#fff7f7;border-radius:12px;padding:14px;margin:14px 0}
+#hcShippingConsentModal .consent-check{display:flex;gap:10px;align-items:flex-start;font-weight:700;margin:16px 0}
+#hcShippingConsentModal .consent-check input{width:22px;height:22px;flex:0 0 auto;margin-top:1px}
+#hcShippingConsentModal .consent-actions{display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:-20px;background:#fff;padding:12px 0 2px}
+.shipping-consent-note{border:2px solid #2563eb;background:#eff6ff;border-radius:12px;padding:12px;margin:12px 0}
+@media(max-width:640px){#hcShippingConsentModal{padding:0;align-items:flex-end}#hcShippingConsentModal .consent-dialog{width:100%;max-height:95dvh;border-radius:18px 18px 0 0;padding:16px}#hcShippingConsentModal .consent-actions{display:grid;grid-template-columns:1fr}#hcShippingConsentModal .consent-actions .btn{width:100%;min-height:48px}.shipping-consent-action{width:100%;min-height:48px}}
+</style>
+<div id="hcShippingConsentModal" class="hide" role="dialog" aria-modal="true" aria-labelledby="hcShippingConsentTitle">
+  <div class="consent-dialog">
+    <div id="hcShippingConsentBody"></div>
+  </div>
+</div>
+<script id="v78287-shipping-dual-consent">
+/* V7.8.287 — Shipping-only sender and traveler consent before contact release. */
+(function(){
+  const CONSENT_VERSION='shipping-v1-2026-07-14';
+  const originalMapShipment=window.mapDbShipment;
+  const originalMapFallback=window.mapShipmentFallbackToShippingItem;
+  const originalMapItem=window.mapDbShippingItem;
+  const originalShipCard=window.shipCard;
+  const originalItemCard=window.shippingItemCard;
+  const originalPayShipment=window.payShipment;
+  const originalPayShippingItem=window.payShippingItem;
+  const originalApproveShipment=window.approveShipment;
+  const originalApproveItemPayment=window.adminApproveShippingItemPayment;
+
+  function bool(v){return v===true||v==='true'||v===1;}
+  function addConsentFields(obj,row){
+    obj.senderConsent=bool(row.sender_consent);
+    obj.senderConsentAt=row.sender_consent_at||'';
+    obj.senderConsentVersion=row.sender_consent_version||'';
+    obj.travelerConsent=bool(row.traveler_consent);
+    obj.travelerConsentAt=row.traveler_consent_at||'';
+    obj.travelerConsentVersion=row.traveler_consent_version||'';
+    return obj;
+  }
+  if(typeof originalMapShipment==='function') window.mapDbShipment=function(row){return addConsentFields(originalMapShipment(row),row||{});};
+  if(typeof originalMapFallback==='function') window.mapShipmentFallbackToShippingItem=function(row){return addConsentFields(originalMapFallback(row),row||{});};
+  if(typeof originalMapItem==='function') window.mapDbShippingItem=function(row){return addConsentFields(originalMapItem(row),row||{});};
+
+  function escText(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function findRecord(kind,id){
+    const list=kind==='shipment'?(data.shipments||[]):(data.shippingItems||[]);
+    return list.find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  }
+  function bothAgreed(x){return !!(x&&x.senderConsent&&x.travelerConsent);}
+  function closeModal(){const m=document.getElementById('hcShippingConsentModal');if(m)m.classList.add('hide');document.body.style.overflow='';}
+  window.closeShippingConsent=closeModal;
+
+  const prohibited=`<div class="consent-cert"><h3>My shipment does NOT contain:</h3><ul class="consent-list">
+    <li>Illegal drugs, controlled substances, marijuana, cannabis, or drug paraphernalia where prohibited.</li>
+    <li>Firearms, ammunition, explosives, fireworks, weapon parts, or other regulated weapons.</li>
+    <li>Gasoline, propane, fuel, flammable liquids, compressed gas, hazardous chemicals, corrosive, toxic, radioactive, infectious, or biohazardous materials.</li>
+    <li>Counterfeit money, fake identification, forged documents, stolen property, or counterfeit goods.</li>
+    <li>Human organs, human remains, illegal biological material, or live animals unless legally permitted and accepted in writing by the traveler.</li>
+    <li>Prescription medicines, controlled medicines, alcohol, tobacco, vaping, or nicotine products unless possession and transportation are lawful and the traveler expressly agrees.</li>
+    <li>Perishable food requiring refrigeration or special handling unless fully disclosed and accepted by the traveler.</li>
+    <li>Any concealed item, undeclared item, or item whose possession, import, export, or transportation violates U.S., Ethiopian, airline, customs, federal, state, local, or international law.</li>
+  </ul></div>`;
+
+  function senderHtml(record,kind){return `<h2 id="hcShippingConsentTitle">📦 Sender Shipping Agreement</h2>
+    <p><b>Tracking:</b> ${escText(record.tracking||record.id)} &nbsp; <b>Weight:</b> ${escText(record.weight||0)} lb</p>
+    <p>Before payment and before personal contact information is released, please read and agree:</p>
+    <ul class="consent-list">
+      <li>I am the lawful owner or authorized sender of the package, and all shipment information I provided is complete and accurate.</li>
+      <li>I will fully disclose the package contents and will not substitute, add, conceal, or change any item after the traveler accepts.</li>
+      <li>The traveler may inspect or refuse a package that appears unsafe, suspicious, damaged, prohibited, or different from the description.</li>
+      <li>I accept full responsibility for the package contents and for compliance with all applicable laws, airline rules, customs requirements, and import/export restrictions.</li>
+      <li>Habesha Agenagn only connects users. It does not transport, inspect, store, insure, guarantee, or take custody of the package.</li>
+      <li>False information or prohibited items may cause cancellation, account suspension, loss of fees, or reporting to appropriate authorities when legally required.</li>
+    </ul>${prohibited}
+    <p><b>Consent record:</b> By clicking “I Agree & Continue,” I understand that this consent is recorded with this specific shipment and may be used in a dispute, safety review, or lawful investigation.</p>
+    <label class="consent-check"><input id="hcShippingConsentCheck" type="checkbox"><span>I have read, understood, and agree to the Sender Shipping Agreement and certify that my package contains no prohibited or illegal items.</span></label>
+    <div class="consent-actions"><button type="button" class="btn ghost" onclick="closeShippingConsent()">Cancel</button><button type="button" class="btn primary shipping-consent-action" onclick="confirmShippingConsent('sender','${kind}','${escText(record.id)}')">I Agree & Continue</button></div>`;}
+
+  function travelerHtml(record,kind){return `<h2 id="hcShippingConsentTitle">✈️ Traveler Shipping Agreement</h2>
+    <p><b>Tracking:</b> ${escText(record.tracking||record.id)} &nbsp; <b>Weight:</b> ${escText(record.weight||0)} lb</p>
+    <p>Before contact information is released, please read and agree:</p>
+    <ul class="consent-list">
+      <li>I reviewed the shipment description and agree to communicate directly with the sender.</li>
+      <li>I will transport only lawful, properly disclosed items and may inspect or refuse any package that appears unsafe, suspicious, prohibited, damaged, or different from its description.</li>
+      <li>I will follow applicable airline, customs, import/export, federal, state, local, Ethiopian, and international requirements.</li>
+      <li>I will not knowingly transport illegal drugs, weapons, explosives, hazardous materials, stolen property, counterfeit goods, or any other prohibited item.</li>
+      <li>Habesha Agenagn only connects users and does not transport, inspect, store, insure, guarantee, or take custody of the shipment.</li>
+    </ul>
+    <p><b>Consent record:</b> By clicking “I Agree,” I understand that this consent is recorded with this shipment.</p>
+    <label class="consent-check"><input id="hcShippingConsentCheck" type="checkbox"><span>I have read, understood, and agree to the Traveler Shipping Agreement.</span></label>
+    <div class="consent-actions"><button type="button" class="btn ghost" onclick="closeShippingConsent()">Cancel</button><button type="button" class="btn primary shipping-consent-action" onclick="confirmShippingConsent('traveler','${kind}','${escText(record.id)}')">I Agree</button></div>`;}
+
+  window.openShippingConsent=function(party,kind,id){
+    const r=findRecord(kind,id);if(!r)return alert('Shipping transaction not found. Please refresh and try again.');
+    const m=document.getElementById('hcShippingConsentModal'),b=document.getElementById('hcShippingConsentBody');if(!m||!b)return alert('Consent form could not open. Please refresh.');
+    b.innerHTML=party==='sender'?senderHtml(r,kind):travelerHtml(r,kind);m.classList.remove('hide');document.body.style.overflow='hidden';
+  };
+
+  async function saveConsent(party,kind,r){
+    const at=new Date().toISOString();
+    if(authReady()&&r.dbId){
+      const rpc=kind==='shipment'?'record_shipping_consent':'record_shipping_item_consent';
+      const res=await hcSupabase.rpc(rpc,{p_record_id:r.dbId,p_party:party,p_version:CONSENT_VERSION});
+      if(res.error)return {error:res.error};
+    }
+    if(party==='sender'){r.senderConsent=true;r.senderConsentAt=at;r.senderConsentVersion=CONSENT_VERSION;}
+    else {r.travelerConsent=true;r.travelerConsentAt=at;r.travelerConsentVersion=CONSENT_VERSION;}
+    persistOnly();return {error:null};
+  }
+
+  window.confirmShippingConsent=async function(party,kind,id){
+    const check=document.getElementById('hcShippingConsentCheck');if(!check||!check.checked)return alert('Please check the agreement box before continuing.');
+    const r=findRecord(kind,id);if(!r)return alert('Shipping transaction not found.');
+    const btn=document.querySelector('#hcShippingConsentModal .shipping-consent-action');if(btn){btn.disabled=true;btn.textContent='Saving agreement...';}
+    const saved=await saveConsent(party,kind,r);if(saved.error){if(btn){btn.disabled=false;btn.textContent=party==='sender'?'I Agree & Continue':'I Agree';}return alert('Could not record your consent in Supabase: '+saved.error.message);}
+    closeModal();
+    if(party==='sender'){
+      if(kind==='shipment'&&typeof originalPayShipment==='function')await originalPayShipment(r.id);
+      else if(kind==='item'&&typeof originalPayShippingItem==='function')await originalPayShippingItem(r.id);
+    }else{
+      addNote(r.senderEmail||'','The traveler read and agreed to the Shipping Agreement. The transaction is ready for admin review.');
+      addNote('admin.habeshaconnect@gmail.com','Both sender and traveler have agreed for shipment '+(r.tracking||r.id)+'.');
+      try{await Promise.resolve(sendAdminEmailNotice('Both shipping parties agreed','The sender and traveler recorded their consent. Admin may review the payment and release contact information.',{Tracking:r.tracking||r.id,Sender:r.sender||'',Traveler:r.traveler||'',Status:'Both Parties Agreed'},'shipping'));}catch(e){console.warn(e);}
+      alert('Your agreement was recorded. Contact information will be released after admin approval.');
+      if(typeof shipping==='function')shipping();
+    }
+  };
+
+  function consentSummary(x){
+    return `<div class="shipping-consent-note"><b>Consent status:</b><br>Sender: ${x.senderConsent?'✅ Agreed':'⏳ Waiting'} &nbsp; Traveler: ${x.travelerConsent?'✅ Agreed':'⏳ Waiting'}<br><span class="small">Contact information stays private until both parties agree and Admin approves.</span></div>`;
+  }
+  function blockContactsClone(x){
+    if(bothAgreed(x))return x;
+    const c=Object.assign({},x);
+    if(['Approved','Ready for Delivery','In Transit'].includes(String(c.status||'')))c.status='Payment Pending Admin Review';
+    return c;
+  }
+
+  if(typeof originalShipCard==='function') window.shipCard=function(s,role){
+    let html=originalShipCard(blockContactsClone(s),role);
+    html=html.replace(/<div class="actions">([\s\S]*?)<\/div><\/div>$/,function(_,actions){
+      let a=actions;
+      if((role==='sender'||role==='customer')&&s.status==='Accepted'&&!s.senderConsent){a=a.replace(/<button[^>]*onclick="payShipment\('[^']+'\)"[^>]*>[\s\S]*?<\/button>/,`<button type="button" class="btn primary shipping-consent-action" onclick="openShippingConsent('sender','shipment','${escText(s.id)}')">Read & Agree / Continue to Payment</button>`);}
+      if(role==='traveler'&&s.senderConsent&&!s.travelerConsent&&['Payment Pending Admin Review','Accepted'].includes(String(s.status||''))){a=`<button type="button" class="btn primary shipping-consent-action" onclick="openShippingConsent('traveler','shipment','${escText(s.id)}')">Read & Agree</button>`+a;}
+      return consentSummary(s)+`<div class="actions">${a}</div></div>`;
+    });
+    return html;
+  };
+
+  if(typeof originalItemCard==='function') window.shippingItemCard=function(it,role){
+    let html=originalItemCard(blockContactsClone(it),role);
+    html=html.replace(/<div class="actions">([\s\S]*?)<\/div><\/div>$/,function(_,actions){
+      let a=actions;
+      if((role==='sender'||role==='customer')&&it.status==='Accepted'&&!it.senderConsent){a=a.replace(/<button[^>]*onclick="payShippingItem\('[^']+'\)"[^>]*>[\s\S]*?<\/button>/,`<button type="button" class="btn primary shipping-consent-action" onclick="openShippingConsent('sender','item','${escText(it.id)}')">Read & Agree / Continue</button>`);}
+      if(role==='traveler'&&it.senderConsent&&!it.travelerConsent&&['Payment Pending Admin Review','Accepted'].includes(String(it.status||''))){a=`<button type="button" class="btn primary shipping-consent-action" onclick="openShippingConsent('traveler','item','${escText(it.id)}')">Read & Agree</button>`+a;}
+      if(role==='admin'&&it.status==='Payment Pending Admin Review'&&!bothAgreed(it)){a=a.replace(/<button[^>]*onclick="adminApproveShippingItemPayment\('[^']+'\)"[^>]*>[\s\S]*?<\/button>/,`<button type="button" class="btn ghost" disabled>Waiting for Both Agreements</button>`);}
+      return consentSummary(it)+`<div class="actions">${a}</div></div>`;
+    });
+    return html;
+  };
+
+  window.payShipment=async function(id){const r=findRecord('shipment',id);if(r&&!r.senderConsent)return openShippingConsent('sender','shipment',id);return originalPayShipment(id);};
+  window.payShippingItem=async function(id){const r=findRecord('item',id);if(r&&!r.senderConsent)return openShippingConsent('sender','item',id);return originalPayShippingItem(id);};
+  if(typeof originalApproveShipment==='function') window.approveShipment=async function(id){const r=findRecord('shipment',id);if(r&&!bothAgreed(r))return alert('Admin cannot approve yet. Both the sender and traveler must read and agree first.');return originalApproveShipment(id);};
+  if(typeof originalApproveItemPayment==='function') window.adminApproveShippingItemPayment=async function(id){const r=findRecord('item',id);if(r&&!bothAgreed(r))return alert('Admin cannot approve yet. Both the sender and traveler must read and agree first.');return originalApproveItemPayment(id);};
+
+  document.addEventListener('click',e=>{if(e.target&&e.target.id==='hcShippingConsentModal')closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+})();
+</script>
+
 </body>
 </html>
 
