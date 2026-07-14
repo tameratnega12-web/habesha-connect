@@ -8281,3 +8281,84 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.265';
 })();
 </script>
+
+<script id="v78266-trucking-new-transactions-top-order">
+/* V7.8.266 — Trucking home ordering only.
+   Put every action-required truck job and trailer rental transaction at the top
+   of the truck owner/driver Home page, directly below the role intro/How It Works area.
+   Does not change statuses, Supabase writes, or any other category. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const driverWaiting=new Set([
+    'Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement',
+    'Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'
+  ]);
+  const trailerWaiting=new Set([
+    'Owner Accepted - Waiting Renter Agreement','Accepted - Waiting Renter Agreement',
+    'Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement',
+    'Owner Accepted','Accepted','Waiting Renter Agreement','Waiting for Renter Agreement'
+  ]);
+
+  function ownerPriorityCards(){
+    if(!currentUser||currentUser.role!=='truck_owner')return '';
+    const apps=(data.truckApplications||[]).filter(a=>sameEmail(a.ownerEmail,currentUser.email)&&String(a.status||'')==='Pending Owner Review');
+    const trailers=(data.trailerRentals||[]).filter(t=>sameEmail(t.ownerEmail,currentUser.email)&&String(t.status||'')==='Pending Owner Review'&&t.renterEmail);
+    const cards=[];
+    apps.forEach(a=>cards.push(`<div class="card" style="border:2px solid #f59e0b"><h3>🔔 Driver Application — Accept or Decline</h3><p><b>Job:</b> ${esc(a.jobTitle||'Truck Driver Job')}</p><p><b>Driver:</b> ${esc(a.driverName||'Driver')}</p><p><b>Phone:</b> ${esc(a.driverPhone||'Not provided')}</p><p><b>License:</b> ${esc(a.license||'Not provided')}</p><p><b>Experience:</b> ${esc(a.experience||'Not provided')}</p><div class="actions"><button class="btn good" type="button" onclick="approveTruckApp('${esc(a.id)}')">Accept</button><button class="btn bad" type="button" onclick="declineTruckApp('${esc(a.id)}')">Decline</button></div></div>`));
+    trailers.forEach(t=>cards.push(`<div class="card" style="border:2px solid #f59e0b"><h3>🔔 Trailer Request — Accept or Decline</h3><p><b>Trailer:</b> ${esc(t.trailerType||'Trailer')}</p><p><b>Location:</b> ${esc(t.location||'Not provided')}</p><p><b>Requester:</b> ${esc(t.renterName||'Truck driver/owner')}</p><p><b>Phone:</b> ${esc(t.renterPhone||'Not provided')}</p><div class="actions"><button class="btn good" type="button" onclick="approveTrailerRental('${esc(t.id)}')">Accept</button><button class="btn bad" type="button" onclick="declineTrailerRental('${esc(t.id)}')">Decline</button></div></div>`));
+    return cards.length?`<section id="truckingPriorityTransactionsV78266" style="margin:14px 0"><div class="card" style="border:3px solid #f59e0b"><h2 style="margin:0">🚨 New Transactions — Action Required</h2><p class="muted">Review these new requests first.</p></div><div class="grid">${cards.join('')}</div></section>`:'';
+  }
+
+  function driverPriorityCards(){
+    if(!currentUser||currentUser.role!=='driver')return '';
+    const apps=(data.truckApplications||[]).filter(a=>sameEmail(a.driverEmail,currentUser.email)&&driverWaiting.has(String(a.status||'')));
+    const trailers=(data.trailerRentals||[]).filter(t=>sameEmail(t.renterEmail,currentUser.email)&&trailerWaiting.has(String(t.status||'')));
+    const cards=[];
+    apps.forEach(a=>cards.push(`<div class="card" style="border:2px solid #16a34a"><h3>✅ Truck Owner Accepted — Agreement Required</h3><p><b>Job:</b> ${esc(a.jobTitle||'Truck Driver Job')}</p><p><b>Owner:</b> ${esc(a.ownerName||'Truck Owner')}</p><p class="muted">Click Agree to receive the truck owner information.</p><button class="btn good" type="button" onclick="driverAgreeTruckJob('${esc(a.id)}')">Agree</button></div>`));
+    trailers.forEach(t=>cards.push(`<div class="card" style="border:2px solid #16a34a"><h3>✅ Trailer Owner Accepted — Agreement Required</h3><p><b>Trailer:</b> ${esc(t.trailerType||'Trailer')}</p><p><b>Owner:</b> ${esc(t.ownerName||'Trailer Owner')}</p><p class="muted">Click Agree to receive the trailer owner information.</p><button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button></div>`));
+    return cards.length?`<section id="truckingPriorityTransactionsV78266" style="margin:14px 0"><div class="card" style="border:3px solid #16a34a"><h2 style="margin:0">🚨 New Transactions — Action Required</h2><p class="muted">Complete these accepted transactions first.</p></div><div class="grid">${cards.join('')}</div></section>`:'';
+  }
+
+  function stripOldPriority(html){
+    const box=document.createElement('div');
+    box.innerHTML=String(html||'');
+    box.querySelectorAll('#truckOwnerApplicationActions,#trailerRequesterHomeAgreementV78259,#trailerRequesterAgreementV78202,#trailerRequesterAgreementV78261,#trailerRequesterAgreementV78263,#trailerRequesterAgreementV78264,#truckingPriorityTransactionsV78266').forEach(el=>el.remove());
+    box.querySelectorAll('section,.card').forEach(el=>{
+      const text=norm(el.textContent);
+      if(text.includes('driver applications — accept or decline')||
+         text.includes('trailer requests waiting for your decision')||
+         text.includes('trailer owner accepted — agreement required')||
+         text.includes('trailer owner accepted — your agreement is required')) el.remove();
+    });
+    return box.innerHTML;
+  }
+
+  function placePriority(base,priority,roleSectionId){
+    const box=document.createElement('div');
+    box.innerHTML=stripOldPriority(base);
+    if(!priority)return box.innerHTML;
+    const roleSection=box.querySelector('#'+roleSectionId);
+    if(roleSection){
+      const header=roleSection.firstElementChild;
+      if(header)header.insertAdjacentHTML('afterend',priority);
+      else roleSection.insertAdjacentHTML('afterbegin',priority);
+    }else box.insertAdjacentHTML('afterbegin',priority);
+    return box.innerHTML;
+  }
+
+  const priorOwner=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    const base=typeof priorOwner==='function'?priorOwner():'';
+    return placePriority(base,ownerPriorityCards(),'truckOwnerHomeActions');
+  };
+  const priorDriver=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    const base=typeof priorDriver==='function'?priorDriver():'';
+    return placePriority(base,driverPriorityCards(),'truckDriverHomeActions');
+  };
+
+  window.__hcVersion='V7.8.266';
+})();
+</script>
