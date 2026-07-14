@@ -7087,6 +7087,67 @@ window.__hcVersion='V7.8.213';
 .market-photo-grid284{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item284{position:relative}.market-photo-item284 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.market-photo-item284 button{position:absolute;right:5px;top:5px;min-height:38px}@media(max-width:700px){#marketplace #mPhotoFiles,#marketplace button[onclick*="addMarket"]{width:100%;min-height:52px;font-size:16px;touch-action:manipulation}}
 </style>
 
+
+<!-- V7.8.285 Marketplace photo large viewer fix -->
+<style id="v78285-marketplace-photo-viewer-style">
+.marketPhoto{cursor:zoom-in;touch-action:manipulation}
+#marketPhotoViewer285{display:none;position:fixed;inset:0;z-index:1000000;background:rgba(2,6,23,.92);align-items:center;justify-content:center;padding:18px}
+#marketPhotoViewer285.open{display:flex}
+#marketPhotoViewer285 .viewer-inner285{position:relative;width:min(1100px,100%);height:min(88vh,900px);display:flex;align-items:center;justify-content:center}
+#marketPhotoViewer285 img{display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55)}
+#marketPhotoViewer285 .close285{position:fixed;top:max(14px,env(safe-area-inset-top));right:14px;width:52px;height:52px;border:0;border-radius:999px;background:#fff;color:#111827;font-size:30px;line-height:1;cursor:pointer;z-index:2;touch-action:manipulation}
+#marketPhotoViewer285 .caption285{position:fixed;left:16px;right:16px;bottom:max(14px,env(safe-area-inset-bottom));color:#fff;text-align:center;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
+@media(max-width:700px){#marketPhotoViewer285{padding:10px}#marketPhotoViewer285 .viewer-inner285{height:82vh}#marketPhotoViewer285 .close285{width:50px;height:50px;font-size:28px}.marketPhoto{min-height:110px}}
+</style>
+<script id="v78285-marketplace-photo-viewer-fix">
+(function(){
+  function ensureViewer(){
+    let viewer=document.getElementById('marketPhotoViewer285');
+    if(viewer)return viewer;
+    viewer=document.createElement('div');
+    viewer.id='marketPhotoViewer285';
+    viewer.setAttribute('role','dialog');
+    viewer.setAttribute('aria-modal','true');
+    viewer.setAttribute('aria-label','Marketplace photo viewer');
+    viewer.innerHTML='<button type="button" class="close285" aria-label="Close photo">×</button><div class="viewer-inner285"><img alt="Large Marketplace photo"></div><div class="caption285"></div>';
+    document.body.appendChild(viewer);
+    viewer.querySelector('.close285').addEventListener('click',closeViewer);
+    viewer.addEventListener('click',function(e){if(e.target===viewer)closeViewer();});
+    return viewer;
+  }
+  function openViewer(img){
+    const src=img.currentSrc||img.src;
+    if(!src)return;
+    const viewer=ensureViewer();
+    const large=viewer.querySelector('img');
+    large.src=src;
+    large.alt=img.alt||'Marketplace item photo';
+    viewer.querySelector('.caption285').textContent=img.alt||'Marketplace item photo';
+    viewer.classList.add('open');
+    document.body.style.overflow='hidden';
+    viewer.querySelector('.close285').focus({preventScroll:true});
+  }
+  function closeViewer(){
+    const viewer=document.getElementById('marketPhotoViewer285');
+    if(!viewer)return;
+    viewer.classList.remove('open');
+    const large=viewer.querySelector('img');
+    if(large)large.removeAttribute('src');
+    document.body.style.overflow='';
+  }
+  document.addEventListener('click',function(e){
+    const img=e.target.closest&&e.target.closest('#marketplace .marketPhoto, .marketplacePendingAdminCard .marketPhoto');
+    if(!img)return;
+    e.preventDefault();
+    e.stopPropagation();
+    openViewer(img);
+  },true);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeViewer();});
+  window.openMarketplacePhoto285=function(img){openViewer(img);};
+  window.closeMarketplacePhoto285=closeViewer;
+})();
+</script>
+
 </body>
 </html>
 
