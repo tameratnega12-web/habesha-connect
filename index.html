@@ -7500,6 +7500,194 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+
+<script id="v78295-home-services-role-and-completion-guard">
+/* V7.8.295 — Home Services only.
+   Prevent Home Services action cards from appearing under unrelated active roles,
+   and prevent repeated completion taps/emails for the same transaction. */
+(function(){
+  'use strict';
+  if(window.__hcHomeServicesV78295)return;
+  window.__hcHomeServicesV78295=true;
+
+  const allowedRoles=new Set(['customer','service_provider','admin']);
+  const completionLocks=new Set();
+  const norm=v=>String(v||'').trim().toLowerCase();
+
+  function activeRoleAllowsHomeServices(){
+    return !!window.currentUser && allowedRoles.has(String(currentUser.role||''));
+  }
+
+  function removeWrongRoleHomeServiceCards(){
+    if(activeRoleAllowsHomeServices())return;
+    const home=document.getElementById('home');
+    if(!home)return;
+    home.querySelectorAll(
+      '#hsV78273Priority,#hsV78274HomePriority,#hsV78275HomePriority,'+
+      '[id*="HomeService"][id*="Priority"],.hs-v78273-card,.hs-v78274-card,.hs-v78275-card'
+    ).forEach(el=>el.remove());
+  }
+
+  // Ensure all older Home Services priority renderers are neutralized for unrelated roles.
+  ['home'].forEach(name=>{
+    const old=window[name];
+    if(typeof old!=='function')return;
+    window[name]=function(){
+      const out=old.apply(this,arguments);
+      requestAnimationFrame(()=>requestAnimationFrame(removeWrongRoleHomeServiceCards));
+      return out;
+    };
+  });
+
+  function findDirect(id){
+    return (data.homeServiceRequests||[]).find(x=>String(x.dbId||x.id||'')===String(id||''));
+  }
+  function findJob(id){
+    return (data.homeServiceCustomerJobs||[]).find(x=>String(x.dbId||x.id||'')===String(id||''));
+  }
+  async function deleteOne(table,row){
+    if(!row)return {error:{message:'Transaction not found.'}};
+    if(!(typeof authReady==='function'&&authReady()))return {error:null};
+    let q=hcSupabase.from(table).delete();
+    q=row.dbId?q.eq('id',row.dbId):q.eq('local_ref',row.id);
+    return await q;
+  }
+  function removeLocal(key,row){
+    const rid=String(row?.dbId||row?.id||'');
+    data[key]=(data[key]||[]).filter(x=>String(x.dbId||x.id||'')!==rid);
+    if(typeof persistOnly==='function')persistOnly();
+  }
+  function refreshAfterComplete(){
+    if(typeof loadSupabaseHomeServices==='function'){
+      Promise.resolve(loadSupabaseHomeServices()).catch(console.warn).finally(()=>{
+        if(window.currentPage==='home'&&typeof home==='function')home();
+        else if(window.currentPage==='home_services'&&typeof homeServices==='function')homeServices();
+      });
+    }else if(window.currentPage==='home'&&typeof home==='function')home();
+  }
+
+  // Final idempotent direct-request completion.
+  window.customerConfirmHomeServiceRequest=async function(id){
+    if(!requireLogin())return;
+    if(String(currentUser.role)!=='customer'&&String(currentUser.role)!=='admin')return alert('Switch to Customer to confirm this home service.');
+    const key='direct:'+String(id);
+    if(completionLocks.has(key))return;
+    const r=findDirect(id);
+    if(!r)return alert('This completed request has already been cleared.');
+    if(norm(r.customerEmail)!==norm(currentUser.email)&&currentUser.role!=='admin')return alert('Only the customer can confirm completion.');
+    if(r.status!=='Work Completed - Customer Confirmation')return alert('This request is not waiting for customer confirmation.');
+    if(!confirm('Confirm that the home service work is completed?'))return;
+    completionLocks.add(key);
+    try{
+      const res=await deleteOne('home_service_requests',r);
+      if(res?.error)return alert('Could not clear this completed service: '+res.error.message);
+      removeLocal('homeServiceRequests',r);
+      try{await Promise.resolve(sendEmailNotice({to:r.providerEmail,name:r.providerName,subject:'Customer confirmed home service completion',summary:'The customer confirmed completion. The completed transaction was removed from both active pages.',buttonText:'Open Home Services',page:'home_services',details:{Service:r.serviceTitle,Customer:r.customerName,Status:'Completed'}}));}catch(e){console.warn(e)}
+      refreshAfterComplete();
+      alert('Completion confirmed. The completed transaction was cleared.');
+    }finally{setTimeout(()=>completionLocks.delete(key),1500);}
+  };
+
+  // Final idempotent customer-posted-job completion.
+  window.customerConfirmHomeServiceJob=async function(id){
+    if(!requireLogin())return;
+    if(String(currentUser.role)!=='customer'&&String(currentUser.role)!=='admin')return alert('Switch to Customer to confirm this home service.');
+    const key='job:'+String(id);
+    if(completionLocks.has(key))return;
+    const j=findJob(id);
+    if(!j)return alert('This completed job has already been cleared.');
+    if(norm(j.customerEmail)!==norm(currentUser.email)&&currentUser.role!=='admin')return alert('Only the customer can confirm this job.');
+    if(j.status!=='Work Completed - Customer Confirmation')return alert('This job is not waiting for customer confirmation.');
+    if(!confirm('Confirm that the service work is completed?'))return;
+    completionLocks.add(key);
+    try{
+      const res=await deleteOne('home_service_customer_jobs',j);
+      if(res?.error)return alert('Could not clear this completed job: '+res.error.message);
+      removeLocal('homeServiceCustomerJobs',j);
+      try{await Promise.resolve(sendEmailNotice({to:j.providerEmail,name:j.providerName,subject:'Customer confirmed home service completion',summary:'The customer confirmed completion. The completed transaction was removed from both active pages.',buttonText:'Open Home Services',page:'home_services',details:{Job:j.title,Customer:j.customerName,Status:'Completed'}}));}catch(e){console.warn(e)}
+      refreshAfterComplete();
+      alert('Completion confirmed. The completed transaction was cleared.');
+    }finally{setTimeout(()=>completionLocks.delete(key),1500);}
+  };
+
+  // Block stale Home Services action buttons completely while another role is active.
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('.hs275-action,.hs274-action,.hs-v78273-card button');
+    if(!b||activeRoleAllowsHomeServices())return;
+    e.preventDefault();e.stopImmediatePropagation();
+    removeWrongRoleHomeServiceCards();
+  },true);
+  document.addEventListener('touchend',function(e){
+    const b=e.target.closest&&e.target.closest('.hs275-action,.hs274-action,.hs-v78273-card button');
+    if(!b||activeRoleAllowsHomeServices())return;
+    e.preventDefault();e.stopImmediatePropagation();
+    removeWrongRoleHomeServiceCards();
+  },{capture:true,passive:false});
+
+  let t=0;
+  const obs=new MutationObserver(()=>{clearTimeout(t);t=setTimeout(removeWrongRoleHomeServiceCards,20)});
+  document.addEventListener('DOMContentLoaded',()=>{
+    const homeEl=document.getElementById('home');
+    if(homeEl)obs.observe(homeEl,{childList:true,subtree:true});
+    removeWrongRoleHomeServiceCards();
+  });
+  window.__hcVersion='V7.8.295';
+})();
+</script>
+
+<script id="v78296-completed-user-transactions-hidden">
+/* V7.8.296 — User dashboard cleanup only.
+   Keep completed rows in Supabase when Admin still needs them, but never show
+   terminal transactions on Sender/Traveler or other user Home activity feeds. */
+(function(){
+  const terminalStatus = /^(delivered|completed|closed|cancelled|canceled|declined|rejected|sold|hired|rented|payment received|paid out|removed from driver and owner dashboards|removed from requester and owner dashboards)$/i;
+  const priorItems = window.personalizedHomeItems;
+  window.personalizedHomeItems = function(){
+    const items = typeof priorItems === 'function' ? priorItems() : [];
+    if(!window.currentUser || currentUser.role === 'admin') return items;
+    return (items || []).filter(item => !terminalStatus.test(String(item && item.status || '').trim()));
+  };
+
+  function removeTerminalShippingFromLiveHome(){
+    if(!window.currentUser || currentUser.role === 'admin') return;
+    const root=document.getElementById('personalizedHomeActivity');
+    if(!root)return;
+    root.querySelectorAll('.card').forEach(card=>{
+      const text=String(card.textContent||'');
+      if(/shipping|shipment/i.test(text) && /delivered|completed|closed|cancelled|canceled|declined/i.test(text)) card.remove();
+    });
+    const grid=root.querySelector('.grid');
+    if(grid && !grid.querySelector('.card')) grid.remove();
+  }
+
+  const priorMarkDelivered = window.markDelivered;
+  if(typeof priorMarkDelivered === 'function'){
+    window.markDelivered = async function(id){
+      const result = await priorMarkDelivered.apply(this, arguments);
+      // Rebuild both hidden page panels so the completed shipment disappears
+      // immediately without requiring logout, refresh, or Admin deletion.
+      try{ if(typeof window.home === 'function') window.home(); }catch(e){ console.warn(e); }
+      try{ if(typeof window.shipping === 'function') window.shipping(); }catch(e){ console.warn(e); }
+      setTimeout(removeTerminalShippingFromLiveHome,0);
+      return result;
+    };
+  }
+
+  const priorPayTraveler = window.payTraveler;
+  if(typeof priorPayTraveler === 'function'){
+    window.payTraveler = async function(id){
+      const result = await priorPayTraveler.apply(this, arguments);
+      try{ if(typeof window.home === 'function') window.home(); }catch(e){ console.warn(e); }
+      try{ if(typeof window.shipping === 'function') window.shipping(); }catch(e){ console.warn(e); }
+      return result;
+    };
+  }
+
+  window.__hcVersion='V7.8.296';
+})();
+</script>
+
 </body>
 </html>
 
@@ -10482,5 +10670,93 @@ window.__hcVersion='V7.8.213';
     removeDuplicateSections();
   });
   window.__hcVersion='V7.8.294';
+})();
+</script>
+
+<script id="v78297-all-categories-terminal-user-cleanup">
+/* V7.8.297 — All-category completed transaction visibility cleanup.
+   User-facing only: do not delete Admin/audit rows or change any transaction flow. */
+(function(){
+  const TERMINAL = new Set([
+    'delivered','completed','completed - admin verified','closed','closed - position filled',
+    'cancelled','canceled','cancelled by rider','declined','declined by admin','admin declined',
+    'seller declined','provider declined','customer declined','driver declined','applicant declined',
+    'filled','hired','rented','renter agreed','driver agreed','payment received / history',
+    'paid out','sold verified','removed from driver and owner dashboards',
+    'removed from requester and owner dashboards','ended'
+  ]);
+
+  function norm(v){return String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,' ');}
+  function isTerminal(v){return TERMINAL.has(norm(v));}
+
+  // Final source-level guard for the Home "Your New Activity" feed.
+  const previousItems = window.personalizedHomeItems;
+  if(typeof previousItems === 'function'){
+    window.personalizedHomeItems = function(){
+      const items = previousItems.apply(this, arguments) || [];
+      if(!window.currentUser || currentUser.role === 'admin') return items;
+      return items.filter(item => !isTerminal(item && item.status));
+    };
+  }
+
+  function removeTerminalRenderedRecords(root){
+    if(!root || !window.currentUser || currentUser.role === 'admin') return;
+
+    // Status pills are used by all current transaction cards and rows.
+    root.querySelectorAll('.pill,[data-status],td.status,span.status').forEach(statusEl=>{
+      const raw = statusEl.getAttribute('data-status') || statusEl.textContent || '';
+      if(!isTerminal(raw)) return;
+      const record = statusEl.closest('tr,.card,.activity-card,.transaction-card,.request-card');
+      if(record) record.remove();
+    });
+
+    // Remove empty grids/tables left after terminal cards are removed.
+    root.querySelectorAll('.grid').forEach(grid=>{
+      if(!grid.querySelector('.card,.activity-card,.transaction-card,.request-card')) grid.remove();
+    });
+    root.querySelectorAll('table').forEach(table=>{
+      const body=table.tBodies&&table.tBodies[0];
+      if(body && !body.rows.length) table.style.display='none';
+    });
+  }
+
+  function cleanAllUserPages(){
+    if(!window.currentUser || currentUser.role === 'admin') return;
+    removeTerminalRenderedRecords(document.getElementById('personalizedHomeActivity'));
+    ['shipping','rentals','truck','taxi','marketplace','home_services','jobs','business','events','customer']
+      .forEach(id=>removeTerminalRenderedRecords(document.getElementById(id)));
+  }
+
+  // Keep the cleanup active after every older renderer finishes.
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(cleanAllUserPages,25);
+  });
+  document.addEventListener('DOMContentLoaded',()=>{
+    observer.observe(document.body,{childList:true,subtree:true});
+    cleanAllUserPages();
+  });
+
+  // Rebuild current views after final-step actions, without changing their logic.
+  const finalActions=[
+    'markDelivered','payTraveler','customerConfirmHomeServiceJob','customerConfirmDirectHomeServiceRequest',
+    'taxiPaymentReceived','applicantAgreeJob','marketplaceBuyerAgree','buyerAgreeMarketplace',
+    'renterAgreeTrailer','driverAgreeTruckJob'
+  ];
+  finalActions.forEach(name=>{
+    const original=window[name];
+    if(typeof original!=='function' || original.__v78297Wrapped) return;
+    const wrapped=async function(){
+      const result=await original.apply(this,arguments);
+      try{ if(typeof window.home==='function') window.home(); }catch(e){console.warn(e);}
+      setTimeout(cleanAllUserPages,0);
+      return result;
+    };
+    wrapped.__v78297Wrapped=true;
+    window[name]=wrapped;
+  });
+
+  window.__hcVersion='V7.8.297';
 })();
 </script>
