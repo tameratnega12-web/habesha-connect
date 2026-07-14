@@ -7088,63 +7088,92 @@ window.__hcVersion='V7.8.213';
 </style>
 
 
-<!-- V7.8.285 Marketplace photo large viewer fix -->
-<style id="v78285-marketplace-photo-viewer-style">
-.marketPhoto{cursor:zoom-in;touch-action:manipulation}
-#marketPhotoViewer285{display:none;position:fixed;inset:0;z-index:1000000;background:rgba(2,6,23,.92);align-items:center;justify-content:center;padding:18px}
-#marketPhotoViewer285.open{display:flex}
-#marketPhotoViewer285 .viewer-inner285{position:relative;width:min(1100px,100%);height:min(88vh,900px);display:flex;align-items:center;justify-content:center}
-#marketPhotoViewer285 img{display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55)}
-#marketPhotoViewer285 .close285{position:fixed;top:max(14px,env(safe-area-inset-top));right:14px;width:52px;height:52px;border:0;border-radius:999px;background:#fff;color:#111827;font-size:30px;line-height:1;cursor:pointer;z-index:2;touch-action:manipulation}
-#marketPhotoViewer285 .caption285{position:fixed;left:16px;right:16px;bottom:max(14px,env(safe-area-inset-bottom));color:#fff;text-align:center;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
-@media(max-width:700px){#marketPhotoViewer285{padding:10px}#marketPhotoViewer285 .viewer-inner285{height:82vh}#marketPhotoViewer285 .close285{width:50px;height:50px;font-size:28px}.marketPhoto{min-height:110px}}
+<!-- V7.8.286 Marketplace photo reliable full-screen viewer -->
+<style id="v78286-marketplace-photo-viewer-style">
+.marketPhoto{cursor:zoom-in!important;touch-action:manipulation!important;-webkit-user-select:none;user-select:none}
+#marketPhotoViewer286{display:none;position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:2147483646;background:rgba(0,0,0,.96);align-items:center;justify-content:center;overflow:hidden;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));overscroll-behavior:contain}
+#marketPhotoViewer286.open{display:flex!important}
+#marketPhotoViewer286 .viewer-inner286{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:64px 8px 52px;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pinch-zoom}
+#marketPhotoViewer286 img{display:block;width:auto;height:auto;max-width:98vw;max-height:calc(100dvh - 116px);object-fit:contain;border-radius:8px;background:#fff;box-shadow:0 18px 70px rgba(0,0,0,.75);touch-action:pinch-zoom}
+#marketPhotoViewer286 .close286{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:54px;height:54px;border:2px solid rgba(255,255,255,.5);border-radius:999px;background:#fff;color:#111827;font-size:32px;font-weight:800;line-height:46px;cursor:pointer;z-index:2147483647;touch-action:manipulation}
+#marketPhotoViewer286 .caption286{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));color:#fff;text-align:center;font-size:14px;font-weight:700;text-shadow:0 2px 8px #000;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(min-width:701px){#marketPhotoViewer286 .viewer-inner286{padding:70px 24px 48px}#marketPhotoViewer286 img{max-width:96vw;max-height:calc(100vh - 118px)}}
 </style>
-<script id="v78285-marketplace-photo-viewer-fix">
+<script id="v78286-marketplace-photo-viewer-fix">
 (function(){
+  'use strict';
+  let lastTrigger=null;
+  let touchStart=null;
+  function isMarketPhoto(el){
+    return !!(el&&el.matches&&el.matches('.marketPhoto'));
+  }
   function ensureViewer(){
-    let viewer=document.getElementById('marketPhotoViewer285');
-    if(viewer)return viewer;
-    viewer=document.createElement('div');
-    viewer.id='marketPhotoViewer285';
-    viewer.setAttribute('role','dialog');
-    viewer.setAttribute('aria-modal','true');
-    viewer.setAttribute('aria-label','Marketplace photo viewer');
-    viewer.innerHTML='<button type="button" class="close285" aria-label="Close photo">×</button><div class="viewer-inner285"><img alt="Large Marketplace photo"></div><div class="caption285"></div>';
-    document.body.appendChild(viewer);
-    viewer.querySelector('.close285').addEventListener('click',closeViewer);
-    viewer.addEventListener('click',function(e){if(e.target===viewer)closeViewer();});
-    return viewer;
+    let v=document.getElementById('marketPhotoViewer286');
+    if(v)return v;
+    v=document.createElement('div');
+    v.id='marketPhotoViewer286';
+    v.setAttribute('role','dialog');
+    v.setAttribute('aria-modal','true');
+    v.setAttribute('aria-label','Large Marketplace photo');
+    v.innerHTML='<button type="button" class="close286" aria-label="Close large photo">×</button><div class="viewer-inner286"><img alt="Large Marketplace item photo"></div><div class="caption286"></div>';
+    document.body.appendChild(v);
+    v.querySelector('.close286').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();closeViewer();});
+    v.addEventListener('click',function(e){if(e.target===v||e.target.classList.contains('viewer-inner286'))closeViewer();});
+    return v;
   }
   function openViewer(img){
-    const src=img.currentSrc||img.src;
+    if(!isMarketPhoto(img))return;
+    const src=img.currentSrc||img.getAttribute('src')||'';
     if(!src)return;
-    const viewer=ensureViewer();
-    const large=viewer.querySelector('img');
+    lastTrigger=img;
+    const v=ensureViewer();
+    const large=v.querySelector('img');
     large.src=src;
     large.alt=img.alt||'Marketplace item photo';
-    viewer.querySelector('.caption285').textContent=img.alt||'Marketplace item photo';
-    viewer.classList.add('open');
+    v.querySelector('.caption286').textContent=img.alt||'Marketplace item photo';
+    v.classList.add('open');
+    document.documentElement.style.overflow='hidden';
     document.body.style.overflow='hidden';
-    viewer.querySelector('.close285').focus({preventScroll:true});
+    setTimeout(function(){try{v.querySelector('.close286').focus({preventScroll:true});}catch(_){v.querySelector('.close286').focus();}},0);
   }
   function closeViewer(){
-    const viewer=document.getElementById('marketPhotoViewer285');
-    if(!viewer)return;
-    viewer.classList.remove('open');
-    const large=viewer.querySelector('img');
+    const v=document.getElementById('marketPhotoViewer286');
+    if(!v)return;
+    v.classList.remove('open');
+    const large=v.querySelector('img');
     if(large)large.removeAttribute('src');
+    document.documentElement.style.overflow='';
     document.body.style.overflow='';
+    if(lastTrigger&&document.contains(lastTrigger)){try{lastTrigger.focus({preventScroll:true});}catch(_){}}
   }
-  document.addEventListener('click',function(e){
-    const img=e.target.closest&&e.target.closest('#marketplace .marketPhoto, .marketplacePendingAdminCard .marketPhoto');
+  document.addEventListener('pointerup',function(e){
+    const img=e.target&&e.target.closest?e.target.closest('.marketPhoto'):null;
     if(!img)return;
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    openViewer(img);
+  },true);
+  document.addEventListener('touchstart',function(e){
+    const img=e.target&&e.target.closest?e.target.closest('.marketPhoto'):null;
+    if(!img||!e.touches||!e.touches[0])return;
+    touchStart={img:img,x:e.touches[0].clientX,y:e.touches[0].clientY};
+  },{capture:true,passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!touchStart)return;
+    const t=e.changedTouches&&e.changedTouches[0];
+    const saved=touchStart;touchStart=null;
+    if(!t||Math.abs(t.clientX-saved.x)>12||Math.abs(t.clientY-saved.y)>12)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    openViewer(saved.img);
+  },{capture:true,passive:false});
+  document.addEventListener('click',function(e){
+    const img=e.target&&e.target.closest?e.target.closest('.marketPhoto'):null;
+    if(!img)return;
+    e.preventDefault();e.stopPropagation();
     openViewer(img);
   },true);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeViewer();});
-  window.openMarketplacePhoto285=function(img){openViewer(img);};
-  window.closeMarketplacePhoto285=closeViewer;
+  window.openMarketplacePhoto286=openViewer;
+  window.closeMarketplacePhoto286=closeViewer;
 })();
 </script>
 
