@@ -6843,6 +6843,145 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.276';
 })();
 </script>
+<script id="v78279-completed-transactions-supabase-cleanup">
+/* V7.8.279 — Completed transaction cleanup only.
+   Removes completed Job Seeker, Marketplace and Home Services transactions from
+   Supabase and local dashboard data after contact release/final confirmation. */
+(function(){
+  if(window.__hcCompletedCleanup279)return;
+  window.__hcCompletedCleanup279=true;
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const same=(a,b)=>norm(a)===norm(b);
+  const idMatch=(x,id)=>String(x?.id||'')===String(id)||String(x?.dbId||'')===String(id);
+
+  async function deleteRow(table,item){
+    if(!item)return {error:null};
+    if(!window.hcSupabase||typeof authReady!=='function'||!authReady())return {error:null};
+    let q=hcSupabase.from(table).delete();
+    return item.dbId?await q.eq('id',item.dbId):await q.eq('local_ref',item.id);
+  }
+  async function updateJobClosed(job){
+    if(!job)return {error:null};
+    job.status='Closed';
+    if(typeof syncJobToSupabase==='function')return await syncJobToSupabase(job);
+    if(!window.hcSupabase||!authReady())return {error:null};
+    let q=hcSupabase.from('hc_jobs').update({status:'Closed',updated_at:new Date().toISOString()});
+    return job.dbId?await q.eq('id',job.dbId):await q.eq('local_ref',job.id);
+  }
+  function removeLocal(listName,item){
+    data[listName]=(data[listName]||[]).filter(x=>x!==item&&!idMatch(x,item?.dbId||item?.id));
+  }
+  function refreshCurrent(){
+    persistOnly();
+    if(currentPage==='home'&&typeof home==='function')home();
+    else if(currentPage==='home_services'&&typeof homeServices==='function')homeServices();
+    else if(currentPage==='marketplace'&&typeof marketplace==='function')marketplace();
+    else if(currentPage==='jobs'&&typeof jobs==='function')jobs();
+    else if(currentPage==='admin'&&typeof adminSuccess==='function')adminSuccess();
+  }
+  function showBox(id,title,rows,note){
+    let box=document.getElementById(id);
+    if(!box){box=document.createElement('div');box.id=id;box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');document.body.appendChild(box);}
+    const phone=rows.find(r=>r.label==='Phone')?.value||'';
+    const email=rows.find(r=>r.label==='Email')?.value||'';
+    box.innerHTML=`<div class="cleanup-dialog279"><h2>${esc(title)}</h2>${rows.map(r=>`<p><b>${esc(r.label)}:</b> ${esc(r.value||'Not provided')}</p>`).join('')}<p class="muted">${esc(note)}</p><div class="actions">${phone&&phone!=='Not provided'?`<a class="btn primary" href="tel:${esc(String(phone).replace(/[^+\d]/g,''))}">Call</a>`:''}${email&&email!=='Not provided'?`<a class="btn ghost" href="mailto:${esc(email)}">Email</a>`:''}<button type="button" class="btn dark" data-close-cleanup279>Close</button></div></div>`;
+    box.style.display='flex';
+  }
+
+  // Job Seeker: release owner information, then delete the completed application
+  // and close the filled job so neither party receives the transaction again.
+  window.viewAcceptedJobOwnerInformation=async function(id){
+    const a=(data.jobApplications||[]).find(x=>idMatch(x,id));
+    if(!a)return alert('Application not found. It may already have been cleared.');
+    if(!currentUser||!same(a.applicantEmail,currentUser.email))return alert('Only the accepted job seeker can view this information.');
+    if(!['Applicant Agreed','Closed'].includes(a.status))return alert('Please click Agree first.');
+    const j=(data.jobs||[]).find(x=>String(x.id||'')===String(a.jobId||'')||String(x.dbId||'')===String(a.jobDbId||''))||{};
+    const info={name:a.employerName||j.employerName||j.company||'Business Owner',phone:j.contactPhone||a.employerPhone||'Not provided',email:j.contactEmail||a.employerEmail||'Not provided'};
+    const deleted=await deleteRow('hc_job_applications',a);
+    if(deleted?.error)return alert('Owner information could not be opened because the completed application could not be cleared: '+deleted.error.message);
+    const closed=await updateJobClosed(j);
+    if(closed?.error)console.warn('Completed job listing could not be closed',closed.error);
+    removeLocal('jobApplications',a);
+    showBox('jobOwnerInfoBox279','📞 Business Owner Information',[{label:'Name',value:info.name},{label:'Phone',value:info.phone},{label:'Email',value:info.email}],'The completed application was removed from both Home pages.');
+    refreshCurrent();
+  };
+
+  // Marketplace: release seller details once, then delete the purchase request and
+  // sold listing so completed records cannot return after reload.
+  window.marketBuyerAgree=async function(id){
+    const r=(data.marketRequests||[]).find(x=>idMatch(x,id));
+    if(!r)return alert('Marketplace request not found. It may already have been cleared.');
+    if(!currentUser||!same(r.buyerEmail,currentUser.email))return alert('Only the requesting customer can agree.');
+    if(r.status!=='Connection Approved')return alert('Admin must approve the seller acceptance before you can agree.');
+    if(!confirm('Do you agree to continue with this Marketplace transaction?'))return;
+    const item=(data.market||[]).find(m=>String(m.id||'')===String(r.itemId||'')||String(m.dbId||'')===String(r.itemId||''));
+    const info={name:r.sellerName||item?.seller||'Seller',phone:r.sellerPhone||item?.sellerPhone||'Not provided',email:r.sellerEmail||item?.sellerEmail||'Not provided'};
+    const reqDel=await deleteRow('marketplace_purchase_requests',r);
+    if(reqDel?.error)return alert('Could not complete and clear the Marketplace transaction: '+reqDel.error.message);
+    if(item){const itemDel=await deleteRow('marketplace_listings',item);if(itemDel?.error)console.warn('Sold Marketplace listing could not be removed',itemDel.error);}
+    removeLocal('marketRequests',r);if(item)removeLocal('market',item);
+    try{sendEmailNotice({to:r.sellerEmail,name:r.sellerName,subject:'Marketplace customer agreed',summary:'The customer agreed and the completed transaction was cleared from the active pages.',buttonText:'Open Marketplace',page:'marketplace',details:{Item:r.itemTitle,Customer:r.buyerName,Status:'Completed'}});}catch(e){console.warn(e)}
+    showBox('marketSellerInfoBox279','📞 Seller Information',[{label:'Seller',value:info.name},{label:'Phone',value:info.phone},{label:'Email',value:info.email}],'The completed Marketplace transaction was removed from both parties’ pages.');
+    refreshCurrent();
+  };
+
+  // Direct Home Service: final customer confirmation deletes the completed request.
+  window.customerConfirmHomeServiceRequest=async function(id){
+    if(!requireLogin())return;
+    const r=(data.homeServiceRequests||[]).find(x=>idMatch(x,id));
+    if(!r)return alert('Request not found. It may already have been cleared.');
+    if(!same(r.customerEmail,currentUser.email)&&currentUser.role!=='admin')return alert('Only the customer can confirm completion.');
+    if(r.status!=='Work Completed - Customer Confirmation')return alert('This request is not waiting for customer confirmation.');
+    if(!confirm('Confirm that the home service work is completed?'))return;
+    const del=await deleteRow('home_service_requests',r);
+    if(del?.error)return alert('Could not confirm and clear this completed service: '+del.error.message);
+    removeLocal('homeServiceRequests',r);
+    try{sendEmailNotice({to:r.providerEmail,name:r.providerName,subject:'Customer confirmed home service completion',summary:'The customer confirmed completion. The completed transaction was removed from both active pages.',buttonText:'Open Home Services',page:'home_services',details:{Service:r.serviceTitle,Customer:r.customerName,Status:'Completed'}});}catch(e){console.warn(e)}
+    refreshCurrent();alert('Completion confirmed. The completed transaction was cleared.');
+  };
+
+  // Customer-posted Home Service: final customer confirmation deletes the job row.
+  window.customerConfirmHomeServiceJob=async function(id){
+    if(!requireLogin())return;
+    const j=(data.homeServiceCustomerJobs||[]).find(x=>idMatch(x,id));
+    if(!j)return alert('Customer job not found. It may already have been cleared.');
+    if(!same(j.customerEmail,currentUser.email)&&currentUser.role!=='admin')return alert('Only the customer can confirm this job.');
+    if(j.status!=='Work Completed - Customer Confirmation')return alert('This job is not waiting for customer confirmation.');
+    if(!confirm('Confirm that the service work is completed?'))return;
+    const del=await deleteRow('home_service_customer_jobs',j);
+    if(del?.error)return alert('Could not confirm and clear this completed job: '+del.error.message);
+    removeLocal('homeServiceCustomerJobs',j);
+    try{sendEmailNotice({to:j.providerEmail,name:j.providerName,subject:'Customer confirmed home service completion',summary:'The customer confirmed completion. The completed transaction was removed from both active pages.',buttonText:'Open Home Services',page:'home_services',details:{Job:j.title,Customer:j.customerName,Status:'Completed'}});}catch(e){console.warn(e)}
+    refreshCurrent();alert('Completion confirmed. The completed transaction was cleared.');
+  };
+
+  // Never rebuild old terminal records into customer/provider activity after a refresh.
+  function removeTerminalLocalRows(){
+    data.jobApplications=(data.jobApplications||[]).filter(a=>!['Closed'].includes(a.status));
+    data.marketRequests=(data.marketRequests||[]).filter(r=>!['Completed','Cancelled','Admin Declined','Seller Declined','Connection Declined'].includes(r.status));
+    data.market=(data.market||[]).filter(m=>!['Sold','Sold Verified','Closed','Completed'].includes(m.status));
+    data.homeServiceRequests=(data.homeServiceRequests||[]).filter(r=>!['Completed','Closed','Cancelled'].includes(r.status));
+    data.homeServiceCustomerJobs=(data.homeServiceCustomerJobs||[]).filter(j=>!['Completed','Closed','Cancelled'].includes(j.status));
+  }
+  ['loadSupabaseJobs','loadSupabaseMarketplace','loadSupabaseHomeServices'].forEach(name=>{
+    const old=window[name];if(typeof old!=='function')return;
+    window[name]=async function(){const out=await old.apply(this,arguments);removeTerminalLocalRows();return out;};
+  });
+  const oldHome=window.home;
+  if(typeof oldHome==='function')window.home=function(){removeTerminalLocalRows();return oldHome.apply(this,arguments);};
+  document.addEventListener('click',e=>{if(e.target.closest('[data-close-cleanup279]')){const box=e.target.closest('[id$="279"]');if(box)box.style.display='none';}},true);
+  removeTerminalLocalRows();
+  window.__hcVersion='V7.8.279';
+})();
+</script>
+<style id="v78279-completed-cleanup-style">
+#jobOwnerInfoBox279,#marketSellerInfoBox279{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.68);display:none;align-items:center;justify-content:center;padding:18px}
+.cleanup-dialog279{width:min(560px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.cleanup-dialog279 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+@media(max-width:760px){.cleanup-dialog279{padding:20px}.cleanup-dialog279 .actions>*{width:100%;min-height:54px;display:flex;align-items:center;justify-content:center}}
+</style>
+
 </body>
 </html>
 
