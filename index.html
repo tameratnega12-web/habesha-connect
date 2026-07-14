@@ -9368,3 +9368,131 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.277';
 })();
 </script>
+
+<script id="v78278-marketplace-final-sequence-cleanup">
+/* V7.8.278 Marketplace only.
+   Seller post -> Admin approves listing -> Customer requests -> Seller accepts/declines
+   -> Admin approves accepted request -> Customer agrees -> seller contact shown once
+   -> completed request/listing removed from user transaction panels. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const findItem=id=>(data.market||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  const findReq=id=>(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  const doneStatuses=new Set(['Completed','Cancelled','Admin Declined','Seller Declined','Connection Declined']);
+  async function refresh(){
+    persistOnly();
+    try{if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();}catch(e){console.warn('Marketplace refresh skipped',e)}
+    if(currentPage==='home'&&typeof home==='function')home();
+    else if(currentPage==='admin'&&typeof adminSuccess==='function')adminSuccess();
+    else if(typeof marketplace==='function')marketplace();
+  }
+  function showSeller(r){
+    let box=document.getElementById('marketSellerInfo278');
+    if(!box){
+      box=document.createElement('div');box.id='marketSellerInfo278';
+      document.body.appendChild(box);
+    }
+    const phone=String(r.sellerPhone||'').trim();
+    const email=String(r.sellerEmail||'').trim();
+    box.innerHTML=`<div class="market-dialog278"><h2>📞 Seller Information</h2><h3>${esc(r.itemTitle||'Marketplace Item')}</h3><p><b>Seller:</b> ${esc(r.sellerName||'Seller')}</p><p><b>Phone:</b> ${esc(phone||'Not provided')}</p><p><b>Email:</b> ${esc(email||'Not provided')}</p><div class="actions">${phone?`<a class="btn primary" href="tel:${esc(phone)}">Call Seller</a>`:''}${email?`<a class="btn primary" href="mailto:${esc(email)}">Email Seller</a>`:''}<button class="btn ghost" type="button" data-close-market278>Close</button></div></div>`;
+    box.style.display='flex';
+  }
+
+  // Customer request goes directly to seller after listing approval.
+  window.marketRequestBuy=async function(id){
+    if(!requireLogin())return;
+    const m=findItem(id);if(!m)return alert('Marketplace item was not found. Please refresh and try again.');
+    if(!['Approved','Available'].includes(m.status))return alert('This item is not available for requests.');
+    if(norm(m.sellerEmail)===norm(currentUser.email))return alert('You cannot request your own item.');
+    const exists=(data.marketRequests||[]).find(r=>String(r.itemId)===String(m.dbId||m.id)&&norm(r.buyerEmail)===norm(currentUser.email)&&!doneStatuses.has(r.status));
+    if(exists)return alert('You already requested this item.');
+    const r={id:'MR'+Date.now().toString().slice(-7),itemId:m.dbId||m.id,itemTitle:m.title,buyerName:currentUser.name,buyerEmail:currentUser.email,buyerPhone:currentUser.phone||'',sellerName:m.seller,sellerEmail:m.sellerEmail,sellerPhone:m.sellerPhone||'',status:'Admin Approved - Waiting Seller',createdAt:new Date().toLocaleString()};
+    const res=await insertMarketRequestDb(r);if(res.error)return alert('Marketplace request was not saved: '+res.error.message);
+    if(res.data){r.id=res.data.id;r.dbId=res.data.id;}data.marketRequests.unshift(r);
+    addNote(r.sellerEmail,'New Marketplace request for '+r.itemTitle+'. Please accept or decline.');
+    try{await Promise.resolve(sendEmailNotice({to:r.sellerEmail,name:r.sellerName,subject:'New Marketplace customer request',summary:'A customer requested your approved Marketplace item. Please accept or decline.',buttonText:'Open Marketplace',page:'marketplace',details:{Item:r.itemTitle,Customer:r.buyerName,Status:'Waiting for Seller'}}));}catch(e){}
+    persistOnly();marketplace();alert('Request sent to the seller.');
+  };
+
+  window.marketSellerAcceptReq=async function(id){
+    const r=findReq(id);if(!r||!currentUser||norm(r.sellerEmail)!==norm(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('This request is not waiting for your response.');
+    r.status='Seller Accepted - Waiting Admin';
+    const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not accept Marketplace request: '+res.error.message);
+    addNote(r.buyerEmail,'Seller accepted your Marketplace request. Waiting for Admin approval before your agreement.');
+    addNote('admin.habeshaconnect@gmail.com','Marketplace seller accepted '+r.itemTitle+'. Final Admin approval is required.');
+    try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace seller accepted — approval required','The seller accepted a customer request. Approve it before the customer can agree and receive seller information.',{Item:r.itemTitle,Seller:r.sellerName,Customer:r.buyerName,Status:r.status},'marketplace'));}catch(e){}
+    await refresh();alert('Accepted. Admin was notified for approval.');
+  };
+
+  window.marketSellerDeclineReq=async function(id){
+    const r=findReq(id);if(!r||!currentUser||norm(r.sellerEmail)!==norm(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('This request is not waiting for your response.');
+    r.status='Seller Declined';const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not decline request: '+res.error.message);
+    addNote(r.buyerEmail,'Seller declined your Marketplace request: '+r.itemTitle);await refresh();
+  };
+
+  window.marketAdminApproveConnection=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const r=findReq(id);if(!r)return alert('Marketplace request not found.');
+    if(r.status!=='Seller Accepted - Waiting Admin')return alert('This request is not waiting for final Admin approval.');
+    r.status='Connection Approved';const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not approve Marketplace agreement: '+res.error.message);
+    addNote(r.buyerEmail,'Admin approved the Marketplace transaction. Click Agree to receive seller information.');
+    try{await Promise.resolve(sendEmailNotice({to:r.buyerEmail,name:r.buyerName,subject:'Marketplace agreement approved — click Agree',summary:'Admin approved the seller-accepted transaction. Click Agree to receive seller information.',buttonText:'Open Marketplace',page:'marketplace',details:{Item:r.itemTitle,Seller:r.sellerName,Status:'Waiting for Customer Agreement'}}));}catch(e){}
+    await refresh();
+  };
+
+  window.marketBuyerAgree=async function(id){
+    const r=findReq(id);if(!r||!currentUser||norm(r.buyerEmail)!==norm(currentUser.email))return alert('Customer only.');
+    if(r.status!=='Connection Approved')return alert('Admin must approve the seller acceptance before you can agree.');
+    if(!confirm('Do you agree to continue with this Marketplace transaction?'))return;
+    const item=findItem(r.itemId);
+    r.status='Completed';const res=await updateMarketRequestDb(r,r.status);if(res.error)return alert('Could not save your agreement: '+res.error.message);
+    if(item){item.status='Sold Verified';const lr=await updateMarketListingDb(item,item.status);if(lr.error)console.warn('Marketplace listing cleanup failed',lr.error);}
+    addNote(r.sellerEmail,'Customer agreed to the Marketplace transaction: '+r.itemTitle);
+    try{await Promise.resolve(sendEmailNotice({to:r.sellerEmail,name:r.sellerName,subject:'Marketplace customer agreed',summary:'The customer agreed. The completed transaction has been removed from the active pages.',buttonText:'Open Marketplace',page:'marketplace',details:{Item:r.itemTitle,Customer:r.buyerName,Status:'Completed'}}));}catch(e){}
+    showSeller(r);
+    await refresh();
+  };
+
+  window.marketRequestCard=function(r){
+    if(!r||doneStatuses.has(r.status))return '';
+    const isSeller=currentUser&&norm(r.sellerEmail)===norm(currentUser.email);
+    const isBuyer=currentUser&&norm(r.buyerEmail)===norm(currentUser.email);
+    const isAdmin=currentUser&&currentUser.role==='admin';
+    let actions='';
+    if(isSeller&&r.status==='Admin Approved - Waiting Seller')actions=`<button class="btn primary" type="button" onclick="marketSellerAcceptReq('${r.id}')">Accept</button><button class="btn danger" type="button" onclick="marketSellerDeclineReq('${r.id}')">Decline</button>`;
+    if(isAdmin&&r.status==='Seller Accepted - Waiting Admin')actions=`<button class="btn primary" type="button" onclick="marketAdminApproveConnection('${r.id}')">Approve Transaction</button>`;
+    if(isBuyer&&r.status==='Connection Approved')actions=`<button class="btn primary" type="button" onclick="marketBuyerAgree('${r.id}')">Agree & View Seller Information</button>`;
+    return `<div class="item" data-market-request278="${esc(r.id)}"><b>${esc(r.itemTitle)}</b><p>${esc(r.buyerName)} wants to buy from ${esc(r.sellerName)}</p><span class="pill ${String(r.status).includes('Approved')?'good':'warn'}">${esc(r.status==='Connection Approved'?'Admin Approved — Waiting Customer Agreement':r.status)}</span><div class="actions">${actions}</div></div>`;
+  };
+
+  window.marketAdminCards=function(){
+    const listings=(data.market||[]).filter(m=>m.status==='Pending Admin Approval');
+    const accepted=(data.marketRequests||[]).filter(r=>r.status==='Seller Accepted - Waiting Admin');
+    return `<div class="card"><h3>⏳ Pending Marketplace Listings</h3>${listings.map(marketCard).join('')||'<p class="muted">No pending listings.</p>'}</div><div class="card"><h3>🤝 Seller Accepted — Admin Approval Required</h3>${accepted.map(marketRequestCard).join('')||'<p class="muted">No accepted requests waiting.</p>'}</div>`;
+  };
+
+  // Remove older Marketplace agreement/history sections from Customer Home, then add only live Agree actions.
+  const priorCustomerHome=window.customerHomeActions;
+  window.customerHomeActions=function(){
+    let base=typeof priorCustomerHome==='function'?String(priorCustomerHome()||''):'';
+    base=base.replace(/<section[^>]*id=["']marketplaceCustomerAgreementHome["'][\s\S]*?<\/section>/gi,'');
+    if(!currentUser||currentUser.role!=='customer')return base;
+    const email=norm(currentUser.email);
+    const pending=(data.marketRequests||[]).filter(r=>norm(r.buyerEmail)===email&&r.status==='Connection Approved');
+    if(!pending.length)return base;
+    const cards=pending.map(r=>`<div class="card" style="border:2px solid #16a34a"><h3>🛒 Marketplace Agreement Required</h3><p><b>${esc(r.itemTitle)}</b></p><button class="btn primary" type="button" onclick="marketBuyerAgree('${r.id}')">Agree & View Seller Information</button></div>`).join('');
+    return `<section id="marketplaceCustomerAgreementHome" style="margin-top:20px"><div class="card"><h2>🛒 Marketplace Action Required</h2></div><div class="grid">${cards}</div></section>`+base;
+  };
+
+  document.addEventListener('click',e=>{if(e.target.closest('[data-close-market278]')){const b=document.getElementById('marketSellerInfo278');if(b)b.style.display='none';}},true);
+  let touch=null;
+  document.addEventListener('touchstart',e=>{const b=e.target.closest('button[onclick*="marketBuyerAgree"],button[onclick*="marketSellerAcceptReq"],button[onclick*="marketSellerDeclineReq"],button[onclick*="marketAdminApproveConnection"]');if(!b)return;const p=e.changedTouches&&e.changedTouches[0];touch=p?{x:p.clientX,y:p.clientY,b}:null;},{passive:true});
+  document.addEventListener('touchend',e=>{const b=e.target.closest('button[onclick*="marketBuyerAgree"],button[onclick*="marketSellerAcceptReq"],button[onclick*="marketSellerDeclineReq"],button[onclick*="marketAdminApproveConnection"]');if(!b||!touch||touch.b!==b)return;const p=e.changedTouches&&e.changedTouches[0],moved=p&&(Math.abs(p.clientX-touch.x)>12||Math.abs(p.clientY-touch.y)>12);touch=null;if(moved)return;const code=b.getAttribute('onclick')||'',m=code.match(/(marketBuyerAgree|marketSellerAcceptReq|marketSellerDeclineReq|marketAdminApproveConnection)\(['"]([^'"]+)['"]\)/);if(!m)return;e.preventDefault();e.stopImmediatePropagation();window[m[1]](m[2]);},{passive:false,capture:true});
+
+  const style=document.createElement('style');style.textContent=`#marketSellerInfo278{display:none;position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.58);align-items:center;justify-content:center;padding:18px}.market-dialog278{width:min(520px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)}@media(max-width:700px){#marketSellerInfo278 .actions{display:grid;grid-template-columns:1fr;gap:10px}#marketSellerInfo278 .btn,.page#marketplace .btn{min-height:50px}.page#marketplace .actions{display:grid;grid-template-columns:1fr;gap:10px}}`;document.head.appendChild(style);
+  window.__hcVersion='V7.8.278';
+})();
+</script>
