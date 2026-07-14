@@ -6983,123 +6983,110 @@ window.__hcVersion='V7.8.213';
 </style>
 
 
-<script id="v78282-marketplace-photo-event-pattern-fix">
-/* V7.8.282 — Marketplace photo upload follows the proven Event Organizer sequence.
-   Scope: Marketplace photo selection, Storage upload, URL attachment, and rendering only. */
-(function(){
-  const MARKET_PHOTO_BUCKET_282='marketplace-media';
-  const MAX_MARKET_PHOTOS_282=6;
-  const MAX_MARKET_PHOTO_BYTES_282=5*1024*1024;
-  let selectedMarketFiles282=[];
-  let submittingMarket282=false;
-  const objectUrls282=[];
 
-  function revokePreviews282(){while(objectUrls282.length){try{URL.revokeObjectURL(objectUrls282.pop());}catch(_){}}}
-  function extension282(file){const x=(String(file&&file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');return x||'jpg';}
-  function validate282(file){
-    if(!file)return '';
-    const type=String(file.type||'').toLowerCase();
-    const name=String(file.name||'').toLowerCase();
-    const imageByName=/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
-    if(!(type.startsWith('image/')||imageByName))return 'Every Marketplace photo must be an image.';
-    if(Number(file.size||0)>MAX_MARKET_PHOTO_BYTES_282)return 'Each Marketplace photo must be 5 MB or smaller.';
+<script id="v78284-marketplace-photo-stable-upload-fix">
+/* V7.8.284 — Marketplace-only stable photo uploader.
+   One controller, no MutationObserver, no repeated page rendering. */
+(function(){
+  const BUCKET='marketplace-media', MAX_FILES=6, MAX_BYTES=5*1024*1024;
+  const state=window.__marketPhotoState284={files:[],objectUrls:[],submitting:false};
+  const byId=id=>document.getElementById(id);
+
+  function clearUrls(){while(state.objectUrls.length){try{URL.revokeObjectURL(state.objectUrls.pop())}catch(_){}}}
+  function validate(file){
+    if(!file)return 'Please choose a photo.';
+    const type=String(file.type||'').toLowerCase(), name=String(file.name||'').toLowerCase();
+    if(!(type.startsWith('image/')||/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name)))return 'Every Marketplace photo must be an image.';
+    if(Number(file.size||0)>MAX_BYTES)return 'Each Marketplace photo must be 5 MB or smaller.';
     return '';
   }
-  function renderSelected282(){
-    const box=$('mPhotoPreview');if(!box)return;
-    revokePreviews282();
-    if(!selectedMarketFiles282.length){box.innerHTML='';return;}
-    box.innerHTML=`<p><b>New photos selected:</b> ${selectedMarketFiles282.length}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">${selectedMarketFiles282.map((f,i)=>{const u=URL.createObjectURL(f);objectUrls282.push(u);return `<div style="position:relative"><img src="${u}" alt="Selected Marketplace photo ${i+1}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb"><button type="button" class="btn bad" onclick="removeSelectedMarketPhoto282(${i})" style="position:absolute;right:5px;top:5px;padding:5px 8px">Delete</button></div>`;}).join('')}</div>`;
+  function renderPreview(){
+    const box=byId('mPhotoPreview'); if(!box)return;
+    clearUrls();
+    if(!state.files.length){box.innerHTML='';return;}
+    box.innerHTML='<p><b>Selected photos:</b> '+state.files.length+'</p><div class="market-photo-grid284">'+state.files.map((f,i)=>{
+      const u=URL.createObjectURL(f);state.objectUrls.push(u);
+      return '<div class="market-photo-item284"><img src="'+u+'" alt="Selected Marketplace photo"><button type="button" data-market-remove284="'+i+'">Remove</button></div>';
+    }).join('')+'</div>';
   }
-  window.previewMarketPhotos=function(input){
-    input=input||$('mPhotoFiles');
-    const chosen=Array.from(input&&input.files||[]);
-    const err=chosen.map(validate282).find(Boolean);
-    if(err){if(input)input.value='';return alert(err);}
-    for(const file of chosen){
-      const duplicate=selectedMarketFiles282.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified);
-      if(!duplicate)selectedMarketFiles282.push(file);
+  function selectFiles(input){
+    const chosen=Array.from(input?.files||[]), err=chosen.map(validate).find(Boolean);
+    if(err){input.value='';alert(err);return;}
+    for(const f of chosen){
+      if(!state.files.some(x=>x.name===f.name&&x.size===f.size&&x.lastModified===f.lastModified))state.files.push(f);
     }
-    if(selectedMarketFiles282.length>MAX_MARKET_PHOTOS_282){
-      selectedMarketFiles282=selectedMarketFiles282.slice(0,MAX_MARKET_PHOTOS_282);
-      if(input)input.value='';renderSelected282();
-      return alert('You can upload a maximum of '+MAX_MARKET_PHOTOS_282+' Marketplace photos.');
-    }
-    if(input)input.value='';renderSelected282();
-  };
-  window.removeSelectedMarketPhoto282=function(index){selectedMarketFiles282.splice(index,1);renderSelected282();};
-  window.removeSelectedMarketPhoto280=window.removeSelectedMarketPhoto282;
-
-  async function uploadMarketplacePhoto282(listing,file,index){
-    if(!authReady())throw new Error('Supabase is not connected.');
-    if(!listing||!listing.dbId)throw new Error('The Marketplace listing ID was not returned by Supabase.');
-    const path=String(listing.dbId)+'/market-'+Date.now()+'-'+index+'.'+extension282(file);
-    const result=await hcSupabase.storage.from(MARKET_PHOTO_BUCKET_282).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
-    if(result.error)throw result.error;
-    const pub=hcSupabase.storage.from(MARKET_PHOTO_BUCKET_282).getPublicUrl(path);
-    const url=pub&&pub.data&&pub.data.publicUrl;
-    if(!url)throw new Error('Supabase did not return a Marketplace photo URL.');
-    return {path,url};
+    if(state.files.length>MAX_FILES){state.files=state.files.slice(0,MAX_FILES);alert('You can upload a maximum of '+MAX_FILES+' Marketplace photos.');}
+    input.value='';renderPreview();
   }
+  window.previewMarketPhotos=function(input){selectFiles(input||byId('mPhotoFiles'));};
 
-  async function attachMarketplacePhotos282(listingId,urls){
-    const direct=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('*').single();
-    if(!direct.error&&direct.data)return direct.data;
-    const rpc=await hcSupabase.rpc('marketplace_attach_photos_v78282',{p_listing_id:listingId,p_photo_urls:urls});
-    if(rpc.error)throw direct.error||rpc.error;
-    const verify=await hcSupabase.from('marketplace_listings').select('*').eq('id',listingId).single();
-    if(verify.error)throw verify.error;
-    return verify.data;
+  async function uploadPhoto(listingId,file,index){
+    const ext=((String(file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';
+    const path=String(listingId)+'/photo-'+Date.now()+'-'+index+'.'+ext;
+    const up=await hcSupabase.storage.from(BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+    if(up.error)throw new Error('Photo upload failed: '+up.error.message);
+    const pub=hcSupabase.storage.from(BUCKET).getPublicUrl(path);
+    const url=pub?.data?.publicUrl;
+    if(!url)throw new Error('Supabase did not return the photo URL.');
+    return url;
+  }
+  async function attachPhotos(listingId,urls){
+    let res=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('id,photo_urls').single();
+    if(res.error){
+      const rpc=await hcSupabase.rpc('marketplace_attach_photos_v78282',{p_listing_id:listingId,p_photo_urls:urls});
+      if(rpc.error)throw new Error('Photo URL save failed: '+(rpc.error.message||res.error.message));
+      res=await hcSupabase.from('marketplace_listings').select('id,photo_urls').eq('id',listingId).single();
+    }
+    if(res.error)throw new Error('Photo verification failed: '+res.error.message);
+    const saved=Array.isArray(res.data?.photo_urls)?res.data.photo_urls:[];
+    if(saved.length!==urls.length)throw new Error('Supabase did not save every Marketplace photo.');
   }
 
   window.addMarket=async function(){
-    if(submittingMarket282)return;
+    if(state.submitting)return;
     if(!requireLogin())return;
-    const title=($('mTitle')?.value||'').trim();
-    const price=Number($('mPrice')?.value||0);
-    const city=($('mCity')?.value||'').trim();
+    const title=(byId('mTitle')?.value||'').trim(), price=Number(byId('mPrice')?.value||0), city=(byId('mCity')?.value||'').trim();
     if(!title||!price||!city)return alert('Please enter item title, price, and city.');
-    const files=selectedMarketFiles282.slice();
-    const err=files.map(validate282).find(Boolean);if(err)return alert(err);
-    const linkPhotos=($('mPhotos')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
-    if(files.length+linkPhotos.length>MAX_MARKET_PHOTOS_282)return alert('You can add a maximum of '+MAX_MARKET_PHOTOS_282+' Marketplace photos total.');
+    const files=state.files.slice(), links=(byId('mPhotos')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const err=files.map(validate).find(Boolean);if(err)return alert(err);
+    if(files.length+links.length>MAX_FILES)return alert('You can add a maximum of '+MAX_FILES+' Marketplace photos total.');
     const button=document.querySelector('#marketplace button[onclick*="addMarket"]');
-    submittingMarket282=true;
-    if(button){button.disabled=true;button.dataset.oldText=button.textContent;button.textContent=files.length?'Uploading Photos...':'Submitting...';}
+    state.submitting=true;
+    if(button){button.disabled=true;button.dataset.oldText=button.textContent;button.textContent=files.length?'Uploading photos…':'Submitting…';}
     try{
-      const item={id:'M'+Date.now().toString().slice(-8),title,category:$('mCategory')?.value||'Other',condition:$('mCondition')?.value||'Good',price,city,description:$('mDesc')?.value||'',photos:[],seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
-      const first=await insertMarketListingDb(item);if(first.error)throw first.error;
-      if(first.data)Object.assign(item,mapSupabaseMarketListing(first.data));
-      if(!item.dbId)throw new Error('The Marketplace listing was saved, but its database ID was not returned.');
-      const uploaded=[];
-      for(let i=0;i<files.length;i++)uploaded.push(await uploadMarketplacePhoto282(item,files[i],i));
-      const urls=[...uploaded.map(x=>x.url),...linkPhotos].slice(0,MAX_MARKET_PHOTOS_282);
-      const savedRow=await attachMarketplacePhotos282(item.dbId,urls);
-      const saved=mapSupabaseMarketListing(savedRow);
-      if(urls.length!==saved.photos.length)throw new Error('Supabase saved the listing but did not attach every Marketplace photo.');
-      data.market=(data.market||[]).filter(x=>String(x.dbId||x.id)!==String(saved.dbId||saved.id));
-      data.market.unshift(saved);persistOnly();
+      const item={id:'M'+Date.now().toString().slice(-8),title,category:byId('mCategory')?.value||'Other',condition:byId('mCondition')?.value||'Good',price,city,description:byId('mDesc')?.value||'',photos:[],seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+      const inserted=await insertMarketListingDb(item);if(inserted.error)throw inserted.error;
+      if(inserted.data)Object.assign(item,mapSupabaseMarketListing(inserted.data));
+      if(!item.dbId)throw new Error('The listing was saved, but Supabase did not return its ID.');
+      const uploaded=[];for(let i=0;i<files.length;i++)uploaded.push(await uploadPhoto(item.dbId,files[i],i));
+      const urls=[...uploaded,...links].slice(0,MAX_FILES);
+      if(urls.length)await attachPhotos(item.dbId,urls);
+      const verify=await hcSupabase.from('marketplace_listings').select('*').eq('id',item.dbId).single();
+      if(verify.error)throw verify.error;
+      const saved=mapSupabaseMarketListing(verify.data);
+      if(urls.length&&(!Array.isArray(saved.photos)||saved.photos.length!==urls.length))throw new Error('The listing reloaded without its photos.');
+      data.market=(data.market||[]).filter(x=>String(x.dbId||x.id)!==String(saved.dbId||saved.id));data.market.unshift(saved);persistOnly();
+      state.files=[];renderPreview();
       addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
-      try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a Marketplace item with photos and admin approval is required.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(saved.photos.length),Status:saved.status},'marketplace'));}catch(e){console.warn('Marketplace admin email failed',e);}
-      selectedMarketFiles282=[];revokePreviews282();
-      await loadSupabaseMarketplace();
-      const confirmed=(data.market||[]).find(x=>String(x.dbId||x.id)===String(saved.dbId||saved.id));
-      if(urls.length&&(!confirmed||!Array.isArray(confirmed.photos)||confirmed.photos.length!==urls.length))throw new Error('The photos uploaded, but the Marketplace reload did not return them. Please run the V7.8.282 SQL.');
-      marketplace();
-      alert(urls.length?'Item and photos submitted for admin approval.':'Item submitted for admin approval.');
-    }catch(e){console.error('Marketplace V7.8.282 photo upload failed',e);alert('Marketplace photo upload failed: '+(e.message||e));}
-    finally{submittingMarket282=false;if(button&&document.body.contains(button)){button.disabled=false;button.textContent=button.dataset.oldText||'Submit Item';}}
+      try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a Marketplace item and admin approval is required.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(saved.photos?.length||0),Status:saved.status},'marketplace'));}catch(e){console.warn(e)}
+      marketplace();alert(urls.length?'Item and photos submitted for admin approval.':'Item submitted for admin approval.');
+    }catch(e){console.error('Marketplace V7.8.284 submit failed',e);alert('Marketplace submission failed: '+(e.message||e));}
+    finally{state.submitting=false;if(button){button.disabled=false;button.textContent=button.dataset.oldText||'Submit for Admin Approval';}}
   };
 
-  function prepare282(){
-    const input=$('mPhotoFiles');if(input){input.accept='image/*';input.multiple=true;input.onchange=function(){window.previewMarketPhotos(this);};}
-    const btn=document.querySelector('#marketplace button[onclick*="addMarket"]');if(btn)btn.type='button';
-  }
-  document.addEventListener('DOMContentLoaded',prepare282);
-  new MutationObserver(()=>{if(currentPage==='marketplace')prepare282();}).observe(document.documentElement,{childList:true,subtree:true});
-  window.__hcVersion='V7.8.282';
+  document.addEventListener('click',function(e){
+    const b=e.target.closest?.('[data-market-remove284]');if(!b)return;
+    e.preventDefault();state.files.splice(Number(b.dataset.marketRemove284),1);renderPreview();
+  });
+  const oldMarketplace=window.marketplace;
+  if(typeof oldMarketplace==='function')window.marketplace=function(){const out=oldMarketplace.apply(this,arguments);setTimeout(renderPreview,0);return out;};
+  window.__hcVersion='V7.8.284';
 })();
 </script>
+<style id="v78284-marketplace-photo-style">
+.market-photo-grid284{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item284{position:relative}.market-photo-item284 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.market-photo-item284 button{position:absolute;right:5px;top:5px;min-height:38px}@media(max-width:700px){#marketplace #mPhotoFiles,#marketplace button[onclick*="addMarket"]{width:100%;min-height:52px;font-size:16px;touch-action:manipulation}}
+</style>
+
 </body>
 </html>
 
@@ -9755,288 +9742,3 @@ window.__hcVersion='V7.8.213';
 </script>
 
 
-<script id="v78280-marketplace-storage-photo-upload">
-/* V7.8.280 — Marketplace direct photo upload, modeled after Business Profile and Events.
-   Exact scope: Marketplace photo selection/upload and listing save only. */
-(function(){
-  const MARKET_BUCKET='marketplace-media';
-  const MAX_MARKET_PHOTOS=6;
-  const MAX_MARKET_PHOTO_BYTES=5*1024*1024;
-  let pendingMarketPhotoFiles280=[];
-  let marketSubmitBusy280=false;
-
-  function ext280(file){const x=(String(file&&file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');return x||'jpg';}
-  function esc280(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function valid280(file){
-    if(!file)return '';
-    if(!String(file.type||'').startsWith('image/'))return 'Every Marketplace photo must be an image.';
-    if(file.size>MAX_MARKET_PHOTO_BYTES)return 'Each Marketplace photo must be 5 MB or smaller.';
-    return '';
-  }
-  async function normalizeMarketPhoto281(file,index){
-    // Convert phone images (including iPhone HEIC when the browser can decode it)
-    // to a browser-friendly JPEG before Storage upload.
-    return await new Promise((resolve,reject)=>{
-      const objectUrl=URL.createObjectURL(file);
-      const img=new Image();
-      img.onload=()=>{
-        try{
-          const max=1600;
-          let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
-          if(!w||!h)throw new Error('The selected photo could not be read.');
-          if(w>h&&w>max){h=Math.round(h*max/w);w=max;}
-          else if(h>max){w=Math.round(w*max/h);h=max;}
-          const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-          const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
-          canvas.toBlob(blob=>{
-            URL.revokeObjectURL(objectUrl);
-            if(!blob)return reject(new Error('The selected photo could not be converted.'));
-            resolve(new File([blob],'marketplace-'+Date.now()+'-'+index+'.jpg',{type:'image/jpeg',lastModified:Date.now()}));
-          },'image/jpeg',0.82);
-        }catch(e){URL.revokeObjectURL(objectUrl);reject(e);}
-      };
-      img.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error('This phone photo format could not be opened. Please choose JPEG, PNG, or take a screenshot of the photo.'));};
-      img.src=objectUrl;
-    });
-  }
-  function renderSelected280(){
-    const box=$('mPhotoPreview');if(!box)return;
-    if(!pendingMarketPhotoFiles280.length){box.innerHTML='';return;}
-    box.innerHTML=`<p><b>Selected photos:</b> ${pendingMarketPhotoFiles280.length}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:10px">${pendingMarketPhotoFiles280.map((f,i)=>`<div style="position:relative"><img src="${URL.createObjectURL(f)}" alt="Selected Marketplace photo ${i+1}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb"><button type="button" class="btn bad" onclick="removeSelectedMarketPhoto280(${i})" style="position:absolute;right:5px;top:5px;padding:5px 8px">Delete</button></div>`).join('')}</div><p class="muted" style="margin-top:8px">You may choose more photos before submitting. Maximum ${MAX_MARKET_PHOTOS}.</p>`;
-  }
-
-  window.previewMarketPhotos=function(input){
-    input=input||$('mPhotoFiles');
-    const chosen=Array.from(input&&input.files||[]);
-    const err=chosen.map(valid280).find(Boolean);
-    if(err){if(input)input.value='';return alert(err);}
-    for(const file of chosen){
-      const duplicate=pendingMarketPhotoFiles280.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified);
-      if(!duplicate)pendingMarketPhotoFiles280.push(file);
-    }
-    if(pendingMarketPhotoFiles280.length>MAX_MARKET_PHOTOS){
-      pendingMarketPhotoFiles280=pendingMarketPhotoFiles280.slice(0,MAX_MARKET_PHOTOS);
-      if(input)input.value='';renderSelected280();
-      return alert('You can upload a maximum of '+MAX_MARKET_PHOTOS+' Marketplace photos.');
-    }
-    if(input)input.value='';
-    renderSelected280();
-  };
-  window.removeSelectedMarketPhoto280=function(index){pendingMarketPhotoFiles280.splice(index,1);renderSelected280();};
-
-  async function upload280(listing,file,index,uid){
-    if(!authReady())throw new Error('Supabase is not connected.');
-    if(!listing||!listing.dbId)throw new Error('The Marketplace listing ID was not returned by Supabase.');
-    const normalized=await normalizeMarketPhoto281(file,index);
-    const path=String(uid)+'/'+String(listing.dbId)+'/market-'+Date.now()+'-'+index+'.jpg';
-    const up=await hcSupabase.storage.from(MARKET_BUCKET).upload(path,normalized,{cacheControl:'3600',upsert:false,contentType:'image/jpeg'});
-    if(up.error)throw up.error;
-    const pub=hcSupabase.storage.from(MARKET_BUCKET).getPublicUrl(path);
-    const url=pub&&pub.data&&pub.data.publicUrl;
-    if(!url)throw new Error('Supabase did not return a Marketplace photo URL.');
-    return url;
-  }
-
-  async function attachMarketplacePhotos281(listingId,urls){
-    let direct=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('id,photo_urls').single();
-    if(!direct.error&&direct.data)return direct;
-    // Secure RPC fallback for projects whose older RLS policies block owner updates.
-    const rpc=await hcSupabase.rpc('marketplace_set_listing_photos',{p_listing_id:listingId,p_photo_urls:urls});
-    if(rpc.error)throw direct.error||rpc.error;
-    const verify=await hcSupabase.from('marketplace_listings').select('id,photo_urls').eq('id',listingId).single();
-    if(verify.error)throw verify.error;
-    return verify;
-  }
-
-  window.addMarket=async function(){
-    if(marketSubmitBusy280)return;
-    if(!requireLogin())return;
-    const title=($('mTitle')?.value||'').trim();
-    const price=Number($('mPrice')?.value||0);
-    const city=($('mCity')?.value||'').trim();
-    if(!title||!price||!city)return alert('Please enter item title, price, and city.');
-    const files=pendingMarketPhotoFiles280.slice();
-    const error=files.map(valid280).find(Boolean);if(error)return alert(error);
-    const linkPhotos=($('mPhotos')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
-    if(files.length+linkPhotos.length>MAX_MARKET_PHOTOS)return alert('You can add a maximum of '+MAX_MARKET_PHOTOS+' Marketplace photos total.');
-    const uid=await marketAuthUserId();if(!uid)return alert('Please sign in again before posting to Marketplace.');
-    const submitBtn=document.querySelector('#marketplace button[onclick*="addMarket"]');
-    marketSubmitBusy280=true;
-    if(submitBtn){submitBtn.disabled=true;submitBtn.dataset.oldText=submitBtn.textContent;submitBtn.textContent=files.length?'Uploading Photos...':'Submitting...';}
-    let item=null;
-    try{
-      item={id:'M'+Date.now().toString().slice(-7),title,category:$('mCategory')?.value||'Other',condition:$('mCondition')?.value||'Good',price,city,description:$('mDesc')?.value||'',photos:linkPhotos.slice(),seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
-      const first=await insertMarketListingDb(item);
-      if(first.error)throw first.error;
-      if(first.data)Object.assign(item,mapSupabaseMarketListing(first.data));
-      if(!item.dbId)throw new Error('The Marketplace item saved, but Supabase did not return its listing ID.');
-      const uploaded=[];
-      for(let i=0;i<files.length;i++)uploaded.push(await upload280(item,files[i],i,uid));
-      item.photos=[...uploaded,...linkPhotos].slice(0,MAX_MARKET_PHOTOS);
-      const update=await attachMarketplacePhotos281(item.dbId,item.photos);
-      if(update.error)throw update.error;
-      const savedUrls=Array.isArray(update.data&&update.data.photo_urls)?update.data.photo_urls:[];
-      if(item.photos.length&&savedUrls.length!==item.photos.length)throw new Error('The listing saved, but Supabase did not attach all Marketplace photos.');
-      if(update.data&&update.data.title)Object.assign(item,mapSupabaseMarketListing(update.data));
-      else item.photos=savedUrls;
-      data.market=(data.market||[]).filter(x=>String(x.id)!==String(item.id)&&String(x.dbId)!==String(item.dbId));
-      data.market.unshift(item);persistOnly();
-      addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
-      try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a Marketplace item with photos and admin approval is required.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(item.photos.length),Status:item.status},'marketplace'));}catch(e){console.warn('Marketplace admin email failed',e);}
-      pendingMarketPhotoFiles280=[];
-      try{await loadSupabaseMarketplace();}catch(e){console.warn('Marketplace refresh after photo upload failed',e);}
-      marketplace();
-      alert(item.photos.length?'Item and photos submitted for admin approval.':'Item submitted for admin approval.');
-    }catch(e){
-      console.error('Marketplace photo upload failed',e);
-      alert('The Marketplace item or photo could not upload: '+(e.message||e));
-    }finally{
-      marketSubmitBusy280=false;
-      if(submitBtn&&document.body.contains(submitBtn)){submitBtn.disabled=false;submitBtn.textContent=submitBtn.dataset.oldText||'Submit for Admin Approval';}
-    }
-  };
-
-  // Prepare the current and dynamically rendered file input for phone photo picking.
-  function prepare280(){
-    const input=$('mPhotoFiles');if(input){input.setAttribute('accept','image/*');input.setAttribute('multiple','multiple');input.onchange=function(){previewMarketPhotos(this);};}
-    const btn=document.querySelector('#marketplace button[onclick*="addMarket"]');if(btn)btn.type='button';
-  }
-  document.addEventListener('DOMContentLoaded',prepare280);
-  new MutationObserver(()=>{if(currentPage==='marketplace')prepare280();}).observe(document.documentElement,{childList:true,subtree:true});
-  const style=document.createElement('style');style.textContent='@media(max-width:700px){#marketplace #mPhotoFiles{min-height:50px;font-size:16px}#marketplace #mPhotoPreview button{min-height:40px;min-width:70px}#marketplace button[onclick*="addMarket"]{width:100%;min-height:52px;touch-action:manipulation}}';document.head.appendChild(style);
-  window.__hcVersion='V7.8.281';
-})();
-</script>
-
-<script id="v78283-marketplace-photo-single-controller-fix">
-/* V7.8.283 — Final Marketplace-only photo controller.
-   Prevents older duplicate photo handlers from clearing the preview or replacing selected files. */
-(function(){
-  const BUCKET='marketplace-media';
-  const MAX_FILES=6;
-  const MAX_BYTES=5*1024*1024;
-  const state=window.__marketPhotoState283=window.__marketPhotoState283||{files:[],busy:false,objectUrls:[]};
-
-  function byId(id){return document.getElementById(id);}
-  function clearObjectUrls(){while(state.objectUrls.length){try{URL.revokeObjectURL(state.objectUrls.pop());}catch(_){}}}
-  function isImage(file){
-    const type=String(file&&file.type||'').toLowerCase();
-    const name=String(file&&file.name||'').toLowerCase();
-    return type.startsWith('image/')||/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
-  }
-  function validate(file){
-    if(!isImage(file))return 'Every Marketplace photo must be an image.';
-    if(Number(file.size||0)>MAX_BYTES)return 'Each Marketplace photo must be 5 MB or smaller.';
-    return '';
-  }
-  function render(){
-    const box=byId('mPhotoPreview');
-    if(!box)return;
-    clearObjectUrls();
-    if(!state.files.length){box.innerHTML='';return;}
-    box.innerHTML='<p><b>Selected photos:</b> '+state.files.length+'</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">'+state.files.map((file,index)=>{
-      const url=URL.createObjectURL(file);state.objectUrls.push(url);
-      return '<div style="position:relative"><img src="'+url+'" alt="Selected Marketplace photo '+(index+1)+'" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb"><button type="button" class="btn bad" data-market-remove283="'+index+'" style="position:absolute;right:5px;top:5px;padding:5px 8px">Delete</button></div>';
-    }).join('')+'</div><p class="muted" style="margin-top:8px">Photos will remain selected until you submit or delete them.</p>';
-  }
-  function addFiles(input){
-    const chosen=Array.from(input&&input.files||[]);
-    const error=chosen.map(validate).find(Boolean);
-    if(error){if(input)input.value='';alert(error);return;}
-    chosen.forEach(file=>{
-      const duplicate=state.files.some(x=>x.name===file.name&&x.size===file.size&&x.lastModified===file.lastModified);
-      if(!duplicate)state.files.push(file);
-    });
-    if(state.files.length>MAX_FILES){state.files=state.files.slice(0,MAX_FILES);alert('You can upload a maximum of '+MAX_FILES+' Marketplace photos.');}
-    if(input)input.value='';
-    render();
-  }
-  async function normalize(file,index){
-    if(String(file.type||'').toLowerCase()==='image/jpeg'&&file.size<=2.5*1024*1024)return file;
-    return await new Promise((resolve,reject)=>{
-      const objectUrl=URL.createObjectURL(file),img=new Image();
-      img.onload=()=>{
-        try{
-          let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;const max=1800;
-          if(!w||!h)throw new Error('The selected photo could not be read.');
-          if(w>h&&w>max){h=Math.round(h*max/w);w=max;}else if(h>max){w=Math.round(w*max/h);h=max;}
-          const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-          canvas.getContext('2d').drawImage(img,0,0,w,h);
-          canvas.toBlob(blob=>{URL.revokeObjectURL(objectUrl);if(!blob)return reject(new Error('The selected photo could not be converted.'));resolve(new File([blob],'marketplace-'+Date.now()+'-'+index+'.jpg',{type:'image/jpeg',lastModified:Date.now()}));},'image/jpeg',0.84);
-        }catch(e){URL.revokeObjectURL(objectUrl);reject(e);}
-      };
-      img.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error('This photo format could not be opened. Please choose JPEG or PNG, or take a screenshot of the photo.'));};
-      img.src=objectUrl;
-    });
-  }
-  async function upload(listingId,file,index){
-    const normalized=await normalize(file,index);
-    const path=String(listingId)+'/market-'+Date.now()+'-'+index+'.jpg';
-    const result=await hcSupabase.storage.from(BUCKET).upload(path,normalized,{cacheControl:'3600',upsert:false,contentType:'image/jpeg'});
-    if(result.error)throw result.error;
-    const pub=hcSupabase.storage.from(BUCKET).getPublicUrl(path);
-    const url=pub&&pub.data&&pub.data.publicUrl;
-    if(!url)throw new Error('Supabase did not return the uploaded photo URL.');
-    return url;
-  }
-  async function attach(listingId,urls){
-    let result=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('id,photo_urls').single();
-    if(result.error){
-      const rpc=await hcSupabase.rpc('marketplace_attach_photos_v78282',{p_listing_id:listingId,p_photo_urls:urls});
-      if(rpc.error)throw result.error||rpc.error;
-      result=await hcSupabase.from('marketplace_listings').select('id,photo_urls').eq('id',listingId).single();
-    }
-    if(result.error)throw result.error;
-    const saved=Array.isArray(result.data&&result.data.photo_urls)?result.data.photo_urls:[];
-    if(saved.length!==urls.length)throw new Error('Supabase did not save every Marketplace photo URL.');
-    return saved;
-  }
-
-  window.previewMarketPhotos=function(input){addFiles(input||byId('mPhotoFiles'));};
-  window.removeSelectedMarketPhoto280=window.removeSelectedMarketPhoto282=function(index){state.files.splice(Number(index),1);render();};
-
-  window.addMarket=async function(){
-    if(state.busy)return;
-    if(!requireLogin())return;
-    const title=(byId('mTitle')?.value||'').trim(),price=Number(byId('mPrice')?.value||0),city=(byId('mCity')?.value||'').trim();
-    if(!title||!price||!city)return alert('Please enter item title, price, and city.');
-    const files=state.files.slice();
-    const error=files.map(validate).find(Boolean);if(error)return alert(error);
-    const links=(byId('mPhotos')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
-    if(files.length+links.length>MAX_FILES)return alert('You can add a maximum of '+MAX_FILES+' Marketplace photos total.');
-    const button=document.querySelector('#marketplace button[onclick*="addMarket"]');
-    state.busy=true;if(button){button.disabled=true;button.dataset.oldText=button.textContent;button.textContent=files.length?'Uploading Photos...':'Submitting...';}
-    try{
-      const item={id:'M'+Date.now().toString().slice(-8),title,category:byId('mCategory')?.value||'Other',condition:byId('mCondition')?.value||'Good',price,city,description:byId('mDesc')?.value||'',photos:[],seller:currentUser.name,sellerEmail:currentUser.email,sellerPhone:currentUser.phone||'',status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
-      const inserted=await insertMarketListingDb(item);if(inserted.error)throw inserted.error;
-      if(inserted.data)Object.assign(item,mapSupabaseMarketListing(inserted.data));
-      if(!item.dbId)throw new Error('The listing saved, but Supabase did not return its ID.');
-      const uploaded=[];for(let i=0;i<files.length;i++)uploaded.push(await upload(item.dbId,files[i],i));
-      const urls=[...uploaded,...links].slice(0,MAX_FILES);
-      await attach(item.dbId,urls);
-      const verify=await hcSupabase.from('marketplace_listings').select('*').eq('id',item.dbId).single();
-      if(verify.error)throw verify.error;
-      const saved=mapSupabaseMarketListing(verify.data);
-      if(urls.length&&(!Array.isArray(saved.photos)||saved.photos.length!==urls.length))throw new Error('The listing reloaded without its photos.');
-      data.market=(data.market||[]).filter(x=>String(x.dbId||x.id)!==String(saved.dbId||saved.id));data.market.unshift(saved);persistOnly();
-      state.files=[];render();
-      addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+title+' by '+currentUser.name);
-      try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a Marketplace item with photos and admin approval is required.',{Seller:currentUser.name,Email:currentUser.email,Item:title,Price:money(price),City:city,Photos:String(saved.photos.length),Status:saved.status},'marketplace'));}catch(e){console.warn('Marketplace admin email failed',e);}
-      marketplace();alert(urls.length?'Item and photos submitted for admin approval.':'Item submitted for admin approval.');
-    }catch(e){console.error('Marketplace V7.8.283 upload failed',e);alert('Marketplace photo upload failed: '+(e.message||e));}
-    finally{state.busy=false;if(button&&document.body.contains(button)){button.disabled=false;button.textContent=button.dataset.oldText||'Submit for Admin Approval';}}
-  };
-
-  function prepare(){
-    const input=byId('mPhotoFiles');
-    if(input){input.accept='image/*';input.multiple=true;input.onchange=null;input.setAttribute('data-market-photo-283','1');}
-    const button=document.querySelector('#marketplace button[onclick*="addMarket"]');if(button)button.type='button';
-    if(state.files.length)render();
-  }
-  document.addEventListener('change',function(e){const input=e.target&&e.target.closest&&e.target.closest('#mPhotoFiles');if(!input)return;e.stopImmediatePropagation();addFiles(input);},true);
-  document.addEventListener('click',function(e){const button=e.target&&e.target.closest&&e.target.closest('[data-market-remove283]');if(!button)return;e.preventDefault();e.stopImmediatePropagation();state.files.splice(Number(button.getAttribute('data-market-remove283')),1);render();},true);
-  document.addEventListener('DOMContentLoaded',prepare);
-  new MutationObserver(()=>{if(window.currentPage==='marketplace'||byId('mPhotoFiles'))prepare();}).observe(document.documentElement,{childList:true,subtree:true});
-  prepare();window.__hcVersion='V7.8.283';
-})();
-</script>
