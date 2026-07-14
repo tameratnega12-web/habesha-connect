@@ -6675,6 +6675,101 @@ window.__hcVersion='V7.8.213';
  #hsV78273Priority{margin:12px 0 18px}
 }
 </style>
+
+
+<script id="v78274-home-services-top-phone-agree-fix">
+/* V7.8.274 — Home Services customer Agree phone reliability and Home priority ordering only. */
+(function(){
+  if(window.__hcHomeServicesV78274)return;
+  window.__hcHomeServicesV78274=true;
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const isPhone=()=>window.matchMedia&&window.matchMedia('(max-width: 800px)').matches;
+  const idOf=x=>String(x&&((x.dbId!=null&&x.dbId!=='')?x.dbId:x.id)||'');
+  const timeOf=x=>{const v=x&&(x.updatedAt||x.createdAt||x.providerRespondedAt||x.providerAcceptedAt||'');const n=Date.parse(v);return Number.isFinite(n)?n:0;};
+
+  function activeItems(){
+    if(!currentUser)return [];
+    const email=norm(currentUser.email), out=[];
+    (data.homeServiceRequests||[]).forEach(r=>{
+      const customer=norm(r.customerEmail)===email, provider=norm(r.providerEmail)===email;
+      if(!customer&&!provider)return;
+      let kind='',label='Open Home Services';
+      if(provider&&r.status==='Pending Provider Review'){kind='direct-provider-review';label='Accept or Decline';}
+      else if(customer&&r.status==='Provider Accepted - Waiting Customer Agreement'){kind='direct-customer-agree';label='Agree or Decline';}
+      else if(provider&&r.status==='Customer Agreed'){kind='direct-provider-complete';label='Mark Work Complete';}
+      else if(customer&&r.status==='Work Completed - Customer Confirmation'){kind='direct-customer-confirm';label='Confirm Completed';}
+      if(kind)out.push({kind,id:idOf(r),title:r.serviceTitle||'Home Service',status:r.status,other:customer?(r.providerName||'Provider'):(r.customerName||'Customer'),label,time:timeOf(r)});
+    });
+    (data.homeServiceCustomerJobs||[]).forEach(j=>{
+      const customer=norm(j.customerEmail)===email, provider=norm(j.providerEmail)===email;
+      if(!customer&&!provider)return;
+      let kind='',label='Open Home Services';
+      if(provider&&j.status==='Approved - Open to Providers'){kind='job-provider-review';label='Accept or Remove';}
+      else if(customer&&['Provider Accepted','Provider Accepted - Waiting Customer Agreement'].includes(j.status)){kind='job-customer-agree';label='Agree or Decline';}
+      else if(provider&&j.status==='Customer Agreed'){kind='job-provider-complete';label='Mark Work Complete';}
+      else if(customer&&j.status==='Work Completed - Customer Confirmation'){kind='job-customer-confirm';label='Confirm Completed';}
+      if(kind)out.push({kind,id:idOf(j),title:j.title||j.category||'Home Service Job',status:j.status,other:customer?(j.providerName||'Provider'):(j.customerName||'Customer'),label,time:timeOf(j)});
+    });
+    return out.sort((a,b)=>b.time-a.time);
+  }
+
+  async function run(kind,id,button){
+    if(button&&button.dataset.hs274Busy==='1')return;
+    if(button){button.dataset.hs274Busy='1';button.disabled=true;}
+    try{
+      if(kind==='direct-customer-agree')return await customerAgreeHomeServiceRequest(id);
+      if(kind==='direct-provider-review'){show('home_services');return;}
+      if(kind==='direct-provider-complete')return await providerCompleteHomeServiceRequest(id);
+      if(kind==='direct-customer-confirm')return await customerConfirmHomeServiceRequest(id);
+      if(kind==='job-provider-review'){show('home_services');return;}
+      if(kind==='job-customer-agree')return await customerAgreeCustomerHomeServiceJob(id);
+      if(kind==='job-provider-complete')return await providerCompleteCustomerHomeServiceJob(id);
+      if(kind==='job-customer-confirm')return await customerConfirmHomeServiceJob(id);
+      show('home_services');
+    }catch(e){console.error('Home Services action failed',e);alert('The Home Services action could not continue. Please refresh and try again.');}
+    finally{setTimeout(()=>{if(button){button.disabled=false;delete button.dataset.hs274Busy;}},650);}
+  }
+  window.hs274Run=run;
+
+  function renderHomePriority(){
+    const root=document.getElementById('home');if(!root||!currentUser)return;
+    root.querySelectorAll('#hsV78274HomePriority').forEach(x=>x.remove());
+    const items=activeItems();if(!items.length)return;
+    const cards=items.map(x=>`<div class="card hs-v78274-card"><h3>🛠️ ${esc(x.title)}</h3><p><b>${esc(x.label)}</b></p><p class="muted">${esc(x.status)} · ${esc(x.other)}</p><button type="button" class="btn primary hs274-action" data-hs274-kind="${esc(x.kind)}" data-hs274-id="${esc(x.id)}">Open Action</button></div>`).join('');
+    const sec=document.createElement('section');sec.id='hsV78274HomePriority';sec.innerHTML=`<div class="card"><h2 style="margin:0">⚡ Home Service Action Required</h2><p class="muted">New customer and provider transactions appear here first.</p></div><div class="grid">${cards}</div>`;
+    const how=[...root.querySelectorAll('h2,h3,.card')].find(el=>/how it works/i.test(el.textContent||''));
+    if(how&&how.parentNode){const block=how.closest('.card')||how;block.insertAdjacentElement('afterend',sec);}else{const heading=root.querySelector('h2');if(heading)heading.insertAdjacentElement('afterend',sec);else root.prepend(sec);}
+  }
+
+  const oldHome=window.home;
+  window.home=function(){const result=oldHome.apply(this,arguments);setTimeout(renderHomePriority,0);return result;};
+
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('.hs274-action');if(!b)return;
+    e.preventDefault();e.stopPropagation();run(b.dataset.hs274Kind,b.dataset.hs274Id,b);
+  },true);
+  document.addEventListener('pointerup',function(e){
+    if(!isPhone()||e.pointerType==='mouse')return;
+    const b=e.target.closest&&e.target.closest('.hs274-action');if(!b)return;
+    e.preventDefault();e.stopPropagation();run(b.dataset.hs274Kind,b.dataset.hs274Id,b);
+  },true);
+
+  const oldHS=window.homeServices;
+  window.homeServices=function(){const result=oldHS.apply(this,arguments);setTimeout(()=>{const root=document.getElementById('home_services');if(root){const p=root.querySelector('#hsV78273Priority');if(p)root.insertBefore(p,root.firstChild);}},0);return result;};
+  if(currentPage==='home')setTimeout(renderHomePriority,0);
+  window.__hcVersion='V7.8.274';
+})();
+</script>
+<style id="v78274-home-services-top-phone-style">
+#hsV78274HomePriority{margin:12px 0 18px}
+#hsV78274HomePriority .grid{align-items:stretch}
+@media(max-width:800px){
+ #hsV78274HomePriority .grid{grid-template-columns:1fr!important}
+ #hsV78274HomePriority .hs274-action{width:100%!important;min-height:52px!important;display:block!important;touch-action:manipulation!important;position:relative!important;z-index:20!important}
+ #hsV78274HomePriority .card{overflow:visible!important}
+}
+</style>
 </body>
 </html>
 
