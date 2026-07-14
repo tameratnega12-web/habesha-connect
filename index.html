@@ -6121,6 +6121,131 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.262';
 })();
 </script>
+
+<script id="v78263-trailer-accepted-request-canonical-flow-fix">
+/* V7.8.263 — Trailer-rental flow only.
+   Canonical flow: owner accepts -> requester keeps seeing transaction -> requester agrees -> owner contact released.
+   This final override intentionally uses trailer-specific statuses, not truck-job statuses. */
+(function(){
+  const WAITING='Owner Accepted - Waiting Renter Agreement';
+  const AGREED='Renter Agreed';
+  const waitingAliases=new Set([
+    WAITING,
+    'Owner Accepted - Waiting Driver Agreement',
+    'Accepted - Waiting Driver Agreement',
+    'Admin Approved - Waiting Renter Agreement',
+    'Owner Accepted',
+    'Accepted',
+    'Waiting Renter Agreement',
+    'Waiting for Renter Agreement',
+    'Pending Final Admin Approval',
+    'Payment Pending Admin Approval',
+    'Final Admin Approved'
+  ]);
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const byId=id=>(data.trailerRentals||[]).find(t=>String(t.id)===String(id)||String(t.dbId||'')===String(id));
+  const requesterRole=()=>currentUser&&['driver','truck_owner'].includes(String(currentUser.role||''));
+  const isWaiting=t=>waitingAliases.has(String(t?.status||''));
+  const ownerContact=t=>{
+    const u=(data.users||[]).find(x=>sameEmail(x.email,t.ownerEmail))||{};
+    return {
+      name:t.ownerName||u.name||'Trailer Owner',
+      phone:t.ownerPhone||u.phone||'Not provided',
+      email:t.ownerEmail||u.email||'Not provided'
+    };
+  };
+
+  function requesterRows(){
+    if(!requesterRole())return [];
+    return (data.trailerRentals||[]).filter(t=>sameEmail(t.renterEmail,currentUser.email)&&(isWaiting(t)||String(t.status||'')===AGREED));
+  }
+  function agreementPanel(){
+    const rows=requesterRows();
+    if(!rows.length)return '';
+    return `<section id="trailerAgreementV78263" style="margin-top:18px">
+      <div class="card" style="border:3px solid #16a34a"><h2 style="margin:0">🚚 Trailer Owner Accepted — Agreement Required</h2><p class="muted">This transaction stays visible until you click Agree and receive the trailer owner information.</p></div>
+      <div class="grid">${rows.map(t=>{
+        const agreed=String(t.status||'')===AGREED;
+        return `<div class="card" style="border:2px solid #16a34a"><h3>${agreed?'✅ Trailer Rental Agreed':'✅ Trailer Owner Accepted Your Request'}</h3><p><b>${esc(t.trailerType||'Trailer')}</b>${t.location?` • ${esc(t.location)}`:''}</p><p><b>Owner:</b> ${esc(t.ownerName||'Trailer Owner')}</p><p class="muted">${agreed?'The owner information is available below.':'Click Agree to confirm the rental and release the owner name, phone, and email.'}</p><div class="actions">${agreed?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${esc(t.id)}')">View Trailer Owner Information</button>`:`<button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>`}</div></div>`;
+      }).join('')}</div></section>`;
+  }
+  function stripTrailerAgreementPanels(html){
+    return String(html||'')
+      .replace(/<section[^>]+id=["'](?:trailerRequesterHomeAgreementV78259|trailerRequesterAgreementV78261|trailerAgreementCanonicalV78262|trailerAgreementV78263)["'][\s\S]*?<\/section>/gi,'');
+  }
+
+  const oldDriverHome=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){return agreementPanel()+stripTrailerAgreementPanels(typeof oldDriverHome==='function'?oldDriverHome():'');};
+  const oldOwnerHome=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){return agreementPanel()+stripTrailerAgreementPanels(typeof oldOwnerHome==='function'?oldOwnerHome():'');};
+
+  window.approveTrailerRental=async function(id){
+    if(!requireLogin())return;
+    const item=byId(id);
+    if(!item)return alert('Trailer rental not found.');
+    if(!currentUser||(!sameEmail(item.ownerEmail,currentUser.email)&&currentUser.role!=='admin'))return alert('Only the trailer owner can accept this request.');
+    if(String(item.status||'')!=='Pending Owner Review')return alert('This trailer request is not waiting for owner review.');
+    if(!item.renterEmail)return alert('Requester information is missing from this trailer request.');
+    const old={...item};
+    item.status=WAITING;
+    item.ownerAcceptedAt=new Date().toLocaleString();
+    const result=await updateTrailerRentalDb(item,{status:WAITING});
+    if(result&&result.error){Object.assign(item,old);return alert('Could not accept trailer request: '+result.error.message);}
+    try{addNote(item.renterEmail,'The trailer owner accepted your request. Open Home and click Agree to receive the owner information.');}catch(e){}
+    try{await Promise.resolve(sendEmailNotice({to:item.renterEmail,name:item.renterName,subject:'Trailer owner accepted your request',summary:'The trailer owner accepted your request. Open your Home page and click Agree to receive the owner contact information.',buttonText:'Open Home Page',page:'home',details:{Trailer:item.trailerType,Location:item.location,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    try{persistOnly();}catch(e){}
+    alert('Request accepted. The requester will now see Agree on the Home page.');
+    try{await loadSupabaseTrucking();}catch(e){console.warn(e);}
+    try{truck();}catch(e){console.warn(e);}
+  };
+
+  window.renterAgreeTrailer=async function(id){
+    if(!requireLogin())return;
+    const item=byId(id);
+    if(!item)return alert('Trailer rental not found. Refresh once and try again.');
+    if(!currentUser||!sameEmail(item.renterEmail,currentUser.email))return alert('Only the accepted requester can agree.');
+    if(String(item.status||'')===AGREED)return window.viewTrailerOwnerInformation(id);
+    if(!isWaiting(item))return alert('This trailer request is not waiting for your agreement.');
+    const old={...item};
+    item.status=AGREED;
+    item.renterAgreedAt=new Date().toLocaleString();
+    const result=await updateTrailerRentalDb(item,{status:AGREED,rented_at:new Date().toISOString()});
+    if(result&&result.error){Object.assign(item,old);return alert('Could not save your agreement: '+result.error.message);}
+    const contact=ownerContact(item);
+    try{addNote(item.ownerEmail,(item.renterName||'The requester')+' agreed to rent your trailer.');}catch(e){}
+    try{await Promise.resolve(sendEmailNotice({to:item.ownerEmail,name:contact.name,subject:'Trailer requester agreed',summary:'The requester agreed to rent your trailer. Your contact information was released.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Trailer:item.trailerType,Requester:item.renterName,Status:AGREED}}));}catch(e){console.warn(e);}
+    try{persistOnly();}catch(e){}
+    alert('Agreement completed.\n\nTrailer Owner Information\n\nName: '+contact.name+'\nPhone: '+contact.phone+'\nEmail: '+contact.email);
+    try{home();}catch(e){console.warn(e);}
+  };
+
+  window.viewTrailerOwnerInformation=function(id){
+    const item=byId(id);
+    if(!item||!currentUser||!sameEmail(item.renterEmail,currentUser.email)||String(item.status||'')!==AGREED)return alert('Trailer owner information is not available.');
+    const c=ownerContact(item);
+    alert('Trailer Owner Information\n\nName: '+c.name+'\nPhone: '+c.phone+'\nEmail: '+c.email);
+  };
+
+  const oldTruck=window.truck;
+  window.truck=async function(){
+    try{if(typeof loadSupabaseTrucking==='function')await loadSupabaseTrucking();}catch(e){console.warn('Trailer refresh failed',e);}
+    const out=typeof oldTruck==='function'?await oldTruck.apply(this,arguments):undefined;
+    if(requesterRows().length){
+      const host=document.getElementById('truck');
+      if(host&&!document.getElementById('trailerAgreementV78263')){
+        const intro=host.querySelector('.category-intro');
+        if(intro)intro.insertAdjacentHTML('afterend',agreementPanel());
+        else host.insertAdjacentHTML('afterbegin',agreementPanel());
+      }
+    }
+    return out;
+  };
+  window.__hcVersion='V7.8.263';
+})();
+</script>
+
 </body>
 </html>
 
