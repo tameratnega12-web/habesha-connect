@@ -6030,6 +6030,97 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.257';
 })();
 </script>
+
+
+
+
+
+<script id="v78262-trailer-flow-match-truck-job-agreement-fix">
+/* V7.8.262 — Trailer rental agreement flow aligned with the working truck-job flow.
+   Changes only trailer rental status/display/agreement logic. */
+(function(){
+  const WAITING='Owner Accepted - Waiting Driver Agreement';
+  const AGREED='Renter Agreed';
+  const legacyWaiting=new Set([
+    WAITING,
+    'Owner Accepted - Waiting Renter Agreement',
+    'Admin Approved - Waiting Renter Agreement',
+    'Owner Accepted',
+    'Accepted',
+    'Waiting Renter Agreement',
+    'Waiting for Renter Agreement',
+    'Pending Final Admin Approval',
+    'Final Admin Approved'
+  ]);
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const findTrailer=id=>(data.trailerRentals||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const isWaiting=t=>legacyWaiting.has(String(t?.status||''));
+  const ownerContact=item=>{
+    const user=(data.users||[]).find(u=>sameEmail(u.email,item.ownerEmail))||{};
+    return {name:item.ownerName||user.name||'Trailer Owner',phone:item.ownerPhone||user.phone||'Not provided',email:item.ownerEmail||user.email||'Not provided'};
+  };
+
+  function rows(){
+    if(!window.currentUser||!['driver','truck_owner'].includes(String(currentUser.role||'')))return [];
+    return (data.trailerRentals||[]).filter(t=>sameEmail(t.renterEmail,currentUser.email)&&(isWaiting(t)||String(t.status||'')===AGREED));
+  }
+  function panel(){
+    const list=rows(); if(!list.length)return '';
+    return `<section id="trailerAgreementCanonicalV78262" style="margin-top:20px"><div class="card" style="border:3px solid #16a34a"><h2 style="margin:0">🚚 Trailer Rental Agreement</h2><p class="muted">After the trailer owner accepts, your transaction stays here until you click Agree.</p></div><div class="grid">${list.map(t=>{
+      const agreed=String(t.status||'')===AGREED;
+      return `<div class="card" style="border:2px solid #16a34a"><h3>${agreed?'✅ Agreement Completed':'✅ Trailer Owner Accepted Your Request'}</h3><p><b>${esc(t.trailerType||'Trailer')}</b>${t.location?` • ${esc(t.location)}`:''}</p><p class="muted">${agreed?'The trailer owner information is available.':'Click Agree to release the trailer owner name, phone number, and email.'}</p><div class="actions">${agreed?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${esc(t.id)}')">View Trailer Owner Information</button>`:`<button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>`}</div></div>`;
+    }).join('')}</div></section>`;
+  }
+  function removeOlderPanels(html){
+    return String(html||'')
+      .replace(/<section id="trailerRequesterHomeAgreementV78259"[\s\S]*?<\/section>/g,'')
+      .replace(/<section id="trailerRequesterAgreementV78261"[\s\S]*?<\/section>/g,'')
+      .replace(/<section id="trailerAgreementCanonicalV78262"[\s\S]*?<\/section>/g,'');
+  }
+  const prevDriver=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){return removeOlderPanels(typeof prevDriver==='function'?prevDriver():'')+panel();};
+  const prevOwner=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){return removeOlderPanels(typeof prevOwner==='function'?prevOwner():'')+panel();};
+
+  window.approveTrailerRental=async function(id){
+    if(!requireLogin())return;
+    const item=findTrailer(id); if(!item)return alert('Trailer rental not found.');
+    if(!currentUser||(!sameEmail(item.ownerEmail,currentUser.email)&&currentUser.role!=='admin'))return alert('Only the trailer owner can accept this request.');
+    if(String(item.status||'')!=='Pending Owner Review')return alert('This trailer request is not waiting for owner review.');
+    const old={...item}; item.status=WAITING; item.ownerAcceptedAt=new Date().toLocaleString();
+    const res=await updateTrailerRentalDb(item,{status:WAITING});
+    if(res&&res.error){Object.assign(item,old);return alert('Could not accept trailer rental: '+res.error.message);}
+    addNote(item.renterEmail,'The trailer owner accepted your request. Open your home page and click Agree to receive the owner information.');
+    try{await Promise.resolve(sendEmailNotice({to:item.renterEmail,name:item.renterName,subject:'Trailer owner accepted your request',summary:'The trailer owner accepted your request. Open your Home page and click Agree to release the owner contact information.',buttonText:'Open Home Page',page:'home',details:{Trailer:item.trailerType,Location:item.location,Status:'Waiting for Your Agreement'}}));}catch(e){console.warn(e);}
+    persistOnly(); alert('Request accepted. The requester will see Agree on the home page.'); truck();
+  };
+
+  window.renterAgreeTrailer=async function(id){
+    if(!requireLogin())return;
+    const item=findTrailer(id); if(!item)return alert('Trailer rental not found.');
+    if(!currentUser||!sameEmail(item.renterEmail,currentUser.email))return alert('Only the accepted requester can agree.');
+    if(!isWaiting(item))return alert('This trailer request is not waiting for your agreement.');
+    const old={...item}; item.status=AGREED; item.renterAgreedAt=new Date().toLocaleString();
+    const res=await updateTrailerRentalDb(item,{status:AGREED});
+    if(res&&res.error){Object.assign(item,old);return alert('Could not save your agreement: '+res.error.message);}
+    const c=ownerContact(item);
+    addNote(item.ownerEmail,(item.renterName||'The requester')+' agreed to rent your trailer.');
+    try{await Promise.resolve(sendEmailNotice({to:item.ownerEmail,name:c.name,subject:'Trailer requester agreed',summary:'The accepted requester agreed to rent your trailer. Your contact information was released.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Trailer:item.trailerType,Requester:item.renterName,Status:AGREED}}));}catch(e){console.warn(e);}
+    persistOnly();
+    alert('Agreement completed.\n\nTrailer Owner Information\n\nName: '+c.name+'\nPhone: '+c.phone+'\nEmail: '+c.email);
+    home();
+  };
+
+  window.viewTrailerOwnerInformation=function(id){
+    const item=findTrailer(id);
+    if(!item||!currentUser||!sameEmail(item.renterEmail,currentUser.email)||String(item.status||'')!==AGREED)return alert('Trailer owner information is not available.');
+    const c=ownerContact(item); alert('Trailer Owner Information\n\nName: '+c.name+'\nPhone: '+c.phone+'\nEmail: '+c.email);
+  };
+  window.__hcVersion='V7.8.262';
+})();
+</script>
 </body>
 </html>
 
@@ -7595,5 +7686,108 @@ window.__hcVersion='V7.8.213';
   };
 
   window.__hcVersion='V7.8.260';
+})();
+</script>
+
+<script id="v78261-trailer-accepted-request-never-disappears-fix">
+/* V7.8.261 — Trailer rental requester visibility only.
+   Keeps an owner-accepted trailer request visible to the requesting driver/other
+   truck owner on both Home and Trucking until Agree is clicked. No other flow changed. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const acceptedStatuses=new Set([
+    'Owner Accepted - Waiting Renter Agreement',
+    'Pending Final Admin Approval',
+    'Payment Pending Admin Approval',
+    'Final Admin Approved',
+    'Admin Approved - Waiting Renter Agreement',
+    'Owner Accepted',
+    'Accepted',
+    'Waiting Renter Agreement',
+    'Waiting for Renter Agreement'
+  ]);
+  const findTrailer=id=>(data.trailerRentals||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+
+  function requesterRows(){
+    if(!window.currentUser||!['driver','truck_owner'].includes(String(currentUser.role||'')))return [];
+    return (data.trailerRentals||[]).filter(t=>
+      sameEmail(t.renterEmail,currentUser.email)&&
+      (acceptedStatuses.has(String(t.status||''))||String(t.status||'')==='Renter Agreed')
+    );
+  }
+
+  function agreementPanel(){
+    const rows=requesterRows();
+    if(!rows.length)return '';
+    return `<section id="trailerRequesterAgreementV78261" style="margin-top:20px">
+      <div class="card" style="border:3px solid #16a34a">
+        <h2 style="margin:0">🚚 Trailer Owner Accepted — Your Agreement Is Required</h2>
+        <p class="muted">This accepted trailer request stays here until you agree and receive the owner information.</p>
+      </div>
+      <div class="grid">${rows.map(t=>{
+        const agreed=String(t.status||'')==='Renter Agreed';
+        return `<div class="card" style="border:2px solid #16a34a">
+          <h3>${agreed?'✅ Agreement Completed':'✅ Trailer Owner Accepted Your Request'}</h3>
+          <p><b>${esc(t.trailerType||'Trailer')}</b>${t.location?` • ${esc(t.location)}`:''}</p>
+          <p><b>Owner:</b> ${esc(t.ownerName||'Trailer Owner')}</p>
+          <p class="muted">${agreed?'The trailer owner information is available.':'Click Agree to confirm and release the trailer owner name, phone number, and email.'}</p>
+          <div class="actions">${agreed
+            ?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${esc(t.id)}')">View Trailer Owner Information</button>`
+            :`<button class="btn good" type="button" onclick="renterAgreeTrailer('${esc(t.id)}')">Agree</button>`}
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </section>`;
+  }
+
+  const previousDriverHome=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    let base=typeof previousDriverHome==='function'?previousDriverHome():'';
+    base=String(base||'').replace(/<section id="trailerRequesterHomeAgreementV78259"[\s\S]*?<\/section>/g,'');
+    return base+agreementPanel();
+  };
+
+  const previousOwnerHome=window.truckOwnerHomeActions;
+  window.truckOwnerHomeActions=function(){
+    let base=typeof previousOwnerHome==='function'?previousOwnerHome():'';
+    base=String(base||'').replace(/<section id="trailerRequesterHomeAgreementV78259"[\s\S]*?<\/section>/g,'');
+    return base+agreementPanel();
+  };
+
+  const previousTruck=window.truck;
+  window.truck=function(){
+    const result=typeof previousTruck==='function'?previousTruck.apply(this,arguments):undefined;
+    setTimeout(()=>{
+      if(!requesterRows().length)return;
+      const host=document.getElementById('app')||document.querySelector('main')||document.body;
+      if(!host)return;
+      host.querySelectorAll('#trailerRequesterAgreementV78261').forEach(el=>el.remove());
+      const holder=document.createElement('div');
+      holder.innerHTML=agreementPanel();
+      const panel=holder.firstElementChild;
+      if(panel){
+        const how=Array.from(host.querySelectorAll('h1,h2,h3')).find(el=>/how it works/i.test(el.textContent||''));
+        const anchor=how&&how.closest('.card,section,div');
+        if(anchor&&anchor.parentNode)anchor.insertAdjacentElement('afterend',panel);else host.prepend(panel);
+      }
+    },0);
+    return result;
+  };
+
+  const priorAgree=window.renterAgreeTrailer;
+  window.renterAgreeTrailer=async function(id){
+    const item=findTrailer(id);
+    if(item&&acceptedStatuses.has(String(item.status||''))&&String(item.status||'')!=='Owner Accepted - Waiting Renter Agreement'){
+      const originalStatus=item.status;
+      item.status='Owner Accepted - Waiting Renter Agreement';
+      const res=await updateTrailerRentalDb(item,{status:'Owner Accepted - Waiting Renter Agreement'});
+      if(res&&res.error){item.status=originalStatus;return alert('Could not prepare this trailer agreement: '+res.error.message);}
+    }
+    return typeof priorAgree==='function'?priorAgree(id):undefined;
+  };
+
+  window.__hcVersion='V7.8.261';
 })();
 </script>
