@@ -6554,6 +6554,127 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.270';
 })();
 </script>
+
+
+<script id="v78273-home-services-flow-phone-audit-fix">
+/* V7.8.273 — Home Services customer/provider flow audit and phone reliability fix only. */
+(function(){
+  if(window.__hcHomeServicesV78273)return;
+  window.__hcHomeServicesV78273=true;
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const findReq=id=>(data.homeServiceRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+  const providerPhoneFor=r=>{
+    if(r&&r.providerPhone)return r.providerPhone;
+    const post=(data.homeServicePosts||[]).find(p=>norm(p.providerEmail)===norm(r&&r.providerEmail) && (!r.serviceId||String(p.dbId||p.id)===String(r.serviceId)||String(p.id)===String(r.serviceLocalRef)));
+    const profile=(data.users||[]).find(u=>norm(u.email)===norm(r&&r.providerEmail));
+    return (post&&post.providerPhone)||(profile&&profile.phone)||'';
+  };
+  async function refreshHS(){
+    persistOnly();
+    try{if(typeof loadSupabaseHomeServices==='function')await loadSupabaseHomeServices();}catch(e){console.warn('Home Services refresh failed',e)}
+    if(currentPage==='home_services')homeServices(); else if(currentPage==='home')home(); else if(currentPage==='admin')adminSuccess();
+  }
+
+  // Direct listed-provider requests now follow the same complete flow as customer-posted jobs.
+  window.providerCompleteHomeServiceRequest=async function(id){
+    if(!requireLogin())return;
+    const r=findReq(id);if(!r)return alert('Request not found.');
+    if(norm(r.providerEmail)!==norm(currentUser.email)&&currentUser.role!=='admin')return alert('Only the accepted provider can mark this work complete.');
+    if(r.status!=='Customer Agreed')return alert('The customer must agree before you can mark this work complete.');
+    const res=await updateHomeServiceRequestDb(r,{status:'Work Completed - Customer Confirmation'});
+    if(res.error)return alert('Could not update the request: '+res.error.message);
+    r.status='Work Completed - Customer Confirmation';
+    try{sendEmailNotice({to:r.customerEmail,name:r.customerName,subject:'Provider marked your home service complete',summary:'Please review the work and confirm completion in Home Services.',buttonText:'Confirm Completion',page:'home_services',details:{Service:r.serviceTitle,Provider:r.providerName,Status:r.status}});}catch(e){console.warn(e)}
+    await refreshHS();alert('Work marked complete. The customer was notified to confirm.');
+  };
+  window.customerConfirmHomeServiceRequest=async function(id){
+    if(!requireLogin())return;
+    const r=findReq(id);if(!r)return alert('Request not found.');
+    if(norm(r.customerEmail)!==norm(currentUser.email)&&currentUser.role!=='admin')return alert('Only the customer can confirm completion.');
+    if(r.status!=='Work Completed - Customer Confirmation')return alert('This request is not waiting for customer confirmation.');
+    if(!confirm('Confirm that the home service work is completed?'))return;
+    const res=await updateHomeServiceRequestDb(r,{status:'Completed'});
+    if(res.error)return alert('Could not confirm completion: '+res.error.message);
+    r.status='Completed';
+    try{sendEmailNotice({to:r.providerEmail,name:r.providerName,subject:'Customer confirmed home service completion',summary:'The customer confirmed that the service is completed.',buttonText:'Open Home Services',page:'home_services',details:{Service:r.serviceTitle,Customer:r.customerName,Status:'Completed'}});}catch(e){console.warn(e)}
+    await refreshHS();alert('Completion confirmed.');
+  };
+
+  // Final priority/action panel uses exact Supabase statuses and appears first on Home Services.
+  const oldHomeServices=window.homeServices;
+  window.homeServices=function(){
+    oldHomeServices();
+    if(!currentUser)return;
+    const root=document.getElementById('home_services');if(!root)return;
+    root.querySelectorAll('#hsV78273Priority').forEach(x=>x.remove());
+    const email=norm(currentUser.email), cards=[];
+    (data.homeServiceRequests||[]).forEach(r=>{
+      const isCustomer=norm(r.customerEmail)===email, isProvider=norm(r.providerEmail)===email;
+      if(!isCustomer&&!isProvider)return;
+      const phone=providerPhoneFor(r); if(phone&&!r.providerPhone)r.providerPhone=phone;
+      let action='';
+      if(isProvider&&r.status==='Pending Provider Review') action=`<button type="button" class="btn primary" onclick="providerAcceptHomeServiceRequest('${r.id}')">Accept</button><button type="button" class="btn bad" onclick="providerDeclineHomeServiceRequest('${r.id}')">Decline</button>`;
+      else if(isCustomer&&r.status==='Provider Accepted - Waiting Customer Agreement') action=`<button type="button" class="btn primary" onclick="customerAgreeHomeServiceRequest('${r.id}')">Agree</button><button type="button" class="btn bad" onclick="customerDeclineHomeServiceRequest('${r.id}')">Decline</button>`;
+      else if(isProvider&&r.status==='Customer Agreed') action=`<button type="button" class="btn primary" onclick="providerCompleteHomeServiceRequest('${r.id}')">Mark Work Complete</button>`;
+      else if(isCustomer&&r.status==='Work Completed - Customer Confirmation') action=`<button type="button" class="btn primary" onclick="customerConfirmHomeServiceRequest('${r.id}')">Confirm Completed</button>`;
+      if(action)cards.push(`<div class="card hs-v78273-card"><h3>🛠️ ${esc(r.serviceTitle||'Home Service')}</h3><p><b>Status:</b> ${esc(r.status)}</p><p class="muted">${isCustomer?'Provider: '+esc(r.providerName||'Provider'):'Customer: '+esc(r.customerName||'Customer')}</p><div class="actions">${action}</div></div>`);
+    });
+    (data.homeServiceCustomerJobs||[]).forEach(j=>{
+      const isCustomer=norm(j.customerEmail)===email, isProvider=norm(j.providerEmail)===email;
+      if(!isCustomer&&!isProvider)return;
+      let action='';
+      if(isCustomer&&['Provider Accepted','Provider Accepted - Waiting Customer Agreement'].includes(j.status)) action=`<button type="button" class="btn primary" onclick="customerAgreeCustomerHomeServiceJob('${j.id}')">Agree</button><button type="button" class="btn bad" onclick="customerDeclineCustomerHomeServiceJob('${j.id}')">Decline</button>`;
+      else if(isProvider&&j.status==='Customer Agreed') action=`<button type="button" class="btn primary" onclick="providerCompleteCustomerHomeServiceJob('${j.id}')">Mark Work Complete</button>`;
+      else if(isCustomer&&j.status==='Work Completed - Customer Confirmation') action=`<button type="button" class="btn primary" onclick="customerConfirmHomeServiceJob('${j.id}')">Confirm Completed</button>`;
+      if(action)cards.push(`<div class="card hs-v78273-card"><h3>🛠️ ${esc(j.title||j.category||'Home Service Job')}</h3><p><b>Status:</b> ${esc(j.status)}</p><p class="muted">${isCustomer?'Provider: '+esc(j.providerName||'Provider'):'Customer: '+esc(j.customerName||'Customer')}</p><div class="actions">${action}</div></div>`);
+    });
+    if(cards.length){
+      const sec=document.createElement('section');sec.id='hsV78273Priority';sec.innerHTML=`<div class="card"><h2 style="margin:0">⚡ Home Service Action Required</h2><p class="muted">Your newest customer/provider actions appear here first.</p></div><div class="grid">${cards.join('')}</div>`;
+      const first=root.querySelector('h2'); if(first&&first.nextSibling)root.insertBefore(sec,first.nextSibling); else root.prepend(sec);
+    }
+    prepareHomeServicePhoneButtons(root);
+  };
+
+  function prepareHomeServicePhoneButtons(scope=document){
+    scope.querySelectorAll('#home_services button,.hs-v78273-card button,#homeServiceProviderHomeActions button,#customerHomeActions button').forEach(btn=>{
+      if(!btn.getAttribute('type'))btn.setAttribute('type','button');
+      btn.style.touchAction='manipulation';
+      btn.style.webkitTapHighlightColor='transparent';
+    });
+  }
+  window.prepareHomeServicePhoneButtons=prepareHomeServicePhoneButtons;
+  document.addEventListener('touchstart',function(e){
+    const b=e.target.closest&&e.target.closest('#home_services button,.hs-v78273-card button,#homeServiceProviderHomeActions button,#customerHomeActions button');
+    if(!b)return;b.dataset.hsTouchX=String(e.touches[0].clientX);b.dataset.hsTouchY=String(e.touches[0].clientY);
+  },{passive:true,capture:true});
+  document.addEventListener('touchend',function(e){
+    const b=e.target.closest&&e.target.closest('#home_services button,.hs-v78273-card button,#homeServiceProviderHomeActions button,#customerHomeActions button');
+    if(!b||b.disabled)return;
+    const t=e.changedTouches&&e.changedTouches[0];if(!t)return;
+    const dx=Math.abs(t.clientX-Number(b.dataset.hsTouchX||t.clientX)),dy=Math.abs(t.clientY-Number(b.dataset.hsTouchY||t.clientY));
+    if(dx>12||dy>12)return;
+    e.preventDefault();
+    if(b.dataset.hsTapBusy==='1')return;b.dataset.hsTapBusy='1';
+    setTimeout(()=>{b.dataset.hsTapBusy='0'},700);
+    b.click();
+  },{passive:false,capture:true});
+  const mo=new MutationObserver(()=>prepareHomeServicePhoneButtons(document));
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  prepareHomeServicePhoneButtons(document);
+  window.__hcVersion='V7.8.273';
+})();
+</script>
+<style id="v78273-home-services-mobile-style">
+@media(max-width:700px){
+ #home_services .grid.two,#home_services .grid{grid-template-columns:1fr!important}
+ #home_services input,#home_services select,#home_services textarea{font-size:16px!important;width:100%!important;max-width:100%!important;box-sizing:border-box}
+ #home_services .btn,.hs-v78273-card .btn,#homeServiceProviderHomeActions .btn,#customerHomeActions .btn{width:100%!important;min-height:50px!important;margin:6px 0!important;display:block!important;position:relative!important;z-index:3!important}
+ #home_services .actions,.hs-v78273-card .actions{display:block!important}
+ #home_services table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ #hsV78273Priority{margin:12px 0 18px}
+}
+</style>
 </body>
 </html>
 
