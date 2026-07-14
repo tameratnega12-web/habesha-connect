@@ -7688,6 +7688,120 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+<script id="v78298-home-service-confirm-completed-final-fix">
+/* V7.8.298 — Final Home Services customer confirmation only.
+   Captures every Confirm Completed button before legacy handlers, completes once,
+   removes the transaction from Supabase/local data, then rebuilds Home and Home Services. */
+(function(){
+  if(window.__hcHomeServiceConfirmV78298)return;
+  window.__hcHomeServiceConfirmV78298=true;
+  const locks=new Set();
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const idOf=x=>String(x&&((x.dbId!=null&&x.dbId!=='')?x.dbId:x.id)||'');
+  const isCustomer=()=>currentUser&&['customer','admin'].includes(String(currentUser.role||''));
+  const sameUser=x=>currentUser&&(norm(x.customerEmail)===norm(currentUser.email)||String(currentUser.role)==='admin');
+
+  function find(kind,id){
+    const list=kind==='job'?(data.homeServiceCustomerJobs||[]):(data.homeServiceRequests||[]);
+    return list.find(x=>idOf(x)===String(id)||String(x.id||'')===String(id));
+  }
+  function inferFromButton(button){
+    const kindData=String(button.dataset.hs275Kind||button.dataset.hs274Kind||'');
+    const rawId=button.dataset.hs275Id||button.dataset.hs274Id||'';
+    if(kindData==='job-customer-confirm')return {kind:'job',id:rawId};
+    if(kindData==='direct-customer-confirm')return {kind:'direct',id:rawId};
+    const oc=String(button.getAttribute('onclick')||'');
+    let m=oc.match(/customerConfirmHomeServiceJob\(['\"]([^'\"]+)['\"]\)/i);
+    if(m)return {kind:'job',id:m[1]};
+    m=oc.match(/customerConfirmHomeServiceRequest\(['\"]([^'\"]+)['\"]\)/i);
+    if(m)return {kind:'direct',id:m[1]};
+    const scope=button.closest('tr,.card,section,article,div');
+    const text=norm(scope?.textContent||'');
+    const email=norm(currentUser?.email);
+    const job=(data.homeServiceCustomerJobs||[]).find(x=>norm(x.customerEmail)===email&&x.status==='Work Completed - Customer Confirmation'&&text.includes(norm(x.title||x.category||'')));
+    if(job)return {kind:'job',id:idOf(job)};
+    const direct=(data.homeServiceRequests||[]).find(x=>norm(x.customerEmail)===email&&x.status==='Work Completed - Customer Confirmation'&&text.includes(norm(x.serviceTitle||x.category||'')));
+    if(direct)return {kind:'direct',id:idOf(direct)};
+    return null;
+  }
+  async function deleteDirect(table,row,kind){
+    if(typeof authReady==='function'&&authReady()&&row.dbId){
+      const rpcName=kind==='job'?'hc_complete_home_service_customer_job':'hc_complete_home_service_request';
+      try{
+        const rpc=await hcSupabase.rpc(rpcName,{p_id:row.dbId});
+        if(!rpc.error)return {error:null};
+        if(!/function .* does not exist|could not find the function/i.test(String(rpc.error.message||'')))console.warn('V7.8.298 completion RPC fallback:',rpc.error);
+      }catch(e){console.warn('V7.8.298 completion RPC unavailable:',e);}
+      let q=hcSupabase.from(table).delete().eq('id',row.dbId);
+      const res=await q;
+      if(!res.error)return res;
+      // Last safe fallback: mark Completed so every active renderer excludes it.
+      const upd=await hcSupabase.from(table).update({status:'Completed',customer_confirmed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',row.dbId);
+      return upd;
+    }
+    return {error:null};
+  }
+  function removeLocal(kind,row){
+    const key=kind==='job'?'homeServiceCustomerJobs':'homeServiceRequests';
+    const rid=idOf(row);
+    data[key]=(data[key]||[]).filter(x=>idOf(x)!==rid);
+    if(typeof persistOnly==='function')persistOnly();
+  }
+  function purgeVisible(kind,row){
+    const title=norm(kind==='job'?(row.title||row.category):(row.serviceTitle||row.category));
+    document.querySelectorAll('#home .card,#home tr,#home_services .card,#home_services tr').forEach(el=>{
+      const text=norm(el.textContent||'');
+      if(text.includes('work completed - customer confirmation')&&(!title||text.includes(title)))el.remove();
+    });
+  }
+  async function complete(kind,id,button){
+    if(!isCustomer())return alert('Switch to Customer to confirm this home service.');
+    const row=find(kind,id);
+    if(!row){purgeVisible(kind,{title:'',serviceTitle:''});return alert('This completed transaction has already been cleared.');}
+    if(!sameUser(row))return alert('Only the customer can confirm completion.');
+    if(row.status!=='Work Completed - Customer Confirmation'){
+      if(['Completed','Closed'].includes(String(row.status||''))){removeLocal(kind,row);purgeVisible(kind,row);if(typeof home==='function')home();return;}
+      return alert('This service is not waiting for customer confirmation.');
+    }
+    const key=kind+':'+idOf(row);
+    if(locks.has(key))return;
+    if(!confirm('Confirm that the home service work is completed?'))return;
+    locks.add(key);
+    if(button){button.disabled=true;button.textContent='Completing…';}
+    try{
+      const table=kind==='job'?'home_service_customer_jobs':'home_service_requests';
+      const res=await deleteDirect(table,row,kind);
+      if(res?.error)throw new Error(res.error.message||'Supabase could not clear the transaction.');
+      removeLocal(kind,row);
+      purgeVisible(kind,row);
+      try{await Promise.resolve(sendEmailNotice({to:row.providerEmail,name:row.providerName,subject:'Customer confirmed home service completion',summary:'The customer confirmed completion. The completed transaction was removed from both active pages.',buttonText:'Open Home Services',page:'home_services',details:{Service:row.title||row.serviceTitle||row.category,Customer:row.customerName,Status:'Completed'}}));}catch(e){console.warn('Completion email warning',e);}
+      if(typeof loadSupabaseHomeServices==='function')await Promise.resolve(loadSupabaseHomeServices()).catch(console.warn);
+      if(window.currentPage==='home_services'&&typeof homeServices==='function')homeServices();
+      if(typeof home==='function')home();
+      alert('Completion confirmed. The transaction was removed from both pages.');
+    }catch(e){
+      console.error(e);alert('Could not clear this completed service: '+(e.message||e));
+      if(button){button.disabled=false;button.textContent='Confirm Completed';}
+    }finally{setTimeout(()=>locks.delete(key),1800);}
+  }
+  window.customerConfirmHomeServiceJob=id=>complete('job',id,null);
+  window.customerConfirmHomeServiceRequest=id=>complete('direct',id,null);
+
+  let lastTouch=0;
+  function intercept(e){
+    const b=e.target.closest&&e.target.closest('button');
+    if(!b||norm(b.textContent)!=='confirm completed')return;
+    const info=inferFromButton(b);if(!info)return;
+    if(e.type==='click'&&Date.now()-lastTouch<700){e.preventDefault();e.stopImmediatePropagation();return;}
+    if(e.type==='touchend')lastTouch=Date.now();
+    e.preventDefault();e.stopImmediatePropagation();
+    complete(info.kind,info.id,b);
+  }
+  document.addEventListener('touchend',intercept,{capture:true,passive:false});
+  document.addEventListener('click',intercept,true);
+})();
+</script>
 </body>
 </html>
 
