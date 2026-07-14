@@ -7435,6 +7435,71 @@ window.__hcVersion='V7.8.213';
 })();
 </script>
 
+
+<script>
+/* V7.8.293 — Events-only Supabase reliability alignment.
+   No Shipping, Rentals, Trucking, Taxi/Limo, Marketplace, Home Services,
+   Business Directory, or Jobs transaction logic is changed here. */
+(function(){
+  function eventFind293(id){return (typeof eventRecords==='function'?eventRecords():[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));}
+  function eventRemoveLocal293(ev){
+    if(!ev||typeof eventRecords!=='function')return;
+    const list=eventRecords(); const i=list.indexOf(ev); if(i>=0)list.splice(i,1);
+  }
+  function eventPersist293(){try{if(typeof persistOnly==='function')persistOnly();}catch(e){console.warn(e);}}
+
+  window.submitEvent=async function(){
+    if(!requireLogin())return;
+    const allowed=currentUser&&(currentUser.role==='event_organizer'||currentUser.role==='business_owner'||currentUser.role==='admin'||currentUser.role==='service_provider'||(currentUser.roles||[]).includes('event_organizer')||(currentUser.roles||[]).includes('business_owner'));
+    if(!allowed)return alert('Please add the Events Organizer service first.');
+    if(!authReady())return alert('Supabase is required to submit an event. Please refresh and sign in again.');
+    const title=($('evTitle')?.value||'').trim(),date=$('evDate')?.value||'',desc=($('evDescription')?.value||'').trim(),phone=($('evPhone')?.value||'').trim();
+    if(!title||!date||!desc||!phone)return alert('Please enter event name, date, description, and phone number.');
+    const ev={id:'EV'+Date.now().toString().slice(-8),title,category:$('evCategory')?.value||'Other',organizerName:($('evOrganizer')?.value||currentUser.name||'').trim(),organizerEmail:currentUser.email||'',phone,email:$('evEmail')?.value||currentUser.email||'',description:desc,date,startTime:$('evStart')?.value||'',endTime:$('evEnd')?.value||'',admission:$('evAdmission')?.value||'Free',adultPrice:$('evAdult')?.value||0,childPrice:$('evChild')?.value||0,vipPrice:$('evVip')?.value||0,venue:$('evVenue')?.value||'',address:$('evAddress')?.value||'',city:$('evCity')?.value||'',state:$('evState')?.value||'',zip:$('evZip')?.value||'',flyerUrl:$('evFlyer')?.value||'',social:$('evSocial')?.value||'',capacity:$('evCapacity')?.value||0,registered:[],status:currentUser.role==='admin'?'Approved':'Pending Admin Approval',createdAt:new Date().toLocaleString()};
+    eventRecords().unshift(ev); eventPersist293();
+    const res=await syncEventToSupabase(ev);
+    if(res?.error){eventRemoveLocal293(ev);eventPersist293();return alert('Event was not saved to Supabase. Run v7_8_293_events_supabase_alignment.sql, then try again. '+(res.error.message||res.error));}
+    if(res?.data){const row=Array.isArray(res.data)?res.data[0]:res.data;if(row?.id)ev.dbId=row.id;ev.source='supabase';}
+    addNote('admin.habeshaconnect@gmail.com','Event waiting for approval: '+title+' by '+ev.organizerName);
+    if(typeof sendAdminEmailNotice==='function')sendAdminEmailNotice('Event waiting for approval','A community event was submitted for admin approval.',{Event:title,Organizer:ev.organizerName,Date:date,City:ev.city,Status:ev.status},'events');
+    eventPersist293(); await loadEventsFromSupabase({force:true}); events(); alert('Event submitted for admin approval.');
+  };
+
+  window.approveEvent=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const e=eventFind293(id); if(!e)return alert('Event not found.');
+    if((e.status||'Pending Admin Approval')!=='Pending Admin Approval')return alert('This event is not waiting for admin approval.');
+    const old=e.status;e.status='Approved'; const res=await syncEventToSupabase(e);
+    if(res?.error){e.status=old;eventPersist293();return alert('Could not approve the event in Supabase: '+(res.error.message||res.error));}
+    addNote(e.organizerEmail,'Your event was approved: '+e.title);
+    if(typeof sendEmailNotice==='function')sendEmailNotice({to:e.organizerEmail||e.email,name:e.organizerName||'Event Organizer',subject:'Event approved',summary:'Admin approved your event. It is now visible to the community in Events.',buttonText:'Open Events',page:'events',details:{Event:e.title||'Event',Date:e.date||'Not listed',Location:[e.venue,e.city,e.state].filter(Boolean).join(', ')||'Not listed',Status:'Approved'}});
+    eventPersist293(); await loadEventsFromSupabase({force:true}); events();
+  };
+
+  window.declineEvent=async function(id){
+    if(!currentUser||currentUser.role!=='admin')return alert('Admin only.');
+    const e=eventFind293(id);if(!e)return alert('Event not found.');
+    const old=e.status;e.status='Declined';const res=await syncEventToSupabase(e);
+    if(res?.error){e.status=old;eventPersist293();return alert('Could not decline the event in Supabase: '+(res.error.message||res.error));}
+    addNote(e.organizerEmail,'Your event was declined: '+e.title);eventPersist293();await loadEventsFromSupabase({force:true});events();
+  };
+
+  window.registerForEvent=async function(id){
+    if(!requireLogin())return;
+    const e=eventFind293(id);if(!e)return alert('Event not found.');
+    if(e.status!=='Approved')return alert('This event is not open for registration yet.');
+    if(e.organizerEmail===currentUser.email)return alert('You cannot register for your own event.');
+    if(currentUser.role==='admin')return alert('Admin cannot register from the admin account.');
+    if(!Array.isArray(e.registered))e.registered=[];
+    if(e.registered.some(r=>String(r.email||'').toLowerCase()===String(currentUser.email||'').toLowerCase()))return alert('You already registered interest for this event.');
+    const reg={name:currentUser.name,email:currentUser.email,phone:currentUser.phone||'',time:new Date().toLocaleString()};e.registered.push(reg);const res=await syncEventToSupabase(e);
+    if(res?.error){e.registered=e.registered.filter(x=>x!==reg);eventPersist293();return alert('Registration was not saved to Supabase: '+(res.error.message||res.error));}
+    addNote(e.organizerEmail,currentUser.name+' registered interest for your event: '+e.title);eventPersist293();alert('Registered interest. The organizer can contact you.');
+  };
+  window.__hcVersion='V7.8.293';
+})();
+</script>
+
 </body>
 </html>
 
@@ -10323,5 +10388,99 @@ window.__hcVersion='V7.8.213';
 
   window.__hcNewActivityAbsoluteTopV291=moveWholeNewActivityToTop;
   window.__hcVersion='V7.8.291';
+})();
+</script>
+
+<script id="v78294-remaining-categories-final-audit-cleanup">
+/* V7.8.294 — Final audit/cleanup for Taxi/Limo, Marketplace, Home Services,
+   Business Directory/Job Seekers and Events only.
+   Shipping, Rentals and Trucking are intentionally not referenced here. */
+(()=>{
+  const norm=v=>String(v??'').trim().toLowerCase();
+  const demoRecord=r=>{
+    if(!r||typeof r!=='object')return false;
+    if(r.demo===true||r.isDemo===true||r.sample===true||r.isSample===true)return true;
+    const source=norm(r.source||r.dataSource||'');
+    if(['demo','sample','mock','seed','test'].includes(source))return true;
+    const label=norm([r.title,r.name,r.itemTitle,r.serviceTitle,r.company,r.businessName,r.organizerName].filter(Boolean).join(' '));
+    return /(^|\s)(demo|sample|mock listing|test record)(\s|$)/.test(label);
+  };
+  const completed={
+    jobApplications:new Set(['applicant agreed','closed','completed','cancelled','declined']),
+    marketRequests:new Set(['completed','cancelled','admin declined','seller declined','connection declined','closed']),
+    market:new Set(['sold','sold verified','completed','closed','cancelled']),
+    homeServiceRequests:new Set(['completed','closed','cancelled','declined']),
+    homeServiceCustomerJobs:new Set(['completed','closed','cancelled','declined']),
+    taxiRideRequests:new Set(['payment received / history','payment received','closed','cancelled','declined','completed']),
+    taxiLimoDriverAssignments:new Set(['ended','employment ended','driver declined','admin declined','closed','cancelled'])
+  };
+  function cleanArray(key){
+    if(!Array.isArray(data?.[key]))return;
+    const done=completed[key];
+    data[key]=data[key].filter(r=>!demoRecord(r)&&(!done||!done.has(norm(r.status))));
+  }
+  function sanitizeRemaining(){
+    ['businesses','events','jobs','jobApplications','market','marketRequests','homeServicePosts','homeServiceRequests','homeServiceCustomerJobs','taxiDriverApps','taxiRideRequests','taxiLimoOwners','taxiLimoVehicles','taxiLimoDriverAssignments'].forEach(cleanArray);
+  }
+  window.__hcSanitizeRemainingV294=sanitizeRemaining;
+
+  const renderNames=['home','marketplace','homeServices','jobs','business','events','taxi','taxiRenderOnly','jobsRenderOnly'];
+  renderNames.forEach(name=>{
+    const old=window[name];
+    if(typeof old!=='function'||old.__v294Wrapped)return;
+    const wrapped=function(){sanitizeRemaining();return old.apply(this,arguments)};
+    wrapped.__v294Wrapped=true;
+    window[name]=wrapped;
+  });
+
+  ['loadSupabaseMarketplace','loadSupabaseHomeServices','loadJobsFromSupabase','loadBusinessProfilesFromSupabase','loadEventsFromSupabase','loadSupabaseTaxiLimo'].forEach(name=>{
+    const old=window[name];
+    if(typeof old!=='function'||old.__v294Wrapped)return;
+    const wrapped=async function(){const out=await old.apply(this,arguments);sanitizeRemaining();return out};
+    wrapped.__v294Wrapped=true;
+    window[name]=wrapped;
+  });
+
+  // Taxi ride final step: remove the finished ride from Supabase and both user views.
+  const priorTaxiPayment=window.taxiPaymentReceived;
+  window.taxiPaymentReceived=async function(id){
+    const ride=(data.taxiRideRequests||[]).find(r=>String(r.id||r.dbId||'')===String(id||''));
+    if(!ride)return typeof priorTaxiPayment==='function'?priorTaxiPayment(id):alert('Taxi/Limo ride not found.');
+    const key=ride.dbId||ride.id;
+    if(authReady&&authReady()){
+      let q=hcSupabase.from('taxi_ride_requests').delete();
+      q=ride.dbId?q.eq('id',ride.dbId):q.eq('local_ref',ride.id);
+      const res=await q;
+      if(res.error)return alert('Could not close the completed ride: '+res.error.message);
+    }
+    data.taxiRideRequests=(data.taxiRideRequests||[]).filter(r=>String(r.dbId||r.id)!==String(key));
+    persistOnly();
+    sanitizeRemaining();
+    if(typeof taxi==='function')await taxi();
+    if(typeof home==='function')home();
+    alert('Payment confirmed. The completed ride was removed from both active pages.');
+  };
+
+  // Remove obsolete duplicate sections left by superseded category renderers.
+  function removeDuplicateSections(){
+    const roots=['home','taxi','marketplace','home_services','jobs','business','events'];
+    roots.forEach(id=>{
+      const root=document.getElementById(id);if(!root)return;
+      const seen=new Set();
+      root.querySelectorAll('section[id],div[id]').forEach(el=>{
+        if(!el.id)return;
+        if(seen.has(el.id)&&/Action|Agreement|Priority|Activity|Requests?/i.test(el.id))el.remove();
+        else seen.add(el.id);
+      });
+    });
+  }
+  let timer=0;
+  const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(()=>{sanitizeRemaining();removeDuplicateSections()},40)});
+  document.addEventListener('DOMContentLoaded',()=>{
+    sanitizeRemaining();
+    ['home','taxi','marketplace','home_services','jobs','business','events'].forEach(id=>{const r=document.getElementById(id);if(r)observer.observe(r,{childList:true,subtree:true})});
+    removeDuplicateSections();
+  });
+  window.__hcVersion='V7.8.294';
 })();
 </script>
