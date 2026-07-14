@@ -10007,3 +10007,98 @@ window.__hcVersion='V7.8.213';
 </script>
 
 
+
+<script>
+/* V7.8.288 — Layout only: move existing action-required transactions above How It Works.
+   No status, button, Supabase, form, or transaction logic is changed here. */
+(function(){
+  'use strict';
+  const PAGE_IDS=['home','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'];
+  const ACTION_HEADING=/\b(action required|needs your attention|agreement required|consent required|read\s*&?\s*agree|waiting .*agreement|accept or decline|confirm completed|mark work complete|payment required|view (?:owner|seller|provider|driver|traveler|sender) information)\b/i;
+  const ACTION_BUTTON=/^(agree(?:\s*&.*)?|i agree(?:\s*&.*)?|read\s*&?\s*agree(?:\s*\/.*)?|accept|decline|approve(?: transaction)?|confirm completed|mark work complete|continue to payment|pay(?: now)?|view (?:owner|seller|provider|driver|traveler|sender) information|agree & view .* information)$/i;
+
+  function directChild(root,node){
+    let cur=node;
+    while(cur&&cur.parentElement&&cur.parentElement!==root)cur=cur.parentElement;
+    return cur&&cur.parentElement===root?cur:null;
+  }
+  function findHow(root){
+    const candidates=[...root.querySelectorAll('.notice,h1,h2,h3,.card')];
+    const hit=candidates.find(el=>/how\s+it\s+works/i.test(String(el.textContent||'')));
+    if(!hit)return null;
+    return hit.classList&&hit.classList.contains('notice')?hit:(directChild(root,hit)||hit);
+  }
+  function isQuickOrForm(el){
+    if(!el)return true;
+    const text=String(el.textContent||'').toLowerCase();
+    if(/quick action|available services|information & support/.test(text))return true;
+    if(el.matches('form')||el.querySelector('form'))return true;
+    if(el.id&&/HomeActions$/i.test(el.id))return true;
+    return false;
+  }
+  function qualifies(el){
+    if(!el||isQuickOrForm(el))return false;
+    const text=String(el.textContent||'').trim();
+    if(ACTION_HEADING.test(text))return true;
+    const buttons=[...el.querySelectorAll('button')];
+    return buttons.some(b=>ACTION_BUTTON.test(String(b.textContent||'').trim()));
+  }
+  function actionContainer(root,source,how){
+    let section=source.closest('section');
+    if(section&&root.contains(section)&&!section.contains(how)&&qualifies(section))return section;
+    let card=source.closest('.card');
+    if(card&&root.contains(card)&&!card.contains(how)&&qualifies(card))return card;
+    const top=directChild(root,source);
+    return top&&!top.contains(how)&&qualifies(top)?top:null;
+  }
+  function moveActions(root){
+    if(!root||!currentUser||currentUser.role==='admin')return;
+    const how=findHow(root);
+    if(!how)return;
+    const sources=[...root.querySelectorAll('h2,h3,h4,button,[id*="Priority"],[id*="priority"],[id*="Agreement"],[id*="agreement"],[id*="Consent"],[id*="consent"]')];
+    const nodes=[];
+    sources.forEach(src=>{
+      const text=String(src.textContent||'').trim();
+      const relevant=src.matches('button')?ACTION_BUTTON.test(text):ACTION_HEADING.test(text)||qualifies(src);
+      if(!relevant)return;
+      const node=actionContainer(root,src,how);
+      if(!node||nodes.includes(node)||node.contains(how))return;
+      if(nodes.some(n=>n.contains(node)))return;
+      for(let i=nodes.length-1;i>=0;i--)if(node.contains(nodes[i]))nodes.splice(i,1);
+      nodes.push(node);
+    });
+    if(!nodes.length)return;
+    nodes.sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+    nodes.forEach(node=>{
+      if(node!==how&&node.parentElement)how.parentElement.insertBefore(node,how);
+    });
+  }
+  function apply(){
+    PAGE_IDS.forEach(id=>moveActions(document.getElementById(id)));
+  }
+  const priorRender=window.renderPage;
+  if(typeof priorRender==='function')window.renderPage=async function(){
+    const result=await priorRender.apply(this,arguments);
+    requestAnimationFrame(()=>requestAnimationFrame(apply));
+    return result;
+  };
+  const priorHome=window.home;
+  if(typeof priorHome==='function')window.home=function(){
+    const result=priorHome.apply(this,arguments);
+    requestAnimationFrame(()=>requestAnimationFrame(apply));
+    return result;
+  };
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(apply,40);
+  });
+  document.addEventListener('DOMContentLoaded',()=>{
+    const app=document.getElementById('app')||document.body;
+    observer.observe(app,{childList:true,subtree:true});
+    apply();
+  });
+  window.__hcActionTopLayoutV288=apply;
+  window.__hcVersion='V7.8.288';
+})();
+</script>
