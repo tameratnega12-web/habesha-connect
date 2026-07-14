@@ -10102,3 +10102,87 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.288';
 })();
 </script>
+
+<script id="v78289-new-activity-first-layout">
+/* V7.8.289 — Layout only.
+   Order: Your New Activity -> Action Required -> How It Works.
+   No button, status, Supabase, email, form, or transaction logic changes. */
+(function(){
+  'use strict';
+  const PAGE_IDS=['home','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'];
+  const NEW_ACTIVITY=/^(?:🔔\s*)?(?:your\s+)?new\s+activity\b/i;
+
+  function directChild(root,node){
+    let cur=node;
+    while(cur&&cur.parentElement&&cur.parentElement!==root)cur=cur.parentElement;
+    return cur&&cur.parentElement===root?cur:null;
+  }
+  function findHow(root){
+    const candidates=[...root.querySelectorAll('.notice,h1,h2,h3,.card')];
+    const hit=candidates.find(el=>/how\s+it\s+works/i.test(String(el.textContent||'')));
+    if(!hit)return null;
+    return hit.classList&&hit.classList.contains('notice')?hit:(directChild(root,hit)||hit);
+  }
+  function findNewActivity(root){
+    const exact=root.querySelector('#personalizedHomeActivity');
+    if(exact)return directChild(root,exact)||exact;
+    const heading=[...root.querySelectorAll('h1,h2,h3,h4')].find(el=>NEW_ACTIVITY.test(String(el.textContent||'').trim()));
+    if(!heading)return null;
+    const section=heading.closest('section');
+    if(section&&root.contains(section))return directChild(root,section)||section;
+    const card=heading.closest('.card');
+    return directChild(root,card)||card;
+  }
+  function moveNewActivityFirst(root){
+    if(!root||!window.currentUser||currentUser.role==='admin')return;
+    const how=findHow(root);
+    const activity=findNewActivity(root);
+    if(!how||!activity||activity===how||activity.contains(how))return;
+    const parent=how.parentElement;
+    if(!parent)return;
+    // Insert first among the existing priority area. V7.8.288 keeps action cards
+    // immediately before How It Works, so placing activity before that group gives:
+    // New Activity -> Action Required -> How It Works.
+    const siblings=[...parent.children];
+    const howIndex=siblings.indexOf(how);
+    if(howIndex<0)return;
+    let firstPriority=how;
+    for(let i=howIndex-1;i>=0;i--){
+      const el=siblings[i];
+      const text=String(el.textContent||'');
+      if(/action required|needs your attention|agreement required|consent required|read\s*&?\s*agree|accept or decline|confirm completed|mark work complete|payment required|view .* information/i.test(text)){
+        firstPriority=el;
+        continue;
+      }
+      break;
+    }
+    if(activity!==firstPriority)parent.insertBefore(activity,firstPriority);
+  }
+  function apply(){PAGE_IDS.forEach(id=>moveNewActivityFirst(document.getElementById(id)));}
+
+  const priorRender=window.renderPage;
+  if(typeof priorRender==='function')window.renderPage=async function(){
+    const result=await priorRender.apply(this,arguments);
+    requestAnimationFrame(()=>requestAnimationFrame(apply));
+    return result;
+  };
+  const priorHome=window.home;
+  if(typeof priorHome==='function')window.home=function(){
+    const result=priorHome.apply(this,arguments);
+    requestAnimationFrame(()=>requestAnimationFrame(apply));
+    return result;
+  };
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(apply,60);
+  });
+  document.addEventListener('DOMContentLoaded',()=>{
+    const app=document.getElementById('app')||document.body;
+    observer.observe(app,{childList:true,subtree:true});
+    apply();
+  });
+  window.__hcNewActivityFirstV289=apply;
+  window.__hcVersion='V7.8.289';
+})();
+</script>
