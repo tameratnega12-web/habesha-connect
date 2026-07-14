@@ -9253,3 +9253,118 @@ window.__hcVersion='V7.8.213';
  #hsV78275HomePriority .card{overflow:visible!important}
 }
 </style>
+
+<script id="v78277-job-seeker-contact-viewed-home-cleanup">
+/* V7.8.277 — After the job seeker views released owner information,
+   close that completed application and remove its Home-page transaction cards. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const findApp=id=>(data.jobApplications||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+  const findJob=a=>(data.jobs||[]).find(j=>String(j.id)===String(a?.jobId)||String(j.dbId||'')===String(a?.jobDbId||''))||{};
+
+  function contactFor(a){
+    const j=findJob(a);
+    return {
+      name:a?.employerName||j.employerName||j.company||'Business Owner',
+      phone:j.contactPhone||a?.employerPhone||'Not provided',
+      email:j.contactEmail||a?.employerEmail||'Not provided'
+    };
+  }
+
+  function showContactBox(c){
+    let box=document.getElementById('jobOwnerInfoBox277');
+    if(!box){
+      box=document.createElement('div');
+      box.id='jobOwnerInfoBox277';
+      box.setAttribute('role','dialog');
+      box.setAttribute('aria-modal','true');
+      document.body.appendChild(box);
+    }
+    const phone=c.phone&&c.phone!=='Not provided'?`<a class="btn primary" href="tel:${String(c.phone).replace(/[^+\d]/g,'')}">Call Owner</a>`:'';
+    const email=c.email&&c.email!=='Not provided'?`<a class="btn ghost" href="mailto:${esc(c.email)}">Email Owner</a>`:'';
+    box.innerHTML=`<div class="job-owner-dialog277"><h2>📞 Business Owner Information</h2><p><b>Name:</b> ${esc(c.name)}</p><p><b>Phone:</b> ${esc(c.phone)}</p><p><b>Email:</b> ${esc(c.email)}</p><p class="muted">This completed job transaction has been removed from your Home page.</p><div class="actions">${phone}${email}<button class="btn dark" type="button" data-close-job-owner-277>Close</button></div></div>`;
+    box.style.display='flex';
+  }
+
+  async function completeAndShow(id){
+    const a=findApp(id);
+    if(!a)return alert('Application not found.');
+    if(!currentUser||norm(a.applicantEmail)!==norm(currentUser.email))return alert('Only the accepted job seeker can view this information.');
+    if(!['Applicant Agreed','Closed'].includes(a.status))return alert('Please click Agree first.');
+    const c=contactFor(a);
+    if(a.status!=='Closed'){
+      const old={...a};
+      a.status='Closed';
+      a.contactViewedAt=new Date().toLocaleString();
+      const res=await syncJobAppToSupabase(a);
+      if(res&&res.error){Object.assign(a,old);return alert('Owner information could not be opened: '+res.error.message);}
+      persistOnly();
+    }
+    showContactBox(c);
+    if(typeof home==='function')home();
+  }
+
+  window.viewAcceptedJobOwnerInformation=completeAndShow;
+
+  const priorHomeActions=window.jobSeekerHomeActions;
+  window.jobSeekerHomeActions=function(){
+    const html=typeof priorHomeActions==='function'?priorHomeActions():'';
+    if(!html)return html;
+    const t=document.createElement('template');t.innerHTML=html;
+    t.content.querySelectorAll('.card').forEach(card=>{
+      const text=norm(card.textContent);
+      if(text.includes('business owner information available')) card.remove();
+    });
+    const section=t.content.querySelector('#jobSeekerAgreementHome');
+    if(section&&!section.querySelector('.card .btn'))section.remove();
+    return t.innerHTML;
+  };
+
+  const priorItems=window.personalizedHomeItems;
+  window.personalizedHomeItems=function(){
+    const items=typeof priorItems==='function'?priorItems():[];
+    if(!currentUser||currentUser.role!=='job_seeker')return items;
+    const email=norm(currentUser.email);
+    const closed=(data.jobApplications||[]).filter(a=>norm(a.applicantEmail)===email&&a.status==='Closed');
+    if(!closed.length)return items;
+    return (items||[]).filter(item=>{
+      if(norm(item?.title)!=='new job available')return true;
+      const detail=norm(item?.detail);
+      return !closed.some(a=>detail.includes(norm(a.jobTitle))&&( !a.employerName || detail.includes(norm(a.employerName)) ));
+    });
+  };
+
+  document.addEventListener('click',function(e){
+    if(e.target.closest('[data-close-job-owner-277]')){
+      const box=document.getElementById('jobOwnerInfoBox277');if(box)box.style.display='none';return;
+    }
+    const b=e.target.closest('button[onclick*="viewAcceptedJobOwnerInformation"]');
+    if(!b)return;
+    const m=(b.getAttribute('onclick')||'').match(/viewAcceptedJobOwnerInformation\(['"]([^'"]+)['"]\)/);
+    if(!m)return;
+    e.preventDefault();e.stopImmediatePropagation();completeAndShow(m[1]);
+  },true);
+
+  let touch=null;
+  document.addEventListener('touchstart',function(e){
+    const b=e.target.closest('button[onclick*="viewAcceptedJobOwnerInformation"]');if(!b)return;
+    const p=e.changedTouches&&e.changedTouches[0];touch=p?{x:p.clientX,y:p.clientY,b}:null;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    const b=e.target.closest('button[onclick*="viewAcceptedJobOwnerInformation"]');
+    if(!b||!touch||touch.b!==b)return;
+    const p=e.changedTouches&&e.changedTouches[0];
+    const moved=p&&(Math.abs(p.clientX-touch.x)>12||Math.abs(p.clientY-touch.y)>12);touch=null;
+    if(moved)return;
+    const m=(b.getAttribute('onclick')||'').match(/viewAcceptedJobOwnerInformation\(['"]([^'"]+)['"]\)/);
+    if(!m)return;
+    e.preventDefault();e.stopImmediatePropagation();completeAndShow(m[1]);
+  },{passive:false,capture:true});
+
+  const style=document.createElement('style');
+  style.textContent=`#jobOwnerInfoBox277{display:none;position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:18px}.job-owner-dialog277{width:min(520px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)}@media(max-width:700px){.job-owner-dialog277 .actions{display:grid;grid-template-columns:1fr;gap:10px}.job-owner-dialog277 .btn{width:100%;min-height:50px;text-align:center}}`;
+  document.head.appendChild(style);
+  window.__hcVersion='V7.8.277';
+})();
+</script>
