@@ -8770,3 +8770,100 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.271';
 })();
 </script>
+
+<script id="v78272-taxi-driver-agree-top-mobile-contact">
+/* V7.8.272 — Taxi/Limo hiring only.
+   Keep driver agreement first on Home, make phone taps reliable,
+   and show owner contact immediately after agreement. */
+(function(){
+  function norm(v){return String(v||'').trim().toLowerCase();}
+  function sameEmail(a,b){return !!norm(a)&&norm(a)===norm(b);}
+  function sid(v){return String(v==null?'':v).trim();}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function assignment(id){const k=sid(id);return (data.taxiLimoDriverAssignments||[]).find(a=>sid(a.id)===k||sid(a.dbId)===k);}
+  function ownerFor(a){return (data.taxiLimoOwners||[]).find(o=>sameEmail(o.ownerEmail,a&&a.ownerEmail))||{};}
+  function contactFor(a){
+    const o=ownerFor(a);
+    return {
+      name:a?.ownerName||o.ownerName||'Not provided',
+      company:o.companyName||'Not provided',
+      phone:o.phone||a?.ownerPhone||'Not provided',
+      email:a?.ownerEmail||o.ownerEmail||'Not provided',
+      vehicle:a?.vehicleLabel||'Not provided'
+    };
+  }
+  function showContactBox(a){
+    if(!a)return alert('Owner information is not available.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only the selected driver can view this owner information.');
+    if(!['Pending Admin Approval','Approved'].includes(String(a.status||'')))return alert('Please click Agree first.');
+    const c=contactFor(a);
+    document.getElementById('taxiOwnerContactReleaseV78272')?.remove();
+    const box=document.createElement('div');
+    box.id='taxiOwnerContactReleaseV78272';
+    box.className='card';
+    box.style.cssText='position:fixed;z-index:100000;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);max-height:85vh;overflow:auto;border:3px solid #16a34a;box-shadow:0 20px 60px rgba(0,0,0,.35);background:#fff;padding:20px';
+    box.innerHTML=`<h2 style="margin-top:0">✅ Taxi/Limo Owner Information</h2>
+      <p><b>Name:</b> ${esc(c.name)}</p>
+      <p><b>Company:</b> ${esc(c.company)}</p>
+      <p><b>Phone:</b> <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></p>
+      <p><b>Email:</b> <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>
+      <p><b>Vehicle:</b> ${esc(c.vehicle)}</p>
+      <button class="btn primary" type="button" data-close-taxi-owner-contact="1" style="width:100%;min-height:48px">Close</button>`;
+    document.body.appendChild(box);
+    box.querySelector('[data-close-taxi-owner-contact]')?.addEventListener('click',()=>box.remove());
+  }
+  window.viewTaxiOwnerInformation=function(id){showContactBox(assignment(id));};
+
+  const previousAgree=window.taxiDriverAgreeHire;
+  window.taxiDriverAgreeHire=async function(id){
+    const a=assignment(id);
+    if(!a)return alert('Hire request not found.');
+    if(a.status==='Waiting Driver Acceptance'){
+      const result=await previousAgree.call(this,id);
+      const refreshed=assignment(id)||a;
+      if(['Pending Admin Approval','Approved'].includes(String(refreshed.status||'')))showContactBox(refreshed);
+      return result;
+    }
+    if(['Pending Admin Approval','Approved'].includes(String(a.status||'')))return showContactBox(a);
+    return previousAgree.call(this,id);
+  };
+  window.taxiDriverAcceptHire=window.taxiDriverAgreeHire;
+
+  function moveAgreementFirst(){
+    if(!currentUser||!['taxi_limo_driver','taxi_driver'].includes(norm(currentUser.role)))return;
+    const home=document.getElementById('home');
+    const panel=document.getElementById('taxiDriverAgreeOwnerV78271');
+    if(!home||!panel)return;
+    if(home.firstElementChild!==panel)home.insertBefore(panel,home.firstElementChild);
+    panel.style.marginTop='0';
+    panel.querySelectorAll('button').forEach(b=>{b.type='button';b.style.minHeight='48px';});
+  }
+  const priorHome=window.home;
+  window.home=function(){
+    const out=priorHome.apply(this,arguments);
+    setTimeout(moveAgreementFirst,0);
+    return out;
+  };
+
+  // Phone-safe delegated tap fallback for this agreement panel only.
+  let touch=null;
+  document.addEventListener('touchstart',function(e){
+    const b=e.target.closest?.('#taxiDriverAgreeOwnerV78271 button');
+    if(!b)return;
+    const t=e.changedTouches&&e.changedTouches[0];
+    touch=t?{button:b,x:t.clientX,y:t.clientY,time:Date.now()}:null;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!touch)return;
+    const saved=touch;touch=null;
+    const t=e.changedTouches&&e.changedTouches[0];
+    if(!t||Math.abs(t.clientX-saved.x)>12||Math.abs(t.clientY-saved.y)>12||Date.now()-saved.time>900)return;
+    e.preventDefault();
+    saved.button.click();
+  },{passive:false});
+
+  new MutationObserver(()=>moveAgreementFirst()).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('DOMContentLoaded',moveAgreementFirst);
+  window.__hcVersion='V7.8.272';
+})();
+</script>
