@@ -1,14 +1,15 @@
-# Habesha Agenagn V7.8.307
+# Habesha Agenagn V7.8.307 — Rentals Finished Photo Upload
 
-Rental-only completion update.
+Rental-only update:
+- Removed the obsolete duplicate Rental controller while preserving the active Rental workflow.
+- Property photos upload to the public `rental-property-media` Supabase Storage bucket.
+- The property is saved first; its database ID becomes the photo folder.
+- Photo URLs are attached to the same property and verified after reload.
+- The SQL supports `properties.id` and `properties.owner_id` whether they are UUID or text columns.
+- Property photos display after refresh and open in a larger viewer on phone and laptop.
+- No other category was changed.
 
-- Kept the cleaned single Rental controller from V7.8.306.
-- Property photos now upload to Supabase Storage instead of saving file names only.
-- The property is created first, then photos are uploaded and attached to that exact property.
-- The listing is reloaded to verify all photo URLs before success is shown.
-- If photo upload fails, the incomplete property row is removed and the form stays available for retry.
-- Property photos display after refresh and open in a large viewer on phone and laptop.
-- Rental request, owner accept/decline, seeker information release, admin approval, edit, and delete flows were left unchanged.
+## Required Supabase step
+Run once:
 
-Required SQL:
 `supabase/v7_8_307_rental_property_photo_storage.sql`
