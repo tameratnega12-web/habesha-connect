@@ -10738,3 +10738,63 @@ window.__hcVersion='V7.8.213';
 <style id="v78302-marketplace-post-style">
 .market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
 </style>
+
+<script id="v78308-truck-driver-agree-inside-new-activity">
+/* V7.8.308 — Truck Driver home only.
+   Show the driver Agree action directly inside Your New Activity and remove the
+   duplicate New Transactions — Action Required block for truck drivers.
+   No status, Supabase, email, form, rental, shipping, or other category changes. */
+(function(){
+  'use strict';
+  const waitingStatuses=new Set([
+    'Owner Accepted - Waiting Driver Agreement',
+    'Accepted - Waiting Driver Agreement',
+    'Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'
+  ]);
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+
+  const priorFeed=window.personalizedHomeFeed;
+  window.personalizedHomeFeed=function(){
+    if(!window.currentUser||currentUser.role!=='driver')return typeof priorFeed==='function'?priorFeed.apply(this,arguments):'';
+    const items=typeof personalizedHomeItems==='function'?personalizedHomeItems():[];
+    const cards=items.map(x=>{
+      const app=(data.truckApplications||[]).find(a=>
+        sameEmail(a.driverEmail,currentUser.email)&&
+        waitingStatuses.has(String(a.status||''))&&
+        String(a.jobTitle||'')===String((x.detail||'').split(' • ')[0]||'')
+      );
+      if(x.title==='Truck Job Application'&&app){
+        return `<div class="card" style="border-left:5px solid #dc2626">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+            <h3 style="margin:0">📋 Truck Owner Accepted — Agreement Required</h3>
+            <span class="pill warn">${esc(app.status)}</span>
+          </div>
+          <p><b>Job:</b> ${esc(app.jobTitle||'Truck Driver Job')}</p>
+          <p><b>Owner:</b> ${esc(app.ownerName||'Truck Owner')}</p>
+          <p class="muted">Click Agree to receive the truck owner information.</p>
+          <button class="btn good" type="button" onclick="driverAgreeTruckJob('${esc(app.id)}')">Agree</button>
+        </div>`;
+      }
+      return `<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${esc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${esc(x.status||'Available')}</span></div><p>${esc(x.detail)}</p><button class="btn primary" type="button" onclick="${x.action||`show('${x.page}')`}">Open ${esc(labels[x.page]||'Transaction')}</button></div>`;
+    }).join('');
+    return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${items.length?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
+  };
+
+  const priorDriverActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    const html=typeof priorDriverActions==='function'?priorDriverActions.apply(this,arguments):'';
+    const box=document.createElement('div');
+    box.innerHTML=String(html||'');
+    box.querySelectorAll('#truckingPriorityTransactionsV78266').forEach(el=>el.remove());
+    box.querySelectorAll('section').forEach(el=>{
+      const text=norm(el.textContent);
+      if(text.includes('new transactions — action required')&&text.includes('agreement required'))el.remove();
+    });
+    return box.innerHTML;
+  };
+
+  window.__hcVersion='V7.8.308';
+})();
+</script>

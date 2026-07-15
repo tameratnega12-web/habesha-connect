@@ -1,0 +1,1 @@
+V7.8.306 verified rental-only update based on V7.8.304. Owner Accept now sets request Approved, marks property Rented, notifies seeker, and shows Agree. Accept, Decline, and Agree buttons use type=button. No other category changed. No new SQL required.
