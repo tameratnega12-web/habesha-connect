@@ -49,6 +49,7 @@
   <section id="services" class="page hide"></section>
   <section id="customer" class="page hide"></section>
   <section id="shipping" class="page hide"></section>
+  <section id="rentals" class="page hide"></section>
   <section id="marketplace" class="page hide"></section>
   <section id="jobs" class="page hide"></section>
   <section id="truck" class="page hide"></section>
@@ -75,15 +76,15 @@
 
 
 const $=id=>document.getElementById(id);
-const pages=['home','account','profile','services','customer','shipping','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications','admin','how','about','contact','help','report','privacy','terms'];
-const labels={home:'Home',account:'Account',profile:'Profile',services:'My Service',customer:'Customer',shipping:'Shipping',marketplace:'Marketplace',jobs:'Job Seekers',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Directory',events:'Events',messages:'Messages',notifications:'Notifications',admin:'Admin',how:'How It Works',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
+const pages=['home','account','profile','services','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications','admin','how','about','contact','help','report','privacy','terms'];
+const labels={home:'Home',account:'Account',profile:'Profile',services:'My Service',customer:'Customer',shipping:'Shipping',rentals:'Rentals',marketplace:'Marketplace',jobs:'Job Seekers',truck:'Trucking',home_services:'Home Services',taxi:'Taxi/Limo',business:'Business Directory',events:'Events',messages:'Messages',notifications:'Notifications',admin:'Admin',how:'How It Works',about:'About',contact:'Contact',help:'Help / FAQ',report:'Report Problem',privacy:'Privacy',terms:'Terms'};
 const hcSupabase=(window.supabase&&window.SUPABASE_URL&&window.SUPABASE_ANON_KEY)?window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY):null;
 function authReady(){return !!hcSupabase}
 function cleanEmail(v){return String(v||'').trim().toLowerCase();}
 function showAuthStatus(){let el=$("authStatus"); if(el) el.textContent=authReady()?"Supabase connected":"Not connected";}
 function togglePassword(id,btn){let input=$(id);if(!input)return;input.type=input.type==='password'?'text':'password';if(btn)btn.textContent=input.type==='password'?'👁️':'🙈';}
 function passwordField(id,placeholder,auto){return `<div style="display:flex;gap:8px;align-items:center"><input id="${id}" type="password" placeholder="${placeholder||''}" autocomplete="${auto||'current-password'}" style="flex:1"><button type="button" class="btn ghost" onclick="togglePassword('${id}',this)" title="Show password">👁️</button></div>`;}
-const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Create a business profile so customers can find what you serve.'},marketplace:{icon:'🛒',title:'Marketplace',desc:'Buy, sell, post items, browse items, and manage marketplace requests.'},employer:{icon:'💼',title:'Employer',desc:'Post jobs from Business Directory and review approved posts.'},job_seeker:{icon:'🔎',title:'Job Seeker',desc:'Browse approved jobs and contact businesses directly.'},event_organizer:{icon:'📅',title:'Events Organizer',desc:'Create community, church, concert, festival, business, charity, family, and sports events.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},taxi_limo_owner:{icon:'🚕',title:'Taxi/Limo Owner',desc:'Manage taxi/limo vehicles, owner dashboard, and driver requests.'},taxi_limo_driver:{icon:'🚕',title:'Taxi/Limo Driver',desc:'Apply to drive for taxi/limo owners and manage approved hiring connections.'},taxi_driver:{icon:'🚕',title:'Taxi/Limo Driver',desc:'Apply to drive for taxi/limo owners and manage approved hiring connections.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, taxi, job seekers, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
+const ROLE_INFO={traveler:{icon:'✈️',title:'Traveler',desc:'Post trips and accept sender package requests.'},sender:{icon:'📦',title:'Sender',desc:'Find travelers and request package space.'},owner:{icon:'🏠',title:'Property Owner',desc:'Post rental properties and manage seeker requests.'},rent_seeker:{icon:'🔑',title:'Rent Seeker',desc:'Browse approved properties and request a rental.'},truck_owner:{icon:'🚛',title:'Truck Owner',desc:'Post trucks, hire drivers, track records, and manage loads.'},driver:{icon:'🚚',title:'Truck Driver',desc:'Manage trucking jobs and deliveries.'},business_owner:{icon:'🏢',title:'Business Owner',desc:'Create a business profile so customers can find what you serve.'},marketplace:{icon:'🛒',title:'Marketplace',desc:'Buy, sell, post items, browse items, and manage marketplace requests.'},employer:{icon:'💼',title:'Employer',desc:'Post jobs from Business Directory and review approved posts.'},job_seeker:{icon:'🔎',title:'Job Seeker',desc:'Browse approved jobs and contact businesses directly.'},event_organizer:{icon:'📅',title:'Events Organizer',desc:'Create community, church, concert, festival, business, charity, family, and sports events.'},service_provider:{icon:'🛠️',title:'Home Service Provider',desc:'Post home services and manage customer requests.'},taxi_limo_owner:{icon:'🚕',title:'Taxi/Limo Owner',desc:'Manage taxi/limo vehicles, owner dashboard, and driver requests.'},taxi_limo_driver:{icon:'🚕',title:'Taxi/Limo Driver',desc:'Apply to drive for taxi/limo owners and manage approved hiring connections.'},taxi_driver:{icon:'🚕',title:'Taxi/Limo Driver',desc:'Apply to drive for taxi/limo owners and manage approved hiring connections.'},customer:{icon:'🧭',title:'Customer',desc:'Browse marketplace, taxi, job seekers, messages, and notifications.'},admin:{icon:'⚙️',title:'Admin',desc:'Manage the full platform.'}};
 const ROLE_LIST=['traveler','sender','owner','rent_seeker','truck_owner','driver','taxi_limo_owner','taxi_limo_driver','service_provider','job_seeker','business_owner','event_organizer','marketplace','customer'];
 function serviceRoleChoices(currentRoles){let list=[...ROLE_LIST]; if((currentRoles||[]).includes('admin')&&!list.includes('admin'))list.push('admin'); return list;}
 
@@ -220,7 +221,7 @@ function contactLine(label,name,phone,email){return `<p><b>${label}:</b> ${name|
 ensureArrays();
 const PUBLIC_PAGES=['how','about','contact','help','report','privacy','terms'];
 const ROLE_PAGES={
- guest:['home','account','customer','shipping','marketplace','jobs','truck','home_services','taxi','business','events',...PUBLIC_PAGES],
+ guest:['home','account','customer','shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events',...PUBLIC_PAGES],
  traveler:['home','services','profile','shipping','messages','notifications','events',...PUBLIC_PAGES],
  sender:['home','services','profile','shipping','messages','notifications','events',...PUBLIC_PAGES],
  owner:['home','services','profile','messages','notifications','events',...PUBLIC_PAGES],
@@ -257,7 +258,7 @@ const ROLE_NAV_PAGES={
  event_organizer:['home','profile','services','events'],
  marketplace:['home','profile','services','marketplace'],
  customer:['home','profile','services','shipping','marketplace','jobs','truck','home_services','taxi','business','events'],
- admin:['home','profile','services','admin','taxi','events']
+ admin:['home','profile','services','admin','rentals','taxi','events']
 };
 function rolePages(){
  const allSignedIn=['home','services','profile','customer','shipping','marketplace','jobs','truck','home_services','taxi','business','events','messages','notifications',...PUBLIC_PAGES];
@@ -292,7 +293,7 @@ let adminDataLoaded=false;
 let adminBackgroundRefreshing=false;
 let pageSyncRunning=false;
 let lastPageSyncAt={};
-function isSharedDataPage(p){return ['home','customer','shipping','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
+function isSharedDataPage(p){return ['home','customer','shipping','rentals','marketplace','truck','home_services','taxi','business','events','messages','notifications','profile','admin'].includes(p);}
 async function backgroundPageSync(p,force=false){
  if(!authReady()||!isSharedDataPage(p))return;
  if(pageSyncRunning)return;
@@ -391,6 +392,7 @@ async function refreshPageData(p){
    ]);
    recalcTripSpacesFromShipments();
  }
+ if(p==='rentals'||p==='admin'){ await loadRentals319(); }
  if(p==='profile'||p==='shipping'||p==='admin'){
    await loadSupabaseTrips();
    await loadSupabaseShipments();
@@ -526,6 +528,7 @@ async function renderPage(p){
  if(p==='services')services();
  if(p==='customer')customer();
  if(p==='shipping')await shipping();
+ if(p==='rentals')await rentalsPage319();
  
  if(p==='marketplace')marketplace();
  if(p==='jobs')jobs();
@@ -547,7 +550,7 @@ async function renderPage(p){
  // V7.8.115: place every user-visible and action-required transaction directly below the How It Works note.
  // V7.8.159: Shipping has its own fixed role order. Do not let the global transaction mover
  // pull Available Items, Requests, or Trips above the Traveler/Sender posting forms.
- if(['customer','marketplace','jobs','truck','home_services','taxi','business','events'].includes(p)){
+ if(['customer','rentals','marketplace','jobs','truck','home_services','taxi','business','events'].includes(p)){
    requestAnimationFrame(()=>placeCategoryTransactionsAtTop(p));
  }
 }
@@ -617,8 +620,8 @@ function roleWelcome(){
  return '<p><b>Your dashboard:</b> open the tools available for your Habesha Connect role.</p>';
 }
 function roleServices(){
- const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['🔎','Job Seekers','Approved jobs from Business Directory businesses. Job seekers contact the business directly.'],truck:['🚚','Trucking & Trailer','Truck owners, drivers, and trailer owners can post jobs, find drivers, apply for jobs, and rent trailers.'],home_services:['🛠️','Home Services','Customers can find cleaners, movers, repairs, electricians, plumbers, and helpers.'],taxi:['🚕','Taxi/Limo','Taxi/Limo owners and drivers can manage vehicles, availability, and hiring connections.'],business:['🏢','Business Directory','Create or browse community business profiles, services, hours, phone, menu, and directions.'],events:['📅','Events','Community, church, cultural, business, family, charity, and sports events.']};
- const order=['shipping','marketplace','jobs','truck','home_services','taxi','business','events'];
+ const info={shipping:['📦','Shipping','Traveler/sender matching, trips, requests, tracking, and payments.'],rentals:['🏠','Rentals','Property owners post homes and rent seekers request approved rentals.'],marketplace:['🛒','Marketplace','Buy and sell community items with messaging.'],jobs:['🔎','Job Seekers','Approved jobs from Business Directory businesses. Job seekers contact the business directly.'],truck:['🚚','Trucking & Trailer','Truck owners, drivers, and trailer owners can post jobs, find drivers, apply for jobs, and rent trailers.'],home_services:['🛠️','Home Services','Customers can find cleaners, movers, repairs, electricians, plumbers, and helpers.'],taxi:['🚕','Taxi/Limo','Taxi/Limo owners and drivers can manage vehicles, availability, and hiring connections.'],business:['🏢','Business Directory','Create or browse community business profiles, services, hours, phone, menu, and directions.'],events:['📅','Events','Community, church, cultural, business, family, charity, and sports events.']};
+ const order=['shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events'];
  const cards=order.filter(p=>info[p]&&(!currentUser||isAllowedPage(p))).map(p=>service(info[p][0],info[p][1],info[p][2],p)).join('');
  const customerOpen=currentUser?"openService('customer')":"show('account')";
  const customerCard=`<div class="card"><div class="service-icon">🧭</div><h3>Customer</h3><p class="muted">Request home service, ride, shipping, marketplace, businesses, and events from one place.</p><button class="btn primary" onclick="${customerOpen}">Open</button></div>`;
@@ -843,6 +846,7 @@ function customer(){
 function jumpToSection(id){let el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='3px solid #fde68a';el.style.borderRadius='12px';setTimeout(()=>{el.style.outline='';},1400);}}
 const SERVICE_ROLE_CHOICES={
   shipping:[['traveler','Traveler','Post a trip or accept items to carry.'],['sender','Sender','Post an item or request space from a traveler.']],
+  rentals:[['owner','Property Owner','Post properties and manage seeker requests.'],['rent_seeker','Rent Seeker','Browse approved properties and request a rental.']],
   truck:[['truck_owner','Truck Owner','Post driver jobs, manage applications, and use trailer rentals.'],['driver','Truck Driver','Create driver profile, apply for jobs, and request trailers.'],['truck_owner','Trailer Owner','Post trailers for rent and manage trailer requests.']],
   taxi:[['taxi_limo_owner','Taxi/Limo Owner','Post taxi/limo jobs, vehicles, and hire drivers.'],['taxi_limo_driver','Taxi/Limo Driver','Apply as a driver and accept ride requests.'],['customer','Customer','Request a taxi/limo ride.']],
   marketplace:[['marketplace','Marketplace Seller','Post items for sale and manage requests.'],['customer','Customer / Buyer','Browse items and request to buy.']],
@@ -905,6 +909,7 @@ function categoryIntro(page){
   const text={
     customer:'Choose what you need today. Customer tools help you request rides, services, rentals, shipping, marketplace items, businesses, and events.',
     shipping:'Travelers can post trips or accept posted items. Senders can request space from travelers or post an item to ship.',
+    rentals:'Property owners post homes for admin approval. Rent seekers request approved properties. Owners accept or decline, then approved seekers can view owner contact information.',
     marketplace:'Sellers can post items for approval. Customers can browse approved marketplace items and send requests.',
     jobs:'Job seekers can browse approved jobs. Business owners can post jobs from their business profile.',
     truck:'Truck owners, drivers, and trailer owners can connect for driver jobs, applications, and trailer rentals.',
@@ -977,7 +982,7 @@ function roleDashboardCards(){
  if(currentUser.role==='driver')return `<div class="grid"><div class="card"><h3>🚚 Trucking Dashboard</h3><p class="muted">See available jobs, applications, and trailers for rent.</p><button class="btn primary" onclick="show('truck')">Open Trucking</button></div></div>`;
  if(currentUser.role==='service_provider')return `<div class="grid"><div class="card"><h3>🛠️ My Home Services</h3><p class="muted">Post services and manage customer requests.</p><button class="btn primary" onclick="show('home_services')">Open Home Services</button></div><div class="card"><h3>📋 Requests</h3><p class="muted">View approved customer requests and accept or decline.</p><button class="btn" onclick="show('home_services')">See Requests</button></div></div>`;
  if(currentUser.role==='event_organizer')return `<div class="grid"><div class="card"><h3>📅 Events Organizer</h3><p class="muted">Create and manage community events.</p><button class="btn primary" onclick="show('events')">Open Events Dashboard</button></div></div>`;
- if(currentUser.role==='admin')return `<div class="grid"><div class="card"><h3>⚙️ Admin Center</h3><p class="muted">Manage users, verification, payments, reports, and settings.</p><button class="btn primary" onclick="show('admin')">Open Admin</button></div><div class="card"><h3>🏠 Rentals</h3><p class="muted">Approve properties and manage requests.</p></div><div class="card"><h3>📦 Shipping</h3><p class="muted">Review trips, shipments, and payments.</p></div></div>`;
+ if(currentUser.role==='admin')return `<div class="grid"><div class="card"><h3>⚙️ Admin Center</h3><p class="muted">Manage users, verification, payments, reports, and settings.</p><button class="btn primary" onclick="show('admin')">Open Admin</button></div><div class="card"><h3>🏠 Rentals</h3><p class="muted">Approve properties and manage requests.</p><button class="btn primary" onclick="show('rentals')">Open Rentals</button></div><div class="card"><h3>📦 Shipping</h3><p class="muted">Review trips, shipments, and payments.</p></div></div>`;
  return `<div class="card"><h3>Welcome</h3><p class="muted">Your role is ${currentUser.role}. Your available tools are shown in the top menu.</p></div>`;
 }
 function services(){if(!requireLogin())return;let roles=(currentUser.roles||[currentUser.role||'customer']).map(r=>r==='employer'?'business_owner':r).filter((r,i,a)=>a.indexOf(r)===i);if(currentUser.role==='employer'){currentUser.role='business_owner';currentUser.active_role='business_owner';}currentUser.roles=roles;let visibleRoles=currentUser.role==='business_owner'?roles.filter(r=>r!=='job_seeker'):roles;let cards=visibleRoles.map(r=>{let info=ROLE_INFO[r]||ROLE_INFO.customer;let active=r===currentUser.role;return `<div class="card ${active?'':'locked'}"><div class="service-icon">${info.icon}</div><h3>${info.title} ${active?'<span class="pill good">Active</span>':''}</h3><p class="muted">${info.desc}</p><button class="btn ${active?'ghost':'primary'}" onclick="switchRole('${r}')">${active?'Current Dashboard':'Continue as '+info.title}</button></div>`}).join('');let options=serviceRoleChoices(roles).filter(r=>currentUser.role!=='business_owner'||r!=='job_seeker').map(r=>{let has=roles.includes(r);let info=ROLE_INFO[r];let adminNote=r==='admin'?'<span class="small"> — owner only</span>':'';return `<label style="display:block;margin:8px 0"><input class="svcCheck" type="checkbox" value="${r}" ${has?'checked':''} ${r==='admin'?'disabled':''} style="width:auto;margin-right:8px">${info.icon} ${info.title}${adminNote}</label>`}).join('');$('services').innerHTML=`<h2>🧭 My Services</h2><div class="hero"><h1>Welcome back, ${currentUser.name}</h1><p><b>What would you like to do today?</b></p><p>Choose the service you want to use today.</p></div><h3 style="margin-top:22px">Continue as</h3><div class="grid">${cards}</div><div class="card" id="manageMyRolesSection253" style="margin-top:18px"><h3>Manage My Roles</h3><p class="muted">Choose the services you want to use with this account.</p><div class="grid"><div>${options}</div><div><p><b>Current active role:</b> <span class="pill">${roleTitle(currentUser.role)}</span></p><button class="btn primary" onclick="saveRoleChoices()">Save My Services</button></div></div></div>`}
@@ -987,7 +992,7 @@ async function profile(){
  if(!requireLogin())return;
  let payments=data.payments.filter(p=>paymentVisibleForActiveRole(p));
  let myShips=data.shipments.filter(x=>x.senderEmail===currentUser.email||x.travelerEmail===currentUser.email||String(x.travelerId||'')===String(currentUser.id||'')||String(x.senderId||'')===String(currentUser.id||'')).length;
- let myRentals=data.rentals.filter(x=>x.ownerEmail===currentUser.email).length;
+ let myRentals=(typeof rental319Properties!=='undefined'?rental319Properties:[]).filter(x=>String(x.owner_profile_id)===String(currentUser.id||'')).length;
  let myTrips=data.trips.filter(x=>x.travelerEmail===currentUser.email||String(x.travelerId||'')===String(currentUser.id||'')).length;
  const isMyTravelerShipment=s=>s.travelerEmail===currentUser.email||String(s.travelerId||'')===String(currentUser.id||'');
  const myTravelerShipments=(data.shipments||[]).filter(isMyTravelerShipment);
@@ -9542,4 +9547,49 @@ window.__hcVersion='V7.8.213';
 .rentalPhotoPicker309{width:auto!important;max-width:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .rentalPhotoPicker309 input[type=file]{pointer-events:auto!important;-webkit-appearance:none}
 @media(max-width:720px){.rentalPhotoPicker309{width:100%!important;min-height:54px!important;font-size:16px!important}}
+</style>
+
+<script id="v78319-rentals-clean-module">
+/* V7.8.319 — single clean Rentals implementation. No legacy Rental functions are used. */
+const RENTAL319_MAX_PHOTOS=6;
+const RENTAL319_MAX_BYTES=5*1024*1024;
+let rental319Properties=[];
+let rental319Requests=[];
+let rental319PendingFiles=[];
+function r319esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function r319profileId(){return currentUser&&currentUser.id?String(currentUser.id):'';}
+function r319isOwner(){return currentUser&&currentUser.role==='owner';}
+function r319isSeeker(){return currentUser&&currentUser.role==='rent_seeker';}
+function r319isAdmin(){return currentUser&&currentUser.role==='admin';}
+async function loadRentals319(){
+ if(!authReady()){rental319Properties=[];rental319Requests=[];return;}
+ const [pRes,rRes]=await Promise.all([
+  hcSupabase.from('rental_properties').select('*').order('created_at',{ascending:false}),
+  currentUser?hcSupabase.from('rental_requests').select('*').order('created_at',{ascending:false}):Promise.resolve({data:[],error:null})
+ ]);
+ if(pRes.error)console.error('Rental properties load failed',pRes.error); else rental319Properties=pRes.data||[];
+ if(rRes.error)console.error('Rental requests load failed',rRes.error); else rental319Requests=rRes.data||[];
+}
+function rental319RoleChooser(){return `<div class="grid"><div class="card"><h3>🏠 Property Owner</h3><p class="muted">Post a property and manage rental requests.</p><button type="button" class="btn primary" onclick="chooseServiceRole('rentals','owner')">Continue as Property Owner</button></div><div class="card"><h3>🔑 Rent Seeker</h3><p class="muted">Browse approved properties and request a rental.</p><button type="button" class="btn primary" onclick="chooseServiceRole('rentals','rent_seeker')">Continue as Rent Seeker</button></div></div>`;}
+function r319photos(row){return Array.isArray(row.photo_urls)?row.photo_urls.filter(Boolean):[];}
+function r319gallery(row){const a=r319photos(row);if(!a.length)return '';return `<div class="r319gallery">${a.map((u,i)=>`<button type="button" class="r319photo" onclick="openRentalPhoto319('${r319esc(u)}')"><img src="${r319esc(u)}" alt="Property photo ${i+1}"></button>`).join('')}</div>`;}
+function openRentalPhoto319(url){let m=document.getElementById('r319Modal');if(!m){m=document.createElement('div');m.id='r319Modal';m.className='r319modal';m.innerHTML='<button type="button" aria-label="Close" onclick="closeRentalPhoto319()">×</button><img id="r319ModalImg" alt="Large property photo">';document.body.appendChild(m);}document.getElementById('r319ModalImg').src=url;m.style.display='flex';}
+function closeRentalPhoto319(){let m=document.getElementById('r319Modal');if(m)m.style.display='none';}
+function rental319OwnerForm(){return `<div class="card" id="rental319OwnerForm"><h3>Add Property</h3><div class="row"><div><label>Property title</label><input id="r319Title" placeholder="2-bedroom apartment"></div><div><label>City</label><input id="r319City" placeholder="Atlanta, GA"></div></div><div class="row"><div><label>Monthly rent</label><input id="r319Rent" type="number" min="0" step="1" placeholder="1500"></div><div><label>Property type</label><select id="r319Type"><option>Apartment</option><option>House</option><option>Room</option><option>Townhouse</option><option>Condo</option><option>Other</option></select></div></div><label>Address or neighborhood</label><input id="r319Address" placeholder="Neighborhood or general location"><label>Description</label><textarea id="r319Description" placeholder="Bedrooms, bathrooms, rules, availability, utilities..."></textarea><label>Property photos — up to 6, 5 MB each</label><input id="r319Files" type="file" accept="image/*" multiple onchange="selectRentalPhotos319(this.files)"><div id="r319Preview"></div><button type="button" class="btn primary" onclick="postRentalProperty319()">Post Property for Approval</button></div>`;}
+function selectRentalPhotos319(files){for(const f of Array.from(files||[])){if(!String(f.type||'').startsWith('image/')){alert('Every selected file must be an image.');continue;}if(f.size>RENTAL319_MAX_BYTES){alert('Each photo must be 5 MB or smaller.');continue;}const key=f.name+'|'+f.size+'|'+f.lastModified;if(rental319PendingFiles.some(x=>x.name+'|'+x.size+'|'+x.lastModified===key))continue;if(rental319PendingFiles.length>=RENTAL319_MAX_PHOTOS){alert('You can upload up to 6 photos.');break;}rental319PendingFiles.push(f);}renderRentalPreview319();let el=document.getElementById('r319Files');if(el)el.value='';}
+function renderRentalPreview319(){let h=document.getElementById('r319Preview');if(!h)return;h.innerHTML=rental319PendingFiles.length?`<div class="r319gallery">${rental319PendingFiles.map((f,i)=>`<div class="r319pending"><img src="${URL.createObjectURL(f)}" alt="Selected photo ${i+1}"><button type="button" class="btn bad" onclick="removeRentalPhoto319(${i})">Delete</button></div>`).join('')}</div>`:'';}
+function removeRentalPhoto319(i){rental319PendingFiles.splice(i,1);renderRentalPreview319();}
+async function uploadRentalPhotos319(propertyId){const urls=[];for(let i=0;i<rental319PendingFiles.length;i++){const f=rental319PendingFiles[i];const ext=(f.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');const path=`${r319profileId()}/${propertyId}/${Date.now()}_${i}.${ext}`;const up=await hcSupabase.storage.from('rental-photos').upload(path,f,{upsert:false,contentType:f.type});if(up.error)throw up.error;const pub=hcSupabase.storage.from('rental-photos').getPublicUrl(path);urls.push(pub.data.publicUrl);}return urls;}
+async function postRentalProperty319(){if(!requireLogin()||!r319isOwner())return alert('Continue as Property Owner first.');if(!authReady())return alert('Supabase is not connected.');const title=document.getElementById('r319Title').value.trim(),city=document.getElementById('r319City').value.trim(),rent=Number(document.getElementById('r319Rent').value),type=document.getElementById('r319Type').value,address=document.getElementById('r319Address').value.trim(),description=document.getElementById('r319Description').value.trim();if(!title||!city||!rent||!description)return alert('Complete title, city, monthly rent, and description.');const btn=document.querySelector('#rental319OwnerForm button[onclick*="postRentalProperty319"]');try{if(btn)btn.disabled=true;const ins=await hcSupabase.rpc('create_rental_property_v319',{p_title:title,p_city:city,p_monthly_rent:rent,p_property_type:type,p_address:address,p_description:description});if(ins.error)throw ins.error;const propertyId=ins.data;let urls=[];if(rental319PendingFiles.length)urls=await uploadRentalPhotos319(propertyId);if(urls.length){const attach=await hcSupabase.rpc('attach_rental_photos_v319',{p_property_id:propertyId,p_photo_urls:urls});if(attach.error)throw attach.error;}rental319PendingFiles=[];alert('Property submitted for admin approval.');await loadRentals319();await rentalsPage319();}catch(e){console.error(e);alert('Property could not be posted: '+(e.message||e));}finally{if(btn)btn.disabled=false;}}
+function rental319PropertyCard(p,mode){const req=rental319Requests.find(x=>String(x.property_id)===String(p.id)&&String(x.seeker_profile_id)===r319profileId());let action='';if(mode==='seeker'){action=req?`<span class="pill ${req.status==='approved'?'good':req.status==='declined'?'bad':'warn'}">${r319esc(req.status)}</span>`:`<button type="button" class="btn primary" onclick="requestRental319('${p.id}')">Request This Rental</button>`;}if(mode==='admin'&&p.status==='pending')action=`<button type="button" class="btn primary" onclick="adminRentalProperty319('${p.id}',true)">Approve</button><button type="button" class="btn bad" onclick="adminRentalProperty319('${p.id}',false)">Reject</button>`;return `<div class="card">${r319gallery(p)}<h3>${r319esc(p.title)}</h3><p><span class="pill">${r319esc(p.property_type)}</span> <span class="pill">📍 ${r319esc(p.city)}</span></p><p><b>$${Number(p.monthly_rent||0).toLocaleString()}/month</b></p><p>${r319esc(p.description)}</p>${p.address?`<p><b>Area:</b> ${r319esc(p.address)}</p>`:''}<p>Status: <span class="pill ${p.status==='approved'?'good':p.status==='rejected'?'bad':'warn'}">${r319esc(p.status)}</span></p><div class="actions">${action}</div></div>`;}
+async function requestRental319(propertyId){if(!r319isSeeker())return alert('Continue as Rent Seeker first.');const note=prompt('Add a short message for the property owner (optional):','');if(note===null)return;const res=await hcSupabase.rpc('create_rental_request_v319',{p_property_id:propertyId,p_message:note});if(res.error)return alert('Request could not be sent: '+res.error.message);alert('Rental request sent to the owner.');await loadRentals319();await rentalsPage319();}
+async function ownerRentalDecision319(requestId,decision){const res=await hcSupabase.rpc('decide_rental_request_v319',{p_request_id:requestId,p_decision:decision});if(res.error)return alert('Rental decision failed: '+res.error.message);alert(decision==='accept'?'Request accepted.':'Request declined.');await loadRentals319();await rentalsPage319();}
+async function releaseRentalContact319(requestId){const res=await hcSupabase.rpc('release_rental_contact_v319',{p_request_id:requestId});if(res.error)return alert('Owner information could not be released: '+res.error.message);const row=res.data||{};alert(`Owner: ${row.owner_name||''}\nPhone: ${row.owner_phone||''}\nEmail: ${row.owner_email||''}`);await loadRentals319();await rentalsPage319();}
+async function adminRentalProperty319(propertyId,approve){const res=await hcSupabase.rpc('admin_decide_rental_property_v319',{p_property_id:propertyId,p_approve:approve});if(res.error)return alert('Admin action failed: '+res.error.message);await loadRentals319();await rentalsPage319();}
+function rental319OwnerRequests(){const mine=rental319Requests.filter(r=>String(r.owner_profile_id)===r319profileId());return `<div class="card"><h3>Rental Requests</h3>${mine.length?mine.map(r=>{const p=rental319Properties.find(x=>String(x.id)===String(r.property_id));return `<div class="item"><b>${r319esc(r.seeker_name||'Rent seeker')}</b> requested <b>${r319esc(p?.title||'property')}</b><p>${r319esc(r.message||'No message')}</p><span class="pill ${r.status==='approved'?'good':r.status==='declined'?'bad':'warn'}">${r319esc(r.status)}</span>${r.status==='pending'?`<div class="actions"><button type="button" class="btn primary" onclick="ownerRentalDecision319('${r.id}','accept')">Accept</button><button type="button" class="btn bad" onclick="ownerRentalDecision319('${r.id}','decline')">Decline</button></div>`:''}</div>`}).join(''):'<p class="muted">No rental requests yet.</p>'}</div>`;}
+function rental319SeekerRequests(){const mine=rental319Requests.filter(r=>String(r.seeker_profile_id)===r319profileId());return `<div class="card"><h3>My Rental Requests</h3>${mine.length?mine.map(r=>{const p=rental319Properties.find(x=>String(x.id)===String(r.property_id));return `<div class="item"><b>${r319esc(p?.title||'Property')}</b><p>Status: <span class="pill ${r.status==='approved'?'good':r.status==='declined'?'bad':'warn'}">${r319esc(r.status)}</span></p>${r.status==='approved'?`<button type="button" class="btn primary" onclick="releaseRentalContact319('${r.id}')">Request Owner Information</button>`:''}</div>`}).join(''):'<p class="muted">You have not requested a rental yet.</p>'}</div>`;}
+async function rentalsPage319(){const root=document.getElementById('rentals');if(!root)return;if(!currentUser){root.innerHTML='<h2>🏠 Rentals</h2>'+categoryIntro('rentals')+signInButton('Sign In to Use Rentals');return;}await loadRentals319();const active=currentUser.active_service||'';if(!['owner','rent_seeker'].includes(currentUser.role)&&!r319isAdmin()&&!active){root.innerHTML='<h2>🏠 Rentals</h2>'+categoryIntro('rentals')+rental319RoleChooser();return;}if(r319isAdmin()){const pending=rental319Properties.filter(p=>p.status==='pending');root.innerHTML='<h2>🏠 Rental Administration</h2>'+categoryIntro('rentals')+`<div class="grid">${pending.map(p=>rental319PropertyCard(p,'admin')).join('')||'<div class="card"><p>No pending rental properties.</p></div>'}</div>`;return;}if(r319isOwner()){const mine=rental319Properties.filter(p=>String(p.owner_profile_id)===r319profileId());root.innerHTML='<h2>🏠 Property Owner</h2>'+categoryIntro('rentals')+rental319OwnerRequests()+rental319OwnerForm()+`<h3>My Properties</h3><div class="grid">${mine.map(p=>rental319PropertyCard(p,'owner')).join('')||'<div class="card"><p>No properties posted yet.</p></div>'}</div>`;return;}const available=rental319Properties.filter(p=>p.status==='approved');root.innerHTML='<h2>🔑 Rent Seeker</h2>'+categoryIntro('rentals')+rental319SeekerRequests()+`<h3>Available Rentals</h3><div class="grid">${available.map(p=>rental319PropertyCard(p,'seeker')).join('')||'<div class="card"><p>No approved rentals available.</p></div>'}</div>`;}
+</script>
+<style id="v78319-rentals-style">
+.r319gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:9px;margin:10px 0}.r319photo{border:0;background:transparent;padding:0;cursor:pointer}.r319photo img,.r319pending img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.r319pending{position:relative}.r319pending button{position:absolute;right:5px;top:5px}.r319modal{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.9);align-items:center;justify-content:center;padding:18px}.r319modal img{max-width:96vw;max-height:90vh;object-fit:contain}.r319modal>button{position:absolute;right:18px;top:10px;border:0;background:transparent;color:white;font-size:40px;cursor:pointer}@media(max-width:720px){#rental319OwnerForm input,#rental319OwnerForm select,#rental319OwnerForm textarea,#rental319OwnerForm button{font-size:16px}#rental319OwnerForm>.btn{width:100%;min-height:54px}.r319gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
