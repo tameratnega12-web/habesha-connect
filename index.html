@@ -764,25 +764,6 @@ function homeInfoSupport(){return `<h2 style="margin-top:22px">Information & Sup
 
 function hcHomeEsc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function hcHomeTime(x){let v=x?.updatedAt||x?.updated_at||x?.createdAt||x?.created_at||x?.date||'';let t=Date.parse(v);return Number.isFinite(t)?t:0;}
-function openTruckAgreementFromActivity(id){
- if(!requireLogin())return;
- show('truck');
- setTimeout(()=>{
-   const key=String(id||'');
-   const app=(data.truckApplications||[]).find(a=>String(a.dbId||'')===key||String(a.id||'')===key);
-   const page=document.getElementById('truck');
-   if(!app||!page)return;
-   const waiting=['Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement','Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'].includes(String(app.status||''));
-   if(!waiting||cleanEmail(app.driverEmail)!==cleanEmail(currentUser&&currentUser.email))return;
-   let box=document.getElementById('truckOpenAgreementFromActivity');
-   if(!box){box=document.createElement('section');box.id='truckOpenAgreementFromActivity';page.insertAdjacentElement('afterbegin',box);}
-   const safe=v=>hcHomeEsc(v||'');
-   const ref=safe(app.dbId||app.id||'');
-   box.innerHTML=`<div class="card" style="border:2px solid #16a34a"><h2 style="margin-top:0">✅ Truck Owner Accepted — Agreement Required</h2><p><b>Job:</b> ${safe(app.jobTitle||'Truck Driver Job')}</p><p><b>Owner:</b> ${safe(app.ownerName||'Truck Owner')}</p><p class="muted">Click Agree to receive the truck owner information.</p><button class="btn good" type="button" onclick="driverAgreeTruckJob('${ref}')">Agree</button></div>`;
-   box.scrollIntoView({behavior:'smooth',block:'start'});
- },80);
-}
-
 function hcHomeItem(title,detail,status,page,icon,time,priority=2,action=''){return {title,detail,status,page,icon,time,priority,action};}
 function personalizedHomeItems(){
  if(!currentUser)return [];
@@ -802,11 +783,7 @@ function personalizedHomeItems(){
  if(role==='driver'){
    (data.truckJobs||[]).filter(j=>available(j.status)).forEach(j=>add(hcHomeItem('Available Truck Job',`${j.title||'Driver job'} • ${j.route||j.city||''} • ${j.pay||''}`,j.status,'truck','🚛',hcHomeTime(j),1,"goTruckSection('jobs')")));
    (data.trailerRentals||[]).filter(t=>available(t.status)&&cleanEmail(t.ownerEmail)!==email).forEach(t=>add(hcHomeItem('Trailer Available for Rent',`${t.trailerType||'Trailer'} • ${t.location||''} • ${t.price||''}`,t.status,'truck','🔎',hcHomeTime(t),1)));
-   (data.truckApplications||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>{
-     const waitingAgreement=['Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement','Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'].includes(String(a.status||''));
-     const ref=String(a.dbId||a.id||'').replace(/'/g,"\'");
-     add(hcHomeItem('Truck Job Application',`${a.jobTitle||'Driver job'} • ${a.ownerName||''}`,a.status,'truck','📋',hcHomeTime(a),pending(a.status)?0:2,waitingAgreement?`openTruckAgreementFromActivity('${ref}')`:''));
-   });
+   (data.truckApplications||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('Truck Job Application',`${a.jobTitle||'Driver job'} • ${a.ownerName||''}`,a.status,'truck','📋',hcHomeTime(a),pending(a.status)?0:2)));
  }
  if(role==='truck_owner'){
    (data.trailerRentals||[]).filter(t=>available(t.status)&&cleanEmail(t.ownerEmail)!==email).forEach(t=>add(hcHomeItem('Trailer Available for Rent',`${t.trailerType||'Trailer'} • ${t.location||''} • ${t.price||''}`,t.status,'truck','🔎',hcHomeTime(t),1)));
@@ -10761,3 +10738,43 @@ window.__hcVersion='V7.8.213';
 <style id="v78302-marketplace-post-style">
 .market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
 </style>
+
+
+<script id="v78308-driver-agree-above-new-activity">
+/* V7.8.308 — Truck Driver layout only.
+   Move the existing Truck Driver Agree action above Your New Activity.
+   No action handler, status, Supabase, navigation, or other workflow changes. */
+(function(){
+  'use strict';
+  function apply(){
+    try{
+      if(!window.currentUser || currentUser.role!=='driver') return;
+      const activity=document.getElementById('personalizedHomeActivity');
+      const priority=document.getElementById('truckingPriorityTransactionsV78266');
+      if(!activity || !priority || !activity.parentElement) return;
+      const hasTruckAgree=[...priority.querySelectorAll('button')].some(btn=>
+        /agree/i.test(btn.textContent||'') && /driverAgreeTruckJob\s*\(/.test(btn.getAttribute('onclick')||'')
+      );
+      if(!hasTruckAgree) return;
+      activity.parentElement.insertBefore(priority,activity);
+    }catch(e){ console.warn('Driver Agree layout:',e); }
+  }
+  const run=()=>requestAnimationFrame(()=>requestAnimationFrame(apply));
+  const priorHome=window.home;
+  if(typeof priorHome==='function'){
+    window.home=function(){
+      const result=priorHome.apply(this,arguments);
+      run();
+      return result;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    const root=document.getElementById('app')||document.body;
+    let timer=0;
+    new MutationObserver(()=>{ clearTimeout(timer); timer=setTimeout(apply,30); })
+      .observe(root,{childList:true,subtree:true});
+    run();
+  });
+  window.__hcVersion='V7.8.308';
+})();
+</script>

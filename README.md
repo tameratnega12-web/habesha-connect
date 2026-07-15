@@ -1,8 +1,7 @@
 # Habesha Agenagn V7.8.308
 
-Base: uploaded V7.8.307 project.
+Base: the V7.8.307 ZIP uploaded by the user.
 
-Only change:
-- For a truck driver whose application is waiting for agreement, the **Open Trucking** button under **Your New Activity** opens the Trucking page and shows the existing **Agree** button at the top.
+Only change: on the Truck Driver home page, the existing Truck Job Agree action is moved above the Your New Activity section.
 
-No Supabase SQL changes are required. Existing Supabase migration files are included unchanged.
+No Agree handler, navigation, status, Supabase, or other workflow was changed. No new SQL is required.
