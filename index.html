@@ -10759,18 +10759,40 @@ window.__hcVersion='V7.8.213';
     const root=document.getElementById('truck');if(!root)return false;
     document.getElementById('truckDriverOpenAgreementV78314')?.remove();
     const apps=matchingApplications();if(!apps.length)return false;
-    const cards=apps.map(a=>`<div class="card" style="border:2px solid #16a34a"><h3>✅ Truck Owner Accepted — Agreement Required</h3><p><b>Job:</b> ${esc(a.jobTitle||'Truck Driver Job')}</p><p><b>Owner:</b> ${esc(a.ownerName||'Truck Owner')}</p><p><b>Status:</b> ${esc(a.status||'Waiting for Driver Agreement')}</p><p class="muted">Click Agree to receive the truck owner information.</p><button class="btn good" type="button" onclick="driverAgreeTruckJob('${esc(a.id)}')">Agree</button></div>`).join('');
+    const cards=apps.map(a=>{const applicationKey=a.dbId||a.id;return `<div class="card" style="border:2px solid #16a34a"><h3>✅ Truck Owner Accepted — Agreement Required</h3><p><b>Job:</b> ${esc(a.jobTitle||'Truck Driver Job')}</p><p><b>Owner:</b> ${esc(a.ownerName||'Truck Owner')}</p><p><b>Status:</b> ${esc(a.status||'Waiting for Driver Agreement')}</p><p class="muted">Click Agree to receive the truck owner information.</p><button class="btn good" type="button" onclick="truckDriverAgreeFromOpenV78315('${esc(applicationKey)}', event)">Agree</button></div>`;}).join('');
     const panel=document.createElement('section');panel.id='truckDriverOpenAgreementV78314';panel.style.margin='16px 0';
     panel.innerHTML=`<div class="card"><h2 style="margin:0">🚚 Open Trucking — Action Required</h2><p class="muted">Complete the accepted truck job agreement below.</p></div><div class="grid">${cards}</div>`;
     const target=document.getElementById('truckApplicationsTable');
     if(target&&target.parentNode)target.parentNode.insertBefore(panel,target);else root.insertBefore(panel,root.children[2]||null);
     panel.scrollIntoView({behavior:'smooth',block:'start'});return true;
   }
+
+  window.truckDriverAgreeFromOpenV78315=async function(id,event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    const button=event&&event.currentTarget;
+    if(button&&button.dataset.busy==='1')return;
+    const app=(data.truckApplications||[]).find(a=>String(a.dbId||'')===String(id)||String(a.id||'')===String(id));
+    if(!app)return alert('Truck application not found. Please refresh and try again.');
+    if(!currentUser||!sameEmail(app.driverEmail,currentUser.email))return alert('Only the accepted driver can agree.');
+    if(!needsDriverAgreement(app))return alert('This application is not waiting for your agreement. Current status: '+(app.status||'Unknown'));
+    if(button){button.dataset.busy='1';button.disabled=true;button.textContent='Saving…';}
+    const previousStatus=app.status;
+    app.status='Owner Accepted - Waiting Driver Agreement';
+    try{
+      await Promise.resolve(window.driverAgreeTruckJob(id));
+    }catch(error){
+      app.status=previousStatus;
+      console.error('Truck driver agreement failed',error);
+      alert('Could not save your agreement: '+(error&&error.message?error.message:error));
+    }finally{
+      if(button&&document.body.contains(button)){button.dataset.busy='0';button.disabled=false;button.textContent='Agree';}
+    }
+  };
   window.goTruckSection=async function(section){
     const result=await previousGoTruckSection(section);
     if(section==='applications'&&currentUser&&currentUser.role==='driver') [0,100,300].forEach(ms=>setTimeout(placeAgreementInsideTrucking,ms));
     return result;
   };
-  window.__hcVersion='V7.8.314';
+  window.__hcVersion='V7.8.315';
 })();
 </script>
