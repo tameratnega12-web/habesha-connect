@@ -36,3 +36,5 @@ V7.8.317 Taxi/Limo customer-driver flow fix:
 - Customer request -> admin approval -> one approved driver accepts/declines -> customer agrees -> contacts released.
 - Agreement/provider fields now restore from Supabase after refresh.
 - Atomic ride acceptance prevents two drivers from claiming the same ride.
+
+V7.8.318: Taxi/Limo Driver open customer rides now visibly shows Accept Ride and Decline after admin approval. Customer ride acceptance remains driver-only.
