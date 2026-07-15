@@ -10779,3 +10779,110 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.308';
 })();
 </script>
+
+<script id="v78309-trailer-requester-agreement-absolute-top-only">
+/* V7.8.309 — Trailer rental UI placement only.
+   For a driver or another truck owner whose trailer request was accepted,
+   show the existing Agree action at the absolute top of Home.
+   Existing renterAgreeTrailer(), Supabase writes, statuses, and contact release remain unchanged. */
+(function(){
+  'use strict';
+  const WAITING_STATUSES=new Set([
+    'Owner Accepted - Waiting Renter Agreement',
+    'Accepted - Waiting Renter Agreement',
+    'Owner Accepted - Waiting Driver Agreement',
+    'Accepted - Waiting Driver Agreement',
+    'Admin Approved - Waiting Renter Agreement',
+    'Owner Accepted',
+    'Accepted',
+    'Waiting Renter Agreement',
+    'Waiting for Renter Agreement',
+    'Pending Final Admin Approval',
+    'Payment Pending Admin Approval',
+    'Final Admin Approved'
+  ]);
+  const AGREED='Renter Agreed';
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const recordId=t=>String(t?.dbId||t?.id||'');
+
+  function requesterRows(){
+    if(typeof currentUser==='undefined'||!currentUser||!['driver','truck_owner'].includes(String(currentUser.role||'')))return [];
+    return (data.trailerRentals||[]).filter(t=>
+      sameEmail(t.renterEmail,currentUser.email)&&
+      (WAITING_STATUSES.has(String(t.status||''))||String(t.status||'')===AGREED)
+    );
+  }
+
+  function panelHtml(rows){
+    return `<section id="trailerRequesterAgreementTopV78309" style="margin:0 0 18px">
+      <div class="card" style="border:3px solid #16a34a">
+        <h2 style="margin:0">🚚 Trailer Owner Accepted — Agreement Required</h2>
+        <p class="muted">Click Agree to confirm the trailer rental and receive the trailer owner information.</p>
+      </div>
+      <div class="grid">${rows.map(t=>{
+        const agreed=String(t.status||'')===AGREED;
+        const id=esc(recordId(t));
+        return `<div class="card" style="border:2px solid #16a34a">
+          <h3>${agreed?'✅ Trailer Rental Agreed':'✅ Trailer Owner Accepted Your Request'}</h3>
+          <p><b>Trailer:</b> ${esc(t.trailerType||'Trailer')}</p>
+          ${t.location?`<p><b>Location:</b> ${esc(t.location)}</p>`:''}
+          <p><b>Owner:</b> ${esc(t.ownerName||'Trailer Owner')}</p>
+          <p class="muted">${agreed?'The trailer owner information is now available.':'Click Agree to release the trailer owner name, phone, and email.'}</p>
+          <div class="actions">${agreed
+            ?`<button class="btn primary" type="button" onclick="viewTrailerOwnerInformation('${id}')">View Trailer Owner Information</button>`
+            :`<button class="btn good" type="button" onclick="renterAgreeTrailer('${id}')">Agree</button>`}
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </section>`;
+  }
+
+  function removeDuplicateTrailerAgreementCards(homeRoot){
+    homeRoot.querySelectorAll(
+      '#trailerRequesterHomeAgreementV78259,#trailerRequesterAgreementV78202,#trailerRequesterAgreementV78261,'+
+      '#trailerAgreementCanonicalV78262,#trailerAgreementV78263,#trailerOwnerRequesterAgreeV78210,'+
+      '#trailerAgreementBottomV78219,#trailerRequesterAgreementV78264,#trailerRequesterAgreementTopV78309'
+    ).forEach(el=>el.remove());
+
+    const priority=homeRoot.querySelector('#truckingPriorityTransactionsV78266');
+    if(priority){
+      priority.querySelectorAll('.card').forEach(card=>{
+        const text=norm(card.textContent);
+        if(text.includes('trailer owner accepted')&&text.includes('agreement required'))card.remove();
+      });
+      if(!priority.querySelector('button'))priority.remove();
+    }
+  }
+
+  function apply(){
+    const homeRoot=document.getElementById('home');
+    if(!homeRoot)return;
+    removeDuplicateTrailerAgreementCards(homeRoot);
+    const rows=requesterRows();
+    if(!rows.length)return;
+    homeRoot.insertAdjacentHTML('afterbegin',panelHtml(rows));
+  }
+
+  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(apply));}
+  const previousHome=window.home;
+  if(typeof previousHome==='function')window.home=function(){
+    const result=previousHome.apply(this,arguments);
+    schedule();
+    return result;
+  };
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(apply,40);
+  });
+  document.addEventListener('DOMContentLoaded',()=>{
+    const root=document.getElementById('home')||document.body;
+    observer.observe(root,{childList:true,subtree:true});
+    schedule();
+  });
+  schedule();
+  window.__hcVersion='V7.8.309';
+})();
+</script>
