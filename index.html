@@ -1783,7 +1783,6 @@ function rentalRequestActionButtons(q,role){
   const id=q.id;
   if(role==='admin'){
     if(st==='Pending Admin Review'||st==='Pending')return `<button class="btn primary" onclick="adminApproveRentalReq('${id}')">Approve for Owner</button> <button class="btn bad" onclick="adminDeclineRentalReq('${id}')">Decline</button>`;
-    if(st==='Owner Accepted - Waiting Final Admin Approval')return `<button class="btn primary" onclick="adminFinalApproveRentalReq('${id}')">Final Approve</button> <button class="btn bad" onclick="adminDeclineRentalReq('${id}')">Decline</button>`;
     return '-';
   }
   if(role==='owner'){
@@ -1949,6 +1948,8 @@ async function addRental(){
   }else{
     alert(localRental.photos.length?'Property and photos submitted successfully. Admin approval is required before seekers can see it.':'Property submitted successfully. Admin approval is required before seekers can see it.');
   }
+  if(typeof clearRentalSelectedFiles312==='function')clearRentalSelectedFiles312();
+  else if(typeof clearRentalSelectedFiles310==='function')clearRentalSelectedFiles310();
   await show('rentals');
   return true;
 }
@@ -2039,10 +2040,11 @@ async function ownerAcceptRentalReq(id){
   if(!q)return alert('Rental request not found.');
   if(q.ownerEmail!==currentUser.email&&String(q.ownerId||'')!==String(currentUser.id||''))return alert('Only the property owner can accept this request.');
   if(String(q.status||'')!=='Waiting Owner Review')return alert('Admin must approve first before owner can accept.');
-  if(!(await updateRentalReqStatus(q,'Owner Accepted - Waiting Final Admin Approval')))return;
-  addNote('admin.habeshaconnect@gmail.com','Owner accepted rental viewing request for '+q.propertyTitle+'. Final admin approval is needed.');
-  sendAdminEmailNotice('Rental request needs final approval','Owner accepted a rental viewing request. Final admin approval is needed.',{Property:q.propertyTitle,Owner:q.ownerName,Seeker:q.seekerName},'admin');
-  addNote(q.seekerEmail,'Owner accepted your viewing request. Waiting for final admin approval.');
+  if(!(await updateRentalReqStatus(q,'Approved')))return;
+  addNote(q.seekerEmail,'The property owner accepted your viewing request. Open Rentals and request the owner information.');
+  if(q.seekerEmail){sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Property owner accepted your rental request',summary:'The property owner accepted your viewing request. Open Rentals and click Request Owner Information to release the owner contact details.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Owner:q.ownerName,Status:'Approved'}});}
+  addNote(q.ownerEmail,'You accepted the rental viewing request for '+q.propertyTitle+'. The seeker can now request your contact information.');
+  sendAdminEmailNotice('Rental owner accepted request','A property owner accepted a rental viewing request. The seeker may now request owner information.',{Property:q.propertyTitle,Owner:q.ownerName,Seeker:q.seekerName,Status:'Approved'},'admin');
   await rentals();
 }
 async function ownerDeclineRentalReq(id){
@@ -10728,21 +10730,78 @@ window.__hcVersion='V7.8.213';
 </style>
 
 
-<script id="v78310-rental-photo-selection-persist-fix">
-/* V7.8.310 — Rental-only selected-photo persistence. */
+<script id="v78312-rental-photo-gallery-stable-fix">
+/* V7.8.312 — Rental-only stable six-photo selection.
+   Uses the proven Business Profile / Event Organizer pending-file pattern.
+   No MutationObserver and no DataTransfer rewriting, preventing photo preview flicker/disappearance. */
 (function(){
   'use strict';
-  const state=window.__rentalPhotoState310=window.__rentalPhotoState310||{files:[],urls:[]};
-  function revokeUrls(){while(state.urls.length){try{URL.revokeObjectURL(state.urls.pop());}catch(_){}}}
-  function validate(files){if(files.length>6)throw new Error('You can upload a maximum of 6 property photos.');for(const file of files){if(!String(file.type||'').startsWith('image/'))throw new Error('Property photos must be image files.');if(Number(file.size||0)>5*1024*1024)throw new Error(file.name+' is larger than 5 MB.');}}
-  function draw(){const preview=document.getElementById('rentPhotoPreview307');if(!preview)return;revokeUrls();if(!state.files.length){preview.innerHTML='';return;}preview.innerHTML='<p><b>Selected photos:</b> '+state.files.length+'</p><div class="rental-photo-preview-grid308">'+state.files.map((file,index)=>{const url=URL.createObjectURL(file);state.urls.push(url);return '<img src="'+url+'" alt="Selected rental photo '+(index+1)+'" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px">';}).join('')+'</div>';}
-  function restoreInput(){const input=document.getElementById('rentPhotos');if(!input||!state.files.length)return;try{const dt=new DataTransfer();state.files.forEach(file=>dt.items.add(file));input.files=dt.files;}catch(e){console.warn('Rental file input restore not supported; saved files will still upload.',e);}draw();}
-  window.previewRentalPhotos307=function(input){try{const files=Array.from((input&&input.files)||[]);validate(files);state.files=files;draw();}catch(e){state.files=[];if(input)input.value='';draw();alert(e.message||e);}};
+  const MAX_FILES=6;
+  const MAX_BYTES=5*1024*1024;
+  const state=window.__rentalPhotoState312=window.__rentalPhotoState312||{files:[],urls:[]};
+
+  function revokeUrls(){
+    while(state.urls.length){try{URL.revokeObjectURL(state.urls.pop());}catch(_){}}
+  }
+  function validateFile(file){
+    if(!file)return 'A selected property photo could not be read.';
+    if(!String(file.type||'').startsWith('image/'))return 'Every property photo must be an image file.';
+    if(Number(file.size||0)>MAX_BYTES)return file.name+' is larger than 5 MB.';
+    return '';
+  }
+  function sameFile(a,b){
+    return a&&b&&a.name===b.name&&a.size===b.size&&a.lastModified===b.lastModified;
+  }
+  function esc(v){return String(v||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function draw(){
+    const preview=document.getElementById('rentPhotoPreview307');
+    if(!preview)return;
+    revokeUrls();
+    if(!state.files.length){preview.innerHTML='';return;}
+    preview.innerHTML='<p><b>Selected photos:</b> '+state.files.length+' of '+MAX_FILES+'</p><div class="rental-photo-preview-grid308">'+state.files.map((file,index)=>{
+      const url=URL.createObjectURL(file);state.urls.push(url);
+      return '<div style="position:relative"><img src="'+url+'" alt="Selected rental photo '+(index+1)+'" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px"><button type="button" class="btn bad" onclick="removeRentalSelectedPhoto312('+index+')" aria-label="Remove '+esc(file.name)+'" style="position:absolute;right:5px;top:5px;min-height:38px;padding:7px 10px">×</button></div>';
+    }).join('')+'</div>';
+  }
+
+  window.previewRentalPhotos307=function(input){
+    const chosen=Array.from((input&&input.files)||[]);
+    const error=chosen.map(validateFile).find(Boolean);
+    if(error){if(input)input.value='';alert(error);return;}
+    for(const file of chosen){
+      if(!state.files.some(existing=>sameFile(existing,file)))state.files.push(file);
+    }
+    if(state.files.length>MAX_FILES){
+      state.files=state.files.slice(0,MAX_FILES);
+      if(input)input.value='';
+      draw();
+      alert('You can upload a maximum of 6 property photos.');
+      return;
+    }
+    if(input)input.value='';
+    draw();
+  };
+  window.removeRentalSelectedPhoto312=function(index){
+    state.files.splice(Number(index),1);draw();
+  };
   window.getRentalSelectedFiles310=function(){return state.files.slice();};
-  window.clearRentalSelectedFiles310=function(){state.files=[];revokeUrls();const input=document.getElementById('rentPhotos');if(input)input.value='';draw();};
-  const originalRentals=window.rentals;if(typeof originalRentals==='function'){window.rentals=async function(){const result=await originalRentals.apply(this,arguments);setTimeout(restoreInput,0);return result;};}
-  const observer=new MutationObserver(()=>{if(document.getElementById('rentPhotos')&&state.files.length)setTimeout(restoreInput,0);});
-  document.addEventListener('DOMContentLoaded',()=>{observer.observe(document.body,{childList:true,subtree:true});setTimeout(restoreInput,0);});
-  window.__hcVersion='V7.8.310';
+  window.getRentalSelectedFiles312=function(){return state.files.slice();};
+  window.clearRentalSelectedFiles310=function(){
+    state.files=[];revokeUrls();
+    const input=document.getElementById('rentPhotos');if(input)input.value='';
+    draw();
+  };
+  window.clearRentalSelectedFiles312=window.clearRentalSelectedFiles310;
+
+  const originalRentals=window.rentals;
+  if(typeof originalRentals==='function'){
+    window.rentals=async function(){
+      const result=await originalRentals.apply(this,arguments);
+      setTimeout(draw,0);
+      return result;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(draw,0));
+  window.__hcVersion='V7.8.312';
 })();
 </script>
