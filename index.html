@@ -10937,3 +10937,52 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.313';
 })();
 </script>
+
+<script id="v78314-marketplace-customer-job-event-task-buttons-top-only">
+/* V7.8.314 — Home layout only.
+   Marketplace, Customer, Job Seeker, and Event Organizer:
+   remove Your New Activity and the introductory role heading card while preserving
+   every existing task/action button and workflow. */
+(function(){
+  'use strict';
+  const targetRoles=new Set(['marketplace','customer','job_seeker','event_organizer']);
+  const roleSection={
+    marketplace:'#marketplaceHomeActions',
+    customer:'#customerHomeActions',
+    job_seeker:'#jobSeekerHomeActions',
+    event_organizer:'#eventOrganizerHomeActions'
+  };
+  function currentRole(){
+    try{return String((typeof currentUser!=='undefined'&&currentUser&&currentUser.role)||'').trim().toLowerCase();}
+    catch(e){return '';}
+  }
+  function applyHomeLayout(){
+    const role=currentRole();
+    if(!targetRoles.has(role))return;
+    const homeRoot=document.getElementById('home');
+    if(!homeRoot)return;
+    homeRoot.querySelectorAll('#personalizedHomeActivity').forEach(el=>el.remove());
+    const section=homeRoot.querySelector(roleSection[role]);
+    if(!section)return;
+    const intro=section.firstElementChild;
+    if(intro&&intro.classList.contains('card'))intro.remove();
+    section.style.marginTop='0';
+  }
+  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(applyHomeLayout));}
+  const previousHome=window.home;
+  if(typeof previousHome==='function')window.home=function(){
+    const result=previousHome.apply(this,arguments);
+    schedule();
+    return result;
+  };
+  let timer=0;
+  const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(applyHomeLayout,30);});
+  document.addEventListener('DOMContentLoaded',()=>{
+    const root=document.getElementById('home')||document.body;
+    observer.observe(root,{childList:true,subtree:true});
+    schedule();
+  });
+  schedule();
+  window.__hcVersion='V7.8.314';
+})();
+</script>

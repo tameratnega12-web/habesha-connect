@@ -1,3 +1,7 @@
+Habesha Agenagn V7.8.314
+
+Home layout only: Marketplace, Customer, Job Seeker, and Event Organizer keep all task buttons at the top while Your New Activity and introductory role heading cards are removed. No workflow, Supabase, form, email, or SQL changes.
+
 # Habesha Agenagn V7.8.312
 
 Base: corrected V7.8.311.
