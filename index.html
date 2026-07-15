@@ -10755,3 +10755,105 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.312';
 })();
 </script>
+
+<script id="v78317-rentals-complete-clean-rebuild">
+/* V7.8.317 — RENTALS ONLY. One canonical Supabase flow. */
+(function(){
+'use strict';
+const esc317=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const findReq317=id=>(data.rentalRequests||[]).find(q=>String(q.dbId||q.id)===String(id));
+
+const oldMapReq317=window.mapDbRentalRequest;
+window.mapDbRentalRequest=function(row){
+  const q=oldMapReq317(row);
+  q.ownerContactReleased=!!row.owner_contact_released;
+  return q;
+};
+window.rentalOwnerInfoReleased=q=>!!(q&&q.ownerContactReleased);
+
+window.requestViewing=async function(id){
+  if(!requireLogin())return false;
+  if(!authReady())return alert('Supabase is not connected. Please refresh and sign in again.');
+  const property=(data.rentals||[]).find(r=>String(r.dbId||r.id)===String(id));
+  if(!property)return alert('Rental property not found. Refresh Rentals and try again.');
+  if(!['Approved','Available'].includes(String(property.status||'')))return alert('This property is not available.');
+  if(!confirm('Send a rental request to this property owner?'))return false;
+  const {data:result,error}=await hcSupabase.rpc('rental_create_request_v78317',{p_property_id:String(property.dbId||property.id)});
+  if(error)return alert('Rental request failed: '+error.message+' Run the V7.8.317 Rental SQL, then sign out and sign back in.');
+  await loadSupabaseRentalRequests();
+  if(result&&result.already_exists)alert('You already have an active request for this property.');
+  else alert('Rental request sent to the property owner.');
+  await rentals();
+  return false;
+};
+
+async function decide317(id,accept){
+  if(!requireLogin())return false;
+  if(!authReady())return alert('Supabase is not connected. Please refresh and sign in again.');
+  const q=findReq317(id);
+  if(!q)return alert('Rental request not found. Refresh Rentals and try again.');
+  if(String(q.status||'')!=='Pending')return alert('This rental request is no longer pending.');
+  if(!confirm(accept?'Accept this rental request?':'Decline this rental request?'))return false;
+  const {error}=await hcSupabase.rpc('rental_owner_decide_v78317',{p_request_id:String(q.dbId||q.id),p_accept:!!accept});
+  if(error)return alert('Rental response failed: '+error.message+' Run the V7.8.317 Rental SQL, then sign out and sign back in.');
+  await loadSupabaseRentals();
+  await loadSupabaseRentalRequests();
+  alert(accept?'Rental request accepted.':'Rental request declined.');
+  await rentals();
+  return false;
+}
+window.ownerAcceptRentalReq=id=>decide317(id,true);
+window.ownerDeclineRentalReq=id=>decide317(id,false);
+window.approveRentalReq=window.ownerAcceptRentalReq;
+window.declineRentalReq=window.ownerDeclineRentalReq;
+
+window.rentalRequestActionButtons=function(q,role){
+  const id=esc317(q&&String(q.dbId||q.id||''));
+  const st=String(q&&q.status||'');
+  if(role==='owner'&&st==='Pending')return `<button type="button" class="btn primary" data-rental317="accept" data-request-id="${id}">Accept</button> <button type="button" class="btn bad" data-rental317="decline" data-request-id="${id}">Decline</button>`;
+  if(role==='admin'&&st==='Pending')return '<span class="pill warn">Waiting for Owner</span>';
+  return '-';
+};
+
+document.addEventListener('click',function(e){
+  const b=e.target&&e.target.closest&&e.target.closest('button[data-rental317]');
+  if(!b)return;
+  e.preventDefault();e.stopPropagation();
+  const id=b.dataset.requestId;
+  b.disabled=true;
+  Promise.resolve(b.dataset.rental317==='accept'?window.ownerAcceptRentalReq(id):window.ownerDeclineRentalReq(id)).finally(()=>{if(b.isConnected)b.disabled=false;});
+},true);
+
+window.requestRentalOwnerInformation=async function(id){
+  if(!requireLogin())return false;
+  if(!authReady())return alert('Supabase is not connected. Please refresh and sign in again.');
+  const q=findReq317(id);
+  if(!q)return alert('Rental request not found.');
+  if(String(q.status||'')!=='Approved')return alert('The property owner has not accepted this request.');
+  const {error}=await hcSupabase.rpc('rental_release_owner_contact_v78317',{p_request_id:String(q.dbId||q.id)});
+  if(error)return alert('Could not release owner information: '+error.message);
+  await loadSupabaseRentalRequests();
+  alert('Owner information released.');
+  await rentals();
+  return false;
+};
+
+window.seekerOwnerInformationPanel=function(reqs){
+  const approved=(reqs||[]).filter(q=>String(q.status||'')==='Approved');
+  if(!approved.length)return '';
+  return `<div class="card" id="seekerOwnerInformation"><h3>🎉 Approved Rental</h3>${approved.map(q=>q.ownerContactReleased?`<div class="notice good"><b>${esc317(q.propertyTitle)}</b><p>Owner: ${esc317(q.ownerName)}</p><p>Phone: ${esc317(q.ownerPhone||'Not provided')}</p><p>Email: ${esc317(q.ownerEmail||'Not provided')}</p></div>`:`<div class="notice"><b>${esc317(q.propertyTitle)} was accepted.</b><p>Click below to release the property owner's information.</p><button type="button" class="btn primary" onclick="return requestRentalOwnerInformation('${esc317(q.dbId||q.id)}')">Request Owner Information</button></div>`).join('')}</div>`;
+};
+
+window.rentalRequestsTable=function(reqs,role){
+  reqs=reqs||[];
+  const anchor=role==='owner'?' id="ownerRentalRequests"':((role==='rent_seeker'||role==='customer')?' id="seekerRentalRequests"':'');
+  return `<div${anchor}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Contact</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>{
+    const show=role==='owner'||role==='admin'||!!q.ownerContactReleased;
+    const contact=show?`${esc317(q.ownerPhone||'No phone')}<br>${esc317(q.ownerEmail||'No email')}`:'Available after owner acceptance';
+    return `<tr><td>${esc317(q.propertyTitle)}</td><td>${esc317(q.seekerName)}</td><td>${esc317(q.seekerPhone)}</td><td>${esc317(q.ownerName)}</td><td>${contact}</td><td>${rentalStatusBadge(q.status)}</td><td>${rentalRequestActionButtons(q,role)}</td></tr>`;
+  }).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+};
+
+window.__hcVersion='V7.8.317';
+})();
+</script>
