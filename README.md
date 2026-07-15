@@ -1,7 +1,6 @@
-# Habesha Agenagn V7.8.311
+# Habesha Agenagn V7.8.310 Restored Full Project
 
-Truck Driver-only correction:
-- Open Trucking now displays the accepted job Agreement card inside the Trucking page.
-- Fixed the signed-in driver check so the live application can be matched.
-- Removed the duplicate New Transactions heading while keeping Agree.
-- No other workflow changed.
+- Restored working V7.8.310 front-end.
+- Includes the actual Supabase SQL migration files from the last working full project.
+- No previous ZIP files, backup folders, or old README versions are included.
+- Do not rerun SQL files that were already applied unless a specific fix requires it.

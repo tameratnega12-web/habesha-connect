@@ -10757,7 +10757,7 @@ window.__hcVersion='V7.8.213';
   ].includes(norm(status));
 
   function waitingApplications(){
-    if(typeof currentUser==='undefined'||!currentUser||currentUser.role!=='driver')return [];
+    if(!window.currentUser||currentUser.role!=='driver')return [];
     return (data.truckApplications||[]).filter(a=>sameEmail(a.driverEmail,currentUser.email)&&isWaiting(a.status));
   }
 
@@ -10778,7 +10778,7 @@ window.__hcVersion='V7.8.213';
 
   const priorFeed=window.personalizedHomeFeed;
   window.personalizedHomeFeed=function(){
-    if(typeof currentUser==='undefined'||!currentUser||currentUser.role!=='driver')return typeof priorFeed==='function'?priorFeed.apply(this,arguments):'';
+    if(!window.currentUser||currentUser.role!=='driver')return typeof priorFeed==='function'?priorFeed.apply(this,arguments):'';
     const baseItems=typeof personalizedHomeItems==='function'?personalizedHomeItems():[];
     const waiting=waitingApplications();
     const waitingTitles=new Set(waiting.map(a=>String(a.jobTitle||'')));
@@ -10812,31 +10812,9 @@ window.__hcVersion='V7.8.213';
       const text=norm(el.textContent);
       if(text.includes('new transactions — action required'))el.remove();
     });
-    return box.innerHTML;
+    return agreementCards()+box.innerHTML;
   };
 
-  function placeAgreementInsideTruckDashboard(){
-    if(typeof currentUser==='undefined'||!currentUser||currentUser.role!=='driver')return;
-    const host=document.getElementById('truck');
-    if(!host)return;
-    host.querySelectorAll('#truckDriverAgreementInsideDashboardV78310').forEach(el=>el.remove());
-    const html=agreementCards();
-    if(!html)return;
-    const holder=document.createElement('div');
-    holder.innerHTML=html;
-    const panel=holder.firstElementChild;
-    if(panel)host.insertBefore(panel,host.firstChild);
-  }
-
-  const priorTruckV78311=window.truck;
-  if(typeof priorTruckV78311==='function')window.truck=async function(){
-    const result=await priorTruckV78311.apply(this,arguments);
-    placeAgreementInsideTruckDashboard();
-    setTimeout(placeAgreementInsideTruckDashboard,80);
-    setTimeout(placeAgreementInsideTruckDashboard,250);
-    return result;
-  };
-
-  window.__hcVersion='V7.8.311';
+  window.__hcVersion='V7.8.310';
 })();
 </script>
