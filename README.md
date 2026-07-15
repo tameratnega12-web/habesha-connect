@@ -1,6 +1,5 @@
-# Habesha Agenagn V7.8.310 Restored Full Project
+# Habesha Agenagn V7.8.314
 
-- Restored working V7.8.310 front-end.
-- Includes the actual Supabase SQL migration files from the last working full project.
-- No previous ZIP files, backup folders, or old README versions are included.
-- Do not rerun SQL files that were already applied unless a specific fix requires it.
+Truck Driver only: Your New Activity → Open Trucking opens the applications view and displays the matching accepted application with the Agree button inside the Trucking page.
+
+No new Supabase SQL is required. Existing Supabase files are included for project record only.
