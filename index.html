@@ -10739,42 +10739,44 @@ window.__hcVersion='V7.8.213';
 .market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
 </style>
 
-
-<script id="v78308-driver-agree-above-new-activity">
+<script id="v78308-driver-agree-before-new-activity-only">
 /* V7.8.308 — Truck Driver layout only.
-   Move the existing Truck Driver Agree action above Your New Activity.
-   No action handler, status, Supabase, navigation, or other workflow changes. */
+   Move the existing agreement-required section above Your New Activity.
+   No button, status, Supabase, navigation, or transaction logic changes. */
 (function(){
   'use strict';
   function apply(){
-    try{
-      if(!window.currentUser || currentUser.role!=='driver') return;
-      const activity=document.getElementById('personalizedHomeActivity');
-      const priority=document.getElementById('truckingPriorityTransactionsV78266');
-      if(!activity || !priority || !activity.parentElement) return;
-      const hasTruckAgree=[...priority.querySelectorAll('button')].some(btn=>
-        /agree/i.test(btn.textContent||'') && /driverAgreeTruckJob\s*\(/.test(btn.getAttribute('onclick')||'')
-      );
-      if(!hasTruckAgree) return;
-      activity.parentElement.insertBefore(priority,activity);
-    }catch(e){ console.warn('Driver Agree layout:',e); }
+    const home=document.getElementById('home');
+    if(!home||!window.currentUser||currentUser.role!=='driver')return;
+    const activity=home.querySelector('#personalizedHomeActivity');
+    const agreement=home.querySelector('#truckingPriorityTransactionsV78266');
+    if(!activity||!agreement)return;
+    if(agreement.nextElementSibling!==activity){
+      home.insertBefore(agreement,activity);
+    }
   }
-  const run=()=>requestAnimationFrame(()=>requestAnimationFrame(apply));
+  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(apply));}
+  const priorRender=window.renderPage;
+  if(typeof priorRender==='function')window.renderPage=async function(){
+    const result=await priorRender.apply(this,arguments);
+    schedule();
+    return result;
+  };
   const priorHome=window.home;
-  if(typeof priorHome==='function'){
-    window.home=function(){
-      const result=priorHome.apply(this,arguments);
-      run();
-      return result;
-    };
-  }
-  document.addEventListener('DOMContentLoaded',()=>{
-    const root=document.getElementById('app')||document.body;
-    let timer=0;
-    new MutationObserver(()=>{ clearTimeout(timer); timer=setTimeout(apply,30); })
-      .observe(root,{childList:true,subtree:true});
-    run();
+  if(typeof priorHome==='function')window.home=function(){
+    const result=priorHome.apply(this,arguments);
+    schedule();
+    return result;
+  };
+  let timer=0;
+  const observer=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(apply,25);
   });
-  window.__hcVersion='V7.8.308';
+  document.addEventListener('DOMContentLoaded',()=>{
+    observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+    schedule();
+  });
+  window.__hcDriverAgreeBeforeActivityV78308=apply;
 })();
 </script>

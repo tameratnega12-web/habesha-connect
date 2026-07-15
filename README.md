@@ -1,7 +1,7 @@
 # Habesha Agenagn V7.8.308
 
-Base: the V7.8.307 ZIP uploaded by the user.
+Base: V7.8.307 uploaded by the user.
 
-Only change: on the Truck Driver home page, the existing Truck Job Agree action is moved above the Your New Activity section.
+Only change: on the Truck Driver home page, the existing Agreement Required card with the existing Agree button is moved directly above Your New Activity.
 
-No Agree handler, navigation, status, Supabase, or other workflow was changed. No new SQL is required.
+No Supabase, status, navigation, button-handler, or other workflow changes were made. No new SQL is required.
