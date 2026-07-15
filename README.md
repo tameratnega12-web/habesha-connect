@@ -1,9 +1,7 @@
-# Habesha Agenagn V7.8.310 Clean Base
+# Habesha Agenagn V7.8.311
 
-Only the Truck Driver accepted-job agreement placement was changed.
-
-- Your New Activity shows **Open Trucking** for an accepted application.
-- Open Trucking displays the **Agree** action inside the Trucking dashboard.
-- The duplicate **New Transactions — Action Required** panel is removed.
-- No SQL is required.
-- No other workflow was changed.
+Truck Driver-only correction:
+- Open Trucking now displays the accepted job Agreement card inside the Trucking page.
+- Fixed the signed-in driver check so the live application can be matched.
+- Removed the duplicate New Transactions heading while keeping Agree.
+- No other workflow changed.

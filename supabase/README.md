@@ -1,6 +1,10 @@
-# Supabase — V7.8.310
+# Supabase — V7.8.311
 
-No new SQL is required for the V7.8.310 Truck Driver Agree placement update.
+No new SQL is required for this update.
 
-This version changes only the front-end display/navigation in `index.html`.
-The existing live Supabase database and previously applied migrations remain unchanged.
+The existing `trucking_applications` table is read using:
+- `driver_email`
+- `status`
+- `id` / `local_ref`
+
+The Agree card appears for an accepted application waiting for driver agreement.
