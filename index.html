@@ -783,7 +783,7 @@ function personalizedHomeItems(){
  if(role==='driver'){
    (data.truckJobs||[]).filter(j=>available(j.status)).forEach(j=>add(hcHomeItem('Available Truck Job',`${j.title||'Driver job'} • ${j.route||j.city||''} • ${j.pay||''}`,j.status,'truck','🚛',hcHomeTime(j),1,"goTruckSection('jobs')")));
    (data.trailerRentals||[]).filter(t=>available(t.status)&&cleanEmail(t.ownerEmail)!==email).forEach(t=>add(hcHomeItem('Trailer Available for Rent',`${t.trailerType||'Trailer'} • ${t.location||''} • ${t.price||''}`,t.status,'truck','🔎',hcHomeTime(t),1)));
-   (data.truckApplications||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('Truck Job Application',`${a.jobTitle||'Driver job'} • ${a.ownerName||''}`,a.status,'truck','📋',hcHomeTime(a),pending(a.status)?0:2,"goTruckSection('applications')")));
+   (data.truckApplications||[]).filter(a=>cleanEmail(a.driverEmail)===email).forEach(a=>add(hcHomeItem('Truck Job Application',`${a.jobTitle||'Driver job'} • ${a.ownerName||''}`,a.status,'truck','📋',hcHomeTime(a),pending(a.status)?0:2)));
  }
  if(role==='truck_owner'){
    (data.trailerRentals||[]).filter(t=>available(t.status)&&cleanEmail(t.ownerEmail)!==email).forEach(t=>add(hcHomeItem('Trailer Available for Rent',`${t.trailerType||'Trailer'} • ${t.location||''} • ${t.price||''}`,t.status,'truck','🔎',hcHomeTime(t),1)));
@@ -2523,7 +2523,7 @@ function truck(){
  let driverPanel=`<div class="card" id="driverProfileCard"><h3>👤 Driver Job Profile</h3><label>Full Name</label><input id="dpName" value="${driverProfile?.name||currentUser.name||''}"><label>Phone</label><input id="dpPhone" value="${driverProfile?.phone||currentUser.phone||''}"><label>City</label><input id="dpCity" value="${driverProfile?.city||currentUser.city||''}"><label>CDL / License Type</label><input id="dpLicense" value="${driverProfile?.license||''}" placeholder="CDL A, CDL B, Box truck"><label>Experience</label><input id="dpExperience" value="${driverProfile?.experience||''}" placeholder="5 years, local, OTR"><label>Looking For</label><select id="dpLooking"><option ${driverProfile?.looking==='Full Time'?'selected':''}>Full Time</option><option ${driverProfile?.looking==='Part Time'?'selected':''}>Part Time</option><option ${driverProfile?.looking==='Owner Operator'?'selected':''}>Owner Operator</option><option ${driverProfile?.looking==='Box Truck'?'selected':''}>Box Truck</option></select><label>Skills / Notes</label><textarea id="dpNotes" placeholder="Routes, languages, availability, safety record">${driverProfile?.notes||''}</textarea><button class="btn primary" onclick="saveDriverProfile()">Save Driver Profile</button></div>`;
  let jobsTable=`<h3 id="availableTruckJobs">🚛 Available Truck Jobs</h3><table><tr><th>Owner</th><th>Job</th><th>Route</th><th>Schedule</th><th>Requirements</th><th>Status</th><th>Action</th></tr>${availableJobs.map(j=>{let already=(data.truckApplications||[]).find(a=>a.jobId===j.id&&a.driverEmail===currentUser.email);let action=role==='driver'?(already?`<span class="pill good">Applied</span><br><span class="small">${already.status}</span>`:`<button class="btn primary" onclick="applyTruckJob('${j.id}')">Apply This Job</button>`):(role==='truck_owner'&&j.ownerEmail===currentUser.email?`<span class="pill good">Owner Post</span>`:'-');return `<tr><td>${j.ownerName}<br><span class="small">${j.ownerPhone||''}</span></td><td>${j.title}<br><span class="small">${j.truckDetails||''}</span></td><td>${j.route}</td><td>${j.schedule}</td><td>${j.requirements}</td><td><span class="pill good">Published</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No approved truck owner hiring posts yet.</td></tr>'}</table>`;
  let driverProfilesTable=`<h3 id="driverProfilesTable">👤 Drivers Looking for Truck Driving Jobs</h3><table><tr><th>Driver</th><th>Phone</th><th>City</th><th>License</th><th>Experience</th><th>Looking For</th><th>Skills / Notes</th><th>Updated</th></tr>${driverProfiles.map(p=>`<tr><td>${p.name||p.driverName||'Driver'}<br><span class="small">${p.driverEmail||''}</span></td><td>${p.phone||''}</td><td>${p.city||''}</td><td>${p.license||''}</td><td>${p.experience||''}</td><td>${p.looking||''}</td><td>${p.notes||''}</td><td>${p.updatedAt||''}</td></tr>`).join('')||'<tr><td colspan="8">No driver looking-for-job posts yet.</td></tr>'}</table>`;
- let appsTable=`<h3 id="truckApplicationsTable">Driver Applications / Hiring Records</h3><table><tr><th>Job</th><th>Driver</th><th>Phone</th><th>License</th><th>Experience</th><th>Looking For / Notes</th><th>Status</th><th>Action</th></tr>${myApps.map(a=>{let canManage=role==='truck_owner'&&cleanEmail(a.ownerEmail)===cleanEmail(currentUser.email)&&a.status==='Pending Owner Review';let normalizedStatus=String(a.status||'').trim().toLowerCase();let driverMustAgree=role==='driver'&&cleanEmail(a.driverEmail)===cleanEmail(currentUser.email)&&['owner accepted - waiting driver agreement','accepted - waiting driver agreement','owner accepted','accepted','waiting driver agreement','waiting for driver agreement'].includes(normalizedStatus);let action=canManage?`<button class="btn primary" type="button" onclick="approveTruckApp('${a.id}')">Accept Driver</button> <button class="btn bad" type="button" onclick="declineTruckApp('${a.id}')">Decline</button>`:driverMustAgree?`<button class="btn good" type="button" onclick="driverAgreeTruckJob('${a.id}')">Agree</button>`:'-';return `<tr><td>${a.jobTitle}</td><td>${a.driverName}<br><span class="small">${a.driverEmail}</span></td><td>${a.driverPhone}</td><td>${a.license}</td><td>${a.experience}</td><td>${a.looking||''}<br><span class="small">${a.notes||''}</span></td><td><span class="pill ${(a.status==='Approved'||a.status==='Hired')?'good':a.status==='Declined'?'bad':'warn'}">${a.status}</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="8">No applications yet.</td></tr>'}</table>`;
+ let appsTable=`<h3 id="truckApplicationsTable">Driver Applications / Hiring Records</h3><table><tr><th>Job</th><th>Driver</th><th>Phone</th><th>License</th><th>Experience</th><th>Looking For / Notes</th><th>Status</th><th>Action</th></tr>${myApps.map(a=>{let canManage=role==='truck_owner'&&cleanEmail(a.ownerEmail)===cleanEmail(currentUser.email)&&a.status==='Pending Owner Review';return `<tr><td>${a.jobTitle}</td><td>${a.driverName}<br><span class="small">${a.driverEmail}</span></td><td>${a.driverPhone}</td><td>${a.license}</td><td>${a.experience}</td><td>${a.looking||''}<br><span class="small">${a.notes||''}</span></td><td><span class="pill ${(a.status==='Approved'||a.status==='Hired')?'good':a.status==='Declined'?'bad':'warn'}">${a.status}</span></td><td>${canManage?`<button class="btn primary" onclick="approveTruckApp('${a.id}')">Accept Driver</button> <button class="btn bad" onclick="declineTruckApp('${a.id}')">Decline</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="8">No applications yet.</td></tr>'}</table>`;
  let recordsTable=`<h3>Truck Owner / Driver Records</h3><table><tr><th>Truck</th><th>Plate</th><th>Driver</th><th>Status</th><th>Insurance</th><th>Registration</th><th>Income</th><th>Expenses</th><th>Profit</th><th>Mileage</th><th>Maintenance</th></tr>${myTruckRecords.map(t=>`<tr><td>${t.truck}<br><span class="small">VIN: ${t.vin||''}</span></td><td>${t.plate||''}</td><td>${t.driver}<br><span class="small">${t.driverEmail||''}</span></td><td>${t.status||'Available'}</td><td>${t.insurance||''}<br>${expiryBadge(t.insurance,'Insurance')}</td><td>${t.registration||''}<br>${expiryBadge(t.registration,'Registration')}</td><td>${money(t.income)}</td><td>${money(t.expenses)}</td><td>${money((+t.income||0)-(+t.expenses||0))}</td><td>${t.mileage}</td><td>${t.maintenance||''}</td></tr>`).join('')||'<tr><td colspan="11">No truck records yet.</td></tr>'}</table>`;
  let trailerTable=`<h3 id="trailerRentalsTable">🚛 Trailer Rentals</h3><table><tr><th>Owner</th><th>Trailer</th><th>Location</th><th>Price</th><th>Available</th><th>Status</th><th>Action</th></tr>${trailerRentals.map(t=>{let mine=t.ownerEmail===currentUser.email;let requested=t.renterEmail===currentUser.email;let ownerManage=mine&&t.status==='Pending Owner Review';let action=ownerManage?`<span class="pill warn">Action shown at top</span>`:(t.status==='Available'&&!mine&&(role==='driver'||role==='truck_owner')?`<button class="btn primary" onclick="requestTrailerRental('${t.id}')">Request Trailer</button>`:(requested?`<span class="pill warn">${t.status}</span>`:(mine?(t.status==='Pending Admin Approval'?'<span class="pill warn">Waiting Admin Approval</span>':'<span class="pill good">Your Trailer</span>'):'-')));return `<tr><td>${t.ownerName||''}<br><span class="small">${t.ownerEmail||''}</span></td><td>${t.trailerType||''}<br><span class="small">${t.description||''}</span></td><td>${t.location||''}</td><td>${t.price||''}<br><span class="small">Deposit: ${t.deposit||''}</span></td><td>${t.availability||''}</td><td><span class="pill ${t.status==='Available'?'good':t.status==='Rented'?'bad':'warn'}">${t.status||'Available'}</span></td><td>${action}</td></tr>`}).join('')||'<tr><td colspan="7">No trailer rentals posted yet.</td></tr>'}</table>`;
 
@@ -10739,60 +10739,71 @@ window.__hcVersion='V7.8.213';
 .market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
 </style>
 
-
-<script id="v78314-truck-driver-agree-inside-open-trucking">
+<script id="v78309-truck-driver-agree-inside-open-trucking">
+/* V7.8.309 — Truck Driver home only.
+   Keep the accepted-job Agree action inside Your New Activity / Open Trucking.
+   Remove only the duplicate New Transactions — Action Required panel.
+   No database, status, rental, shipping, or other category changes. */
 (function(){
-  const previousGoTruckSection=window.goTruckSection;
+  'use strict';
   const norm=v=>String(v||'').trim().toLowerCase();
-  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  function needsDriverAgreement(a){
-    const status=norm(a&&a.status);
-    if(!status||status.includes('declin')||status.includes('closed')||status.includes('hired')||status.includes('complete'))return false;
-    return status.includes('waiting driver agreement')||status.includes('waiting for driver agreement')||status.includes('owner accepted')||status==='accepted'||status.includes('accepted - waiting');
-  }
-  function matchingApplications(){
-    if(!currentUser||currentUser.role!=='driver')return [];
-    return (data.truckApplications||[]).filter(a=>sameEmail(a.driverEmail,currentUser.email)&&needsDriverAgreement(a));
-  }
-  function placeAgreementInsideTrucking(){
-    const root=document.getElementById('truck');if(!root)return false;
-    document.getElementById('truckDriverOpenAgreementV78314')?.remove();
-    const apps=matchingApplications();if(!apps.length)return false;
-    const cards=apps.map(a=>{const applicationKey=a.dbId||a.id;return `<div class="card" style="border:2px solid #16a34a"><h3>✅ Truck Owner Accepted — Agreement Required</h3><p><b>Job:</b> ${esc(a.jobTitle||'Truck Driver Job')}</p><p><b>Owner:</b> ${esc(a.ownerName||'Truck Owner')}</p><p><b>Status:</b> ${esc(a.status||'Waiting for Driver Agreement')}</p><p class="muted">Click Agree to receive the truck owner information.</p><button class="btn good" type="button" onclick="truckDriverAgreeFromOpenV78315('${esc(applicationKey)}', event)">Agree</button></div>`;}).join('');
-    const panel=document.createElement('section');panel.id='truckDriverOpenAgreementV78314';panel.style.margin='16px 0';
-    panel.innerHTML=`<div class="card"><h2 style="margin:0">🚚 Open Trucking — Action Required</h2><p class="muted">Complete the accepted truck job agreement below.</p></div><div class="grid">${cards}</div>`;
-    const target=document.getElementById('truckApplicationsTable');
-    if(target&&target.parentNode)target.parentNode.insertBefore(panel,target);else root.insertBefore(panel,root.children[2]||null);
-    panel.scrollIntoView({behavior:'smooth',block:'start'});return true;
-  }
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const isWaiting=status=>[
+    'owner accepted - waiting driver agreement',
+    'accepted - waiting driver agreement',
+    'owner accepted','accepted','waiting driver agreement','waiting for driver agreement'
+  ].includes(norm(status));
 
-  window.truckDriverAgreeFromOpenV78315=async function(id,event){
-    if(event){event.preventDefault();event.stopPropagation();}
-    const button=event&&event.currentTarget;
-    if(button&&button.dataset.busy==='1')return;
-    const app=(data.truckApplications||[]).find(a=>String(a.dbId||'')===String(id)||String(a.id||'')===String(id));
-    if(!app)return alert('Truck application not found. Please refresh and try again.');
-    if(!currentUser||!sameEmail(app.driverEmail,currentUser.email))return alert('Only the accepted driver can agree.');
-    if(!needsDriverAgreement(app))return alert('This application is not waiting for your agreement. Current status: '+(app.status||'Unknown'));
-    if(button){button.dataset.busy='1';button.disabled=true;button.textContent='Saving…';}
-    const previousStatus=app.status;
-    app.status='Owner Accepted - Waiting Driver Agreement';
-    try{
-      await Promise.resolve(window.driverAgreeTruckJob(id));
-    }catch(error){
-      app.status=previousStatus;
-      console.error('Truck driver agreement failed',error);
-      alert('Could not save your agreement: '+(error&&error.message?error.message:error));
-    }finally{
-      if(button&&document.body.contains(button)){button.dataset.busy='0';button.disabled=false;button.textContent='Agree';}
-    }
+  const priorFeed=window.personalizedHomeFeed;
+  window.personalizedHomeFeed=function(){
+    if(!window.currentUser||currentUser.role!=='driver')return typeof priorFeed==='function'?priorFeed.apply(this,arguments):'';
+
+    const baseItems=typeof personalizedHomeItems==='function'?personalizedHomeItems():[];
+    const waitingApps=(data.truckApplications||[]).filter(a=>sameEmail(a.driverEmail,currentUser.email)&&isWaiting(a.status));
+    const appIds=new Set(waitingApps.map(a=>String(a.id)));
+
+    const agreeCards=waitingApps.map(app=>`<div class="card" style="border-left:5px solid #dc2626">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <h3 style="margin:0">📋 Truck Owner Accepted — Agreement Required</h3>
+        <span class="pill warn">${esc(app.status||'Waiting Driver Agreement')}</span>
+      </div>
+      <p><b>Job:</b> ${esc(app.jobTitle||'Truck Driver Job')}</p>
+      <p><b>Owner:</b> ${esc(app.ownerName||'Truck Owner')}</p>
+      <p class="muted">Click Agree to receive the truck owner information.</p>
+      <button class="btn good" type="button" onclick="event.preventDefault();event.stopPropagation();driverAgreeTruckJob('${esc(app.id)}')">Agree</button>
+    </div>`);
+
+    const normalCards=baseItems.filter(x=>{
+      if(x.title!=='Truck Job Application')return true;
+      const candidate=(data.truckApplications||[]).find(a=>sameEmail(a.driverEmail,currentUser.email)&&isWaiting(a.status)&&String(a.jobTitle||'')===String((x.detail||'').split(' • ')[0]||''));
+      return !candidate || !appIds.has(String(candidate.id));
+    }).map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <h3 style="margin:0">${x.icon} ${esc(x.title)}</h3>
+        <span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${esc(x.status||'Available')}</span>
+      </div>
+      <p>${esc(x.detail)}</p>
+      <button class="btn primary" type="button" onclick="${x.action||`show('${x.page}')`}">Open ${esc(labels[x.page]||'Transaction')}</button>
+    </div>`);
+
+    const cards=[...agreeCards,...normalCards].join('');
+    return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${cards?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
   };
-  window.goTruckSection=async function(section){
-    const result=await previousGoTruckSection(section);
-    if(section==='applications'&&currentUser&&currentUser.role==='driver') [0,100,300].forEach(ms=>setTimeout(placeAgreementInsideTrucking,ms));
-    return result;
+
+  const priorDriverActions=window.truckDriverHomeActions;
+  window.truckDriverHomeActions=function(){
+    const html=typeof priorDriverActions==='function'?priorDriverActions.apply(this,arguments):'';
+    const box=document.createElement('div');
+    box.innerHTML=String(html||'');
+    box.querySelectorAll('#truckingPriorityTransactionsV78266').forEach(el=>el.remove());
+    box.querySelectorAll('section,.card').forEach(el=>{
+      const text=norm(el.textContent);
+      if(text.includes('new transactions — action required'))el.remove();
+    });
+    return box.innerHTML;
   };
-  window.__hcVersion='V7.8.315';
+
+  window.__hcVersion='V7.8.309';
 })();
 </script>
