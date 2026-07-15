@@ -1786,7 +1786,7 @@ function rentalRequestActionButtons(q,role){
     return '-';
   }
   if(role==='owner'){
-    if(st==='Waiting Owner Review')return `<button type="button" class="btn primary" onclick="event.preventDefault();event.stopPropagation();ownerAcceptRentalReq('${id}')">Accept</button> <button type="button" class="btn bad" onclick="event.preventDefault();event.stopPropagation();ownerDeclineRentalReq('${id}')">Decline</button>`;
+    if(['Pending Owner Review','Pending','Waiting Owner Review'].includes(st))return `<button type="button" class="btn primary" onclick="ownerAcceptRentalReq('${id}');return false;">Accept</button> <button type="button" class="btn bad" onclick="ownerDeclineRentalReq('${id}');return false;">Decline</button>`;
     return '-';
   }
   return '-';
