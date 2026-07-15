@@ -2910,7 +2910,10 @@ function taxiRideRow(r,forDriver){
   if(forDriver){
     const me=String(currentUser?.email||'').trim().toLowerCase();
     const driverApp=(data.taxiDriverApps||[]).find(a=>String(a.email||'').trim().toLowerCase()===me);
-    const approvedDriver=!!driverApp && String(driverApp.status||'').trim().toLowerCase()==='approved';
+    const appStatus=String(driverApp?.status||'').trim().toLowerCase();
+    // A hired driver remains admin-approved for customer rides. ownerEmail only marks
+    // the separate owner/vehicle assignment and must not hide ride Accept/Decline.
+    const approvedDriver=!!driverApp && (appStatus==='approved' || !!String(driverApp.ownerEmail||'').trim());
     const waiting=r.status==='Approved - Waiting Driver';
     const unclaimed=!String(r.driverEmail||'').trim();
     const declined=(r.declinedBy||[]).some(e=>String(e||'').trim().toLowerCase()===me);
@@ -11378,4 +11381,12 @@ window.__hcVersion='V7.8.213';
   window.driverAcceptTaxiNotifyCustomer=window.driverAcceptTaxi;
   window.__hcVersion='V7.8.319';
 })();
+</script>
+
+<script id="v78320-taxi-hired-driver-customer-ride-eligibility-fix">
+/* V7.8.320 — Documentation marker only.
+   The original taxiRideRow eligibility check now treats a hired driver as still
+   approved for customer ride Accept/Decline. Owner assignment is separate from
+   customer ride eligibility. */
+(function(){ window.__hcVersion='V7.8.320'; })();
 </script>
