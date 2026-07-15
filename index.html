@@ -10724,6 +10724,137 @@ window.__hcVersion='V7.8.213';
   setTimeout(restoreDraft,0);
   window.__hcVersion='V7.8.302';
 })();
+
+
+/* V7.8.309 RENTALS ONLY
+   Property owner accepts -> seeker is notified -> seeker clicks Agree -> owner information is released.
+   This final override intentionally changes only the rental agreement step. */
+(function(){
+  const WAITING='Owner Accepted - Waiting Seeker Agreement';
+  const AGREED='Seeker Agreed - Owner Information Released';
+  const acceptedForOwnerReview=new Set(['Pending Owner Review','Pending','Waiting Owner Review']);
+
+  window.rentalOwnerInfoReleased=function(q){
+    return [AGREED,'Approved - Owner Information Released'].includes(String((q&&q.status)||''));
+  };
+
+  window.rentalRequestActionButtons=function(q,role){
+    const st=String((q&&q.status)||'Pending');
+    const id=q&&(q.id||q.dbId);
+    if(!id)return '-';
+    if(role==='owner'){
+      if(acceptedForOwnerReview.has(st)){
+        return `<button class="btn primary" type="button" onclick="ownerAcceptRentalReq('${id}',event)">Accept</button> <button class="btn bad" type="button" onclick="ownerDeclineRentalReq('${id}',event)">Decline</button>`;
+      }
+      if(st===WAITING)return '<span class="pill warn">Waiting Seeker Agreement</span>';
+      if(st===AGREED)return '<span class="pill good">Seeker Agreed</span>';
+      return '-';
+    }
+    if(role==='rent_seeker'||role==='customer'){
+      if(st===WAITING)return `<button class="btn good" type="button" onclick="seekerAgreeRental('${id}',event)">Agree</button>`;
+      if(st===AGREED)return '<span class="pill good">Owner Information Released</span>';
+      return '-';
+    }
+    if(role==='admin'){
+      if(st===WAITING)return '<span class="pill warn">Waiting Seeker Agreement</span>';
+      if(st===AGREED)return '<span class="pill good">Seeker Agreed</span>';
+    }
+    return '-';
+  };
+
+  window.rentalRequestsTable=function(reqs,role){
+    reqs=reqs||[];
+    const anchor=role==='owner'?' id="ownerRentalRequests"':((role==='rent_seeker'||role==='customer')?' id="seekerRentalRequests"':'');
+    return `<div${anchor}><h3>Rental Requests / Contacts</h3><table><tr><th>Property</th><th>Rent Seeker</th><th>Phone</th><th>Owner</th><th>Owner Contact</th><th>Status</th><th>Action</th></tr>${reqs.map(q=>{
+      const released=window.rentalOwnerInfoReleased(q);
+      const privileged=role==='admin'||role==='owner';
+      const ownerContact=(released||privileged)?`${q.ownerPhone||'No phone'}<br>${q.ownerEmail||'No email'}`:'Released after the rent seeker clicks Agree';
+      return `<tr><td>${q.propertyTitle||''}</td><td>${q.seekerName||''}</td><td>${q.seekerPhone||''}</td><td>${q.ownerName||''}</td><td>${ownerContact}</td><td>${typeof rentalStatusBadge==='function'?rentalStatusBadge(q.status):(q.status||'')}</td><td>${window.rentalRequestActionButtons(q,role)}</td></tr>`;
+    }).join('')||'<tr><td colspan="7">No rental requests yet.</td></tr>'}</table></div>`;
+  };
+  window.rentalRequestsHtml=function(reqs,role,anchor){
+    let html=window.rentalRequestsTable(reqs,role);
+    if(anchor)html=html.replace(/<div(?: id="[^"]*")?>/,`<div id="${anchor}">`);
+    return html;
+  };
+
+  window.seekerOwnerInformationPanel=function(reqs){
+    const visible=(reqs||[]).filter(q=>[WAITING,AGREED,'Approved - Owner Information Released'].includes(String(q.status||'')));
+    if(!visible.length)return '';
+    return `<section id="seekerRentalAgreement309" class="card" style="margin-top:18px;border:2px solid #16a34a"><h2>🏠 Rental Agreement</h2>${visible.map(q=>{
+      const id=q.id||q.dbId;
+      if(window.rentalOwnerInfoReleased(q)){
+        return `<div class="notice good"><b>✅ Agreement completed for ${q.propertyTitle||'this property'}</b><p><b>Owner:</b> ${q.ownerName||'Property Owner'}</p><p><b>Phone:</b> ${q.ownerPhone||'Not provided'}</p><p><b>Email:</b> ${q.ownerEmail||'Not provided'}</p></div>`;
+      }
+      return `<div class="notice"><b>🎉 The property owner accepted your request for ${q.propertyTitle||'this property'}.</b><p>Click Agree to confirm. The owner phone number and email will be released immediately after your agreement.</p><button class="btn good" type="button" onclick="seekerAgreeRental('${id}',event)">Agree</button></div>`;
+    }).join('')}</section>`;
+  };
+
+  let rentalOwnerActionBusy309=false;
+  window.ownerAcceptRentalReq=async function(id,event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    if(rentalOwnerActionBusy309)return;
+    if(!requireLogin())return;
+    const q=(data.rentalRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+    if(!q)return alert('Rental request not found.');
+    if(currentUser.role!=='admin'&&q.ownerEmail!==currentUser.email&&String(q.ownerId||'')!==String(currentUser.id||''))return alert('Only the property owner can accept this request.');
+    if(!acceptedForOwnerReview.has(String(q.status||'')))return alert('This request is not waiting for owner review.');
+    const r=typeof __rentalFindPropertyForReqV7871==='function'?__rentalFindPropertyForReqV7871(q):null;
+    const oldQ={...q},oldR=r?{...r}:null;
+    rentalOwnerActionBusy309=true;
+    try{
+      q.status=WAITING;q.paymentStatus='Owner Accepted';
+      if(r)r.status='Rented';
+      persistOnly();
+      const rq=typeof __rentalUpdateRequestV7871==='function'?await __rentalUpdateRequestV7871(q,{status:WAITING,paid:true}):await hcSupabase.from('rental_requests').update({status:WAITING,paid:true}).eq('id',q.dbId||q.id);
+      const rp=r&&typeof __rentalUpdatePropertyV7871==='function'?await __rentalUpdatePropertyV7871(r,{status:'Rented'}):{error:null};
+      if(rq.error||rp.error)throw (rq.error||rp.error);
+      (data.rentalRequests||[]).forEach(other=>{if(other!==q&&String(other.rentalId)===String(q.rentalId)&&!['Declined','Cancelled','Closed',AGREED].includes(String(other.status||'')))other.status='Closed';});
+      addNote(q.seekerEmail,'The property owner accepted your rental request. Open your home page and click Agree to receive the owner information.');
+      if(q.seekerEmail)await Promise.resolve(sendEmailNotice({to:q.seekerEmail,name:q.seekerName||'Rent Seeker',subject:'Property owner accepted your rental request',summary:'The property owner accepted your request. Open your home page and click Agree. The owner phone number and email will be released after you agree.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Waiting for your agreement'}}));
+      persistOnly();
+      alert('Accepted. The rent seeker was notified and must click Agree before your information is released.');
+      await rentals();
+    }catch(error){
+      Object.assign(q,oldQ);if(r&&oldR)Object.assign(r,oldR);persistOnly();
+      alert('Could not accept rental request: '+(error?.message||error));
+    }finally{rentalOwnerActionBusy309=false;}
+  };
+
+  let rentalSeekerAgreeBusy309=false;
+  window.seekerAgreeRental=async function(id,event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    if(rentalSeekerAgreeBusy309)return;
+    if(!requireLogin())return;
+    const q=(data.rentalRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+    if(!q)return alert('Rental request not found. Please refresh and try again.');
+    const isSeeker=q.seekerEmail===currentUser.email||String(q.seekerId||'')===String(currentUser.id||'');
+    if(!isSeeker)return alert('Only the accepted rent seeker can agree.');
+    if(window.rentalOwnerInfoReleased(q)){home();return;}
+    if(String(q.status||'')!==WAITING)return alert('This rental request is not waiting for your agreement.');
+    if(!authReady())return alert('Supabase is required. Please refresh and sign in again.');
+    rentalSeekerAgreeBusy309=true;
+    const old=q.status;
+    try{
+      const requestId=q.dbId||q.id;
+      const {data:result,error}=await hcSupabase.rpc('rental_seeker_agree_and_release_owner',{p_request_id:requestId});
+      if(error)throw error;
+      q.status=AGREED;q.paymentStatus='Seeker Agreed';q.seekerAgreedAt=new Date().toISOString();
+      persistOnly();
+      addNote(q.ownerEmail,(q.seekerName||'The rent seeker')+' agreed to your accepted rental request. Your contact information was released.');
+      addNote(currentUser.email,'You agreed. The property owner information is now available.');
+      try{await Promise.resolve(sendEmailNotice({to:q.ownerEmail,name:q.ownerName||'Property Owner',subject:'Rent seeker agreed to your accepted request',summary:'The accepted rent seeker clicked Agree. Your contact information has now been released to the seeker.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Seeker:q.seekerName,Status:'Seeker Agreed'}}));}catch(e){console.warn(e);}
+      alert(`Agreement completed.\n\nOwner: ${q.ownerName||'Property Owner'}\nPhone: ${q.ownerPhone||'Not provided'}\nEmail: ${q.ownerEmail||'Not provided'}`);
+      await home();
+    }catch(error){
+      q.status=old;persistOnly();
+      alert('Could not save your agreement: '+(error?.message||error));
+    }finally{rentalSeekerAgreeBusy309=false;}
+  };
+
+  window.__hcVersion='V7.8.309';
+})();
+
 </script>
 <style id="v78302-marketplace-post-style">
 .market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
