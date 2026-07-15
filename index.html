@@ -4318,24 +4318,41 @@ requestViewing=async function(id){
   await rentals();
 };
 
+function __rentalCurrentUserOwnsRequestV78313(q,r){
+  if(!currentUser||!q)return false;
+  if(currentUser.role==='admin')return true;
+  const uid=String(currentUser.id||'');
+  const email=String(currentUser.email||'').toLowerCase();
+  const ownerId=String((r&&r.ownerId)||q.ownerId||'');
+  const ownerEmail=String((r&&r.ownerEmail)||q.ownerEmail||'').toLowerCase();
+  return (!!uid&&!!ownerId&&uid===ownerId)|| (!!email&&!!ownerEmail&&email===ownerEmail);
+}
+async function __rentalOwnerDecisionRpcV78313(q,decision){
+  if(!authReady()||!q)return {error:new Error('Supabase is not ready.')};
+  try{
+    const {data:result,error}=await hcSupabase.rpc('rental_owner_decide_request_v78313',{
+      p_request_id:String(q.dbId||q.id),
+      p_decision:decision
+    });
+    return {data:result,error};
+  }catch(error){return {error};}
+}
+
 ownerAcceptRentalReq=async function(id){
   if(!requireLogin())return;
   let q=__rentalFindRequestV7871(id);if(!q)return alert('Rental request not found.');
-  if(currentUser.role!=='admin'&&q.ownerEmail!==currentUser.email)return alert('Only the property owner can accept this request.');
-  if(!['Pending Owner Review','Pending','Waiting Owner Review'].includes(String(q.status||'')))return alert('This request is not waiting for owner review.');
   let r=__rentalFindPropertyForReqV7871(q);
-  let oldQ={...q};let oldR=r?{...r}:null;
-  q.status='Approved';
-  q.paymentStatus='Owner Accepted';
+  if(!__rentalCurrentUserOwnsRequestV78313(q,r))return alert('Only the property owner can accept this request.');
+  if(!['Pending Owner Review','Pending','Waiting Owner Review'].includes(String(q.status||'')))return alert('This request is not waiting for owner review.');
+  let result=await __rentalOwnerDecisionRpcV78313(q,'accept');
+  if(result.error)return alert('Could not accept rental request: '+(result.error.message||'unknown error')+'. Run the V7.8.313 Rental Owner Decision SQL, then try again.');
+  q.status='Approved';q.paymentStatus='Owner Accepted';
   if(r)r.status='Rented';
-  persistOnly();
-  let rq=await __rentalUpdateRequestV7871(q,{status:'Approved',paid:true});
-  let rp=r?await __rentalUpdatePropertyV7871(r,{status:'Rented'}):{error:null};
-  if(rq.error||rp.error){Object.assign(q,oldQ);if(r&&oldR)Object.assign(r,oldR);persistOnly();return alert('Could not accept rental request: '+(rq.error?.message||rp.error?.message||'unknown error'));}
-  (data.rentalRequests||[]).forEach(other=>{if(other!==q&&String(other.rentalId)===String(q.rentalId)&&!['Declined','Cancelled'].includes(String(other.status||'')))other.status='Closed';});
+  (data.rentalRequests||[]).forEach(other=>{if(other!==q&&String(other.rentalId)===String(q.rentalId)&&!['Declined','Cancelled','Closed'].includes(String(other.status||'')))other.status='Closed';});
   addNote(q.seekerEmail,'Congratulations! Your rental request was approved and the property is now marked Rented. Open your home page and click Request Owner Information to release the owner contact details.');
   if(q.seekerEmail)sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Congratulations — your rental was approved',summary:'Congratulations! Your rental request was approved and the property is now marked rented. Open your home page and click Request Owner Information to release the owner contact details.',buttonText:'Open Home Page',page:'home',details:{Property:q.propertyTitle,Status:'Approved / Rented'}});
   persistOnly();
+  await loadSupabaseRentals();await loadSupabaseRentalRequests();
   alert('Accepted. The property is now marked Rented.');
   if(currentPage==='admin')adminSuccess();else await rentals();
 };
@@ -4343,19 +4360,17 @@ ownerAcceptRentalReq=async function(id){
 ownerDeclineRentalReq=async function(id){
   if(!requireLogin())return;
   let q=__rentalFindRequestV7871(id);if(!q)return alert('Rental request not found.');
-  if(currentUser.role!=='admin'&&q.ownerEmail!==currentUser.email)return alert('Only the property owner can decline this request.');
-  if(!['Pending Owner Review','Pending','Waiting Owner Review'].includes(String(q.status||'')))return alert('This request is not waiting for owner review.');
   let r=__rentalFindPropertyForReqV7871(q);
-  let oldQ={...q};let oldR=r?{...r}:null;
+  if(!__rentalCurrentUserOwnsRequestV78313(q,r))return alert('Only the property owner can decline this request.');
+  if(!['Pending Owner Review','Pending','Waiting Owner Review'].includes(String(q.status||'')))return alert('This request is not waiting for owner review.');
+  let result=await __rentalOwnerDecisionRpcV78313(q,'decline');
+  if(result.error)return alert('Could not decline rental request: '+(result.error.message||'unknown error')+'. Run the V7.8.313 Rental Owner Decision SQL, then try again.');
   q.status='Declined';
   if(r&&String(r.status||'')!=='Rented')r.status='Approved';
-  persistOnly();
-  let rq=await __rentalUpdateRequestV7871(q,{status:'Declined'});
-  let rp=(r&&oldR&&String(oldR.status||'')!=='Rented')?await __rentalUpdatePropertyV7871(r,{status:'Approved'}):{error:null};
-  if(rq.error||rp.error){Object.assign(q,oldQ);if(r&&oldR)Object.assign(r,oldR);persistOnly();return alert('Could not decline rental request: '+(rq.error?.message||rp.error?.message||'unknown error'));}
   addNote(q.seekerEmail,'Property owner declined your rental request.');
   if(q.seekerEmail)sendEmailNotice({to:q.seekerEmail,name:q.seekerName,subject:'Rental request declined',summary:'The property owner declined your rental request. The property remains available.',buttonText:'Open Rentals',page:'rentals',details:{Property:q.propertyTitle,Status:'Declined'}});
   persistOnly();
+  await loadSupabaseRentals();await loadSupabaseRentalRequests();
   alert('Declined. The property stays Available/Approved.');
   if(currentPage==='admin')adminSuccess();else await rentals();
 };
