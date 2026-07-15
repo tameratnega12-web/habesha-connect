@@ -1,7 +1,8 @@
-# Habesha Agenagn V7.8.309
+Habesha Agenagn V7.8.309
 
-Rental-only fix:
-- Replaced the blocked native Rental file control with a large direct file-input button.
-- Clicking Choose Property Photos now hits the actual file input on phone and laptop.
-- Rental preview, Supabase upload, and all other workflows remain unchanged.
-- No SQL required beyond the previously installed V7.8.307 Rental photo SQL.
+Base: V7.8.308 latest project.
+Change only: Truck Driver home page.
+- Keeps the accepted truck-job Agree action inside Your New Activity / Open Trucking.
+- Removes only the duplicate New Transactions — Action Required panel.
+- Does not change Supabase, statuses, Rentals, Shipping, or other categories.
+- No SQL required.
