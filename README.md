@@ -11,3 +11,11 @@ Home-page layout changes only:
 
 No task behavior, forms, statuses, Supabase logic, email logic, or other workflows were changed.
 No new SQL is required.
+
+
+V7.8.313 — Taxi/Limo, Business, and Home Service Provider home layout only
+- Taxi/Limo Owner: task buttons remain at the top; Your New Activity and Quick Actions heading card removed.
+- Taxi/Limo Driver: task buttons remain at the top; Your New Activity and Quick Actions heading card removed.
+- Business Owner: task buttons remain at the top; Your New Activity and Quick Actions heading card removed.
+- Home Service Provider: task buttons remain at the top; Your New Activity and Quick Actions heading card removed.
+- No Supabase, SQL, form, email, button action, or transaction-flow changes.

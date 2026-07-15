@@ -10886,3 +10886,54 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.311';
 })();
 </script>
+
+
+<script id="v78313-taxi-business-provider-task-buttons-top-only">
+/* V7.8.313 — Home layout only.
+   Taxi/Limo owner, Taxi/Limo driver, Business Owner, and Home Service Provider:
+   remove Your New Activity and the Quick Actions heading card while preserving
+   every existing task/action button and workflow. */
+(function(){
+  'use strict';
+  const targetRoles=new Set(['taxi_limo_owner','taxi_limo_driver','taxi_driver','business_owner','service_provider']);
+  const roleSection={
+    taxi_limo_owner:'#taxiOwnerHomeActions',
+    taxi_limo_driver:'#taxiDriverHomeActions',
+    taxi_driver:'#taxiDriverHomeActions',
+    business_owner:'#businessOwnerHomeActions',
+    service_provider:'#homeServiceProviderHomeActions'
+  };
+  function currentRole(){
+    try{return String((typeof currentUser!=='undefined'&&currentUser&&currentUser.role)||'').trim().toLowerCase();}
+    catch(e){return '';}
+  }
+  function applyHomeLayout(){
+    const role=currentRole();
+    if(!targetRoles.has(role))return;
+    const homeRoot=document.getElementById('home');
+    if(!homeRoot)return;
+    homeRoot.querySelectorAll('#personalizedHomeActivity').forEach(el=>el.remove());
+    const section=homeRoot.querySelector(roleSection[role]);
+    if(!section)return;
+    const first=section.firstElementChild;
+    if(first&&first.classList.contains('card')&&/quick\s+actions/i.test(String(first.textContent||'')))first.remove();
+    section.style.marginTop='0';
+  }
+  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(applyHomeLayout));}
+  const previousHome=window.home;
+  if(typeof previousHome==='function')window.home=function(){
+    const result=previousHome.apply(this,arguments);
+    schedule();
+    return result;
+  };
+  let timer=0;
+  const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(applyHomeLayout,30);});
+  document.addEventListener('DOMContentLoaded',()=>{
+    const root=document.getElementById('home')||document.body;
+    observer.observe(root,{childList:true,subtree:true});
+    schedule();
+  });
+  schedule();
+  window.__hcVersion='V7.8.313';
+})();
+</script>
