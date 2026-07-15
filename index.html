@@ -1911,7 +1911,10 @@ async function addRental(){
     for(let i=0;i<files.length;i++){
       const file=files[i];
       const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-      const path=`${propertyId}/${Date.now()}-${i}.${ext}`;
+      const authResult=await hcSupabase.auth.getUser();
+      const authUserId=authResult&&authResult.data&&authResult.data.user&&authResult.data.user.id;
+      if(!authUserId)throw new Error('Your Supabase session could not be verified. Please sign in again.');
+      const path=`${authUserId}/${propertyId}/${Date.now()}-${i}.${ext}`;
       const up=await hcSupabase.storage.from('rental-property-media').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||'image/jpeg'});
       if(up.error)throw up.error;
       const pub=hcSupabase.storage.from('rental-property-media').getPublicUrl(path);
@@ -1932,8 +1935,8 @@ async function addRental(){
       localRental.photos=saved;
     }
   }catch(err){
-    await hcSupabase.from('properties').delete().eq('id',propertyId).eq('owner_id',currentUser.id);
-    return alert('Property photo upload failed: '+(err.message||err));
+    console.error('Rental property photo upload failed',err);
+    localRental.photoUploadWarning=String(err&&err.message||err||'Photo upload failed');
   }
   localRental.dbId=propertyId;localRental.id=propertyId;localRental.source='supabase';
   data.rentals.unshift(localRental);
@@ -1941,7 +1944,11 @@ async function addRental(){
   sendAdminEmailNotice('New Property Published','A property owner published a rental property for admin approval.',{Owner:currentUser.name,Email:currentUser.email,Property:title,Type:propertyType,City:city,Monthly_Rent:money(price),Photos:String(localRental.photos.length)},'admin');
   addNote(currentUser.email,'Your property was submitted and is waiting for admin approval.');
   save();
-  alert(localRental.photos.length?'Property and photos submitted successfully. Admin approval is required before seekers can see it.':'Property submitted successfully. Admin approval is required before seekers can see it.');
+  if(localRental.photoUploadWarning){
+    alert('Property submitted successfully and is waiting for admin approval. The property was kept, but the photos could not upload: '+localRental.photoUploadWarning);
+  }else{
+    alert(localRental.photos.length?'Property and photos submitted successfully. Admin approval is required before seekers can see it.':'Property submitted successfully. Admin approval is required before seekers can see it.');
+  }
   await show('rentals');
   return true;
 }
