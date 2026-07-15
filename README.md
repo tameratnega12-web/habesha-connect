@@ -1,11 +1,13 @@
-# Habesha Agenagn V7.8.309
+# Habesha Agenagn V7.8.312
 
-Base: user-provided V7.8.308.
+Base: corrected V7.8.311.
 
-Only Trailer Rental Home placement was changed:
-- When a driver or another truck owner has an accepted trailer request, the existing agreement transaction appears at the absolute top of Home.
-- The existing Agree button is used.
-- After Agree, the existing flow releases the trailer owner's contact information.
-- No Trailer status, Supabase write, email, or other category logic was changed.
+Home-page layout changes only:
+- Shipping Traveler: removed Your New Activity and the Traveler Quick Actions heading card; kept Open Trip and View Requests task buttons at the top.
+- Shipping Sender: removed Your New Activity and the Sender Quick Actions heading card; kept Available Travelers and Post Item to Ship task buttons at the top.
+- Property Owner: removed Your New Activity and the Property Owner Quick Actions heading card; kept Add Property and View Rent Seekers task buttons at the top.
+- Rent Seeker: removed Your New Activity and the Rent Seeker heading card; kept Find Rentals and existing owner-information actions at the top.
+- Existing Truck Owner and Truck Driver V7.8.311 layout remains unchanged.
 
-No new SQL is required. The existing Supabase folder is preserved.
+No task behavior, forms, statuses, Supabase logic, email logic, or other workflows were changed.
+No new SQL is required.

@@ -840,29 +840,29 @@ function personalizedHomeItems(){
  return out.sort((a,b)=>a.priority-b.priority||b.time-a.time).slice(0,24);
 }
 function personalizedHomeFeed(){
- if(!currentUser||currentUser.role==='admin')return '';
+ if(!currentUser||currentUser.role==='admin'||['traveler','sender','owner','rent_seeker','truck_owner','driver'].includes(currentUser.role))return '';
  const items=personalizedHomeItems();
  const cards=items.map(x=>`<div class="card" style="border-left:5px solid ${x.priority===0?'#dc2626':x.priority===1?'#d97706':'#64748b'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><h3 style="margin:0">${x.icon} ${hcHomeEsc(x.title)}</h3><span class="pill ${x.priority===0?'warn':x.priority===1?'good':''}">${hcHomeEsc(x.status||'Available')}</span></div><p>${hcHomeEsc(x.detail)}</p><button class="btn primary" onclick="${x.action||`show('${x.page}')`}">Open ${hcHomeEsc(labels[x.page]||'Transaction')}</button></div>`).join('');
  return `<section id="personalizedHomeActivity"><div class="card" style="margin-top:20px"><h2 style="margin:0">🔔 Your New Activity</h2><p class="muted">Approved opportunities and transactions that need your attention appear here first.</p></div>${items.length?`<div class="grid">${cards}</div>`:`<div class="card"><p>No new transactions need your attention right now. New approved opportunities and requests will appear here automatically.</p></div>`}</section>`;
 }
 function travelerHomeActions(){
  if(!currentUser||currentUser.role!=='traveler')return '';
- return `<section id="travelerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">✈️ Traveler Quick Actions</h2><p class="muted">Open a trip or review sender requests immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div></section>`;
+ return `<div id="travelerHomeActions" class="grid" style="margin-top:20px"><div class="card"><h3>✈️ Open Trip</h3><p class="muted">Post a new trip and available package space.</p><button class="btn primary" onclick="goTravelerShipSection('post')">Open Trip</button></div><div class="card"><h3>📦 View Requests</h3><p class="muted">Review sender requests for your trips.</p><button class="btn primary" onclick="goTravelerShipSection('requests')">View Requests</button></div></div>`;
 }
 function senderHomeActions(){
  if(!currentUser||currentUser.role!=='sender')return '';
- return `<section id="senderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">📦 Sender Quick Actions</h2><p class="muted">Find a traveler or post an item to ship immediately after signing in.</p></div><div class="grid"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div></section>`;
+ return `<div id="senderHomeActions" class="grid" style="margin-top:20px"><div class="card"><h3>✈️ Available Travelers</h3><p class="muted">View approved traveler trips and request available package space.</p><button class="btn primary" onclick="goSenderShipSection('travelers')">Available Travelers</button></div><div class="card"><h3>📦 Post Item to Ship</h3><p class="muted">Submit your item and shipping details for admin approval.</p><button class="btn primary" onclick="goSenderShipSection('post')">Post Item to Ship</button></div></div>`;
 }
 function propertyOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='owner')return '';
- return `<section id="propertyOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🏠 Property Owner Quick Actions</h2><p class="muted">Add a property or review rent seekers immediately after signing in.</p></div><div class="grid"><div class="card"><h3>🏠 Add Property</h3><p class="muted">Post a home, apartment, room, or other rental property.</p><button class="btn primary" onclick="goRentalSection('add')">Add Property</button></div><div class="card"><h3>👀 View Rent Seekers</h3><p class="muted">Review people who requested your rental properties.</p><button class="btn primary" onclick="goRentalSection('seekers')">View Rent Seekers</button></div></div></section>`;
+ return `<div id="propertyOwnerHomeActions" class="grid" style="margin-top:20px"><div class="card"><h3>🏠 Add Property</h3><p class="muted">Post a home, apartment, room, or other rental property.</p><button class="btn primary" onclick="goRentalSection('add')">Add Property</button></div><div class="card"><h3>👀 View Rent Seekers</h3><p class="muted">Review people who requested your rental properties.</p><button class="btn primary" onclick="goRentalSection('seekers')">View Rent Seekers</button></div></div>`;
 }
 function rentSeekerHomeActions(){
  if(!currentUser||currentUser.role!=='rent_seeker')return '';
  const email=String(currentUser.email||'').trim().toLowerCase();
  const seekerReqs=(data.rentalRequests||[]).filter(q=>String(q.seekerEmail||'').trim().toLowerCase()===email);
  const ownerInfo=seekerOwnerInformationPanel(seekerReqs);
- return `${ownerInfo}<section id="rentSeekerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🔍 Rent Seeker</h2><p class="muted">Browse approved homes and rooms available for rent.</p></div><div class="grid"><div class="card"><h3>🏠 Find Rentals</h3><p class="muted">See all approved rental properties and request a viewing.</p><button class="btn primary" onclick="goRentalSection('available')">Find Rentals</button></div></div></section>`;
+ return `${ownerInfo}<div id="rentSeekerHomeActions" class="grid" style="margin-top:20px"><div class="card"><h3>🏠 Find Rentals</h3><p class="muted">See all approved rental properties and request a viewing.</p><button class="btn primary" onclick="goRentalSection('available')">Find Rentals</button></div></div>`;
 }
 let truckDashboardView='';
 async function goTruckSection(section){
@@ -10776,7 +10776,7 @@ window.__hcVersion='V7.8.213';
     scheduleMove();
   });
   scheduleMove();
-  window.__hcVersion='V7.8.308';
+  window.__hcVersion='V7.8.312';
 })();
 </script>
 
