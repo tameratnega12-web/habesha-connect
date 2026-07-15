@@ -10545,3 +10545,186 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.301';
 })();
 </script>
+
+
+<script id="v78302-marketplace-post-rls-rebuild">
+/* V7.8.302 — Marketplace-only posting rebuild.
+   Keeps form values/photos until Supabase confirms listing + photo URLs. */
+(function(){
+  const BUCKET='marketplace-media';
+  const MAX_FILES=6;
+  const MAX_BYTES=5*1024*1024;
+  const state=window.__marketPostState302={files:[],draft:{},busy:false,urls:[]};
+  const ids=['mTitle','mCategory','mCondition','mPrice','mCity','mDesc','mPhotos'];
+  const el=id=>document.getElementById(id);
+
+  function captureDraft(){
+    ids.forEach(id=>{const n=el(id);if(n)state.draft[id]=n.value;});
+  }
+  function restoreDraft(){
+    ids.forEach(id=>{const n=el(id);if(n&&Object.prototype.hasOwnProperty.call(state.draft,id))n.value=state.draft[id];});
+    renderPreview();
+  }
+  function clearObjectUrls(){
+    while(state.urls.length){try{URL.revokeObjectURL(state.urls.pop())}catch(_){}}
+  }
+  function validateFile(file){
+    if(!file)return 'Please choose a photo.';
+    const name=String(file.name||'').toLowerCase();
+    const type=String(file.type||'').toLowerCase();
+    if(!(type.startsWith('image/')||/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name)))return 'Marketplace photos must be image files.';
+    if(Number(file.size||0)>MAX_BYTES)return 'Each Marketplace photo must be 5 MB or smaller.';
+    return '';
+  }
+  function renderPreview(){
+    const box=el('mPhotoPreview');if(!box)return;
+    clearObjectUrls();
+    if(!state.files.length){box.innerHTML='';return;}
+    box.innerHTML='<p><b>Selected photos:</b> '+state.files.length+'</p><div class="market-photo-grid302">'+state.files.map((file,index)=>{
+      const url=URL.createObjectURL(file);state.urls.push(url);
+      return '<div class="market-photo-item302"><img src="'+url+'" alt="Selected Marketplace photo"><button type="button" data-market-remove302="'+index+'">Remove</button></div>';
+    }).join('')+'</div>';
+  }
+  function chooseFiles(input){
+    captureDraft();
+    const selected=Array.from(input?.files||[]);
+    const problem=selected.map(validateFile).find(Boolean);
+    if(problem){if(input)input.value='';alert(problem);return;}
+    selected.forEach(file=>{
+      if(!state.files.some(x=>x.name===file.name&&x.size===file.size&&x.lastModified===file.lastModified))state.files.push(file);
+    });
+    if(state.files.length>MAX_FILES){state.files=state.files.slice(0,MAX_FILES);alert('You can upload up to '+MAX_FILES+' Marketplace photos.');}
+    if(input)input.value='';
+    restoreDraft();
+  }
+  window.previewMarketPhotos=function(input){chooseFiles(input||el('mPhotoFiles'));};
+
+  async function uploadOne(listingId,file,index){
+    const ext=((String(file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';
+    const path=String(listingId)+'/photo-'+Date.now()+'-'+index+'.'+ext;
+    const up=await hcSupabase.storage.from(BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+    if(up.error)throw new Error('Photo upload failed: '+up.error.message);
+    const publicResult=hcSupabase.storage.from(BUCKET).getPublicUrl(path);
+    const url=publicResult?.data?.publicUrl;
+    if(!url)throw new Error('Supabase did not return a public photo URL.');
+    return url;
+  }
+  async function attachUrls(listingId,urls){
+    if(!urls.length)return;
+    let result=await hcSupabase.from('marketplace_listings').update({photo_urls:urls}).eq('id',listingId).select('id,photo_urls').single();
+    if(result.error){
+      const rpc=await hcSupabase.rpc('marketplace_attach_photos_v78282',{p_listing_id:listingId,p_photo_urls:urls});
+      if(rpc.error)throw new Error('Listing was created, but photo URLs could not be attached: '+rpc.error.message);
+      result=await hcSupabase.from('marketplace_listings').select('id,photo_urls').eq('id',listingId).single();
+    }
+    if(result.error)throw new Error('Photo verification failed: '+result.error.message);
+    const saved=Array.isArray(result.data?.photo_urls)?result.data.photo_urls:[];
+    if(saved.length!==urls.length)throw new Error('Supabase did not save every photo URL.');
+  }
+  async function createListing(values){
+    const rpc=await hcSupabase.rpc('marketplace_create_listing_v78302',{
+      p_seller_name:currentUser?.name||'',
+      p_seller_phone:currentUser?.phone||'',
+      p_title:values.title,
+      p_description:values.description,
+      p_category:values.category,
+      p_price:values.price,
+      p_item_condition:values.condition,
+      p_city:values.city
+    });
+    if(!rpc.error&&rpc.data)return {data:rpc.data,error:null};
+
+    // Fallback for deployments where the SQL has not been run yet; returns the real RLS error.
+    const uid=(await hcSupabase.auth.getUser())?.data?.user?.id;
+    if(!uid)return {data:null,error:rpc.error||new Error('Your Supabase session is not signed in. Please log out and sign in again.')};
+    return hcSupabase.from('marketplace_listings').insert({
+      seller_id:uid,
+      seller_name:currentUser?.name||'',
+      seller_email:currentUser?.email||'',
+      seller_phone:currentUser?.phone||'',
+      title:values.title,
+      description:values.description,
+      category:values.category,
+      price:values.price,
+      item_condition:values.condition,
+      city:values.city,
+      photo_urls:[],
+      status:'pending_admin_approval'
+    }).select('*').single();
+  }
+
+  window.addMarket=async function(){
+    if(state.busy)return;
+    if(!requireLogin())return;
+    captureDraft();
+    const values={
+      title:String(state.draft.mTitle||'').trim(),
+      category:String(state.draft.mCategory||'Other'),
+      condition:String(state.draft.mCondition||'Good'),
+      price:Number(state.draft.mPrice||0),
+      city:String(state.draft.mCity||'').trim(),
+      description:String(state.draft.mDesc||''),
+      links:String(state.draft.mPhotos||'').split(',').map(x=>x.trim()).filter(Boolean)
+    };
+    if(!values.title||values.price<=0||!values.city)return alert('Please enter item title, price, and city.');
+    const problem=state.files.map(validateFile).find(Boolean);if(problem)return alert(problem);
+    if(state.files.length+values.links.length>MAX_FILES)return alert('You can add a maximum of '+MAX_FILES+' Marketplace photos total.');
+
+    const button=document.querySelector('#marketplace button[onclick*="addMarket"]');
+    state.busy=true;
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=state.files.length?'Creating listing…':'Submitting…';}
+    try{
+      const created=await createListing(values);
+      if(created.error)throw created.error;
+      const row=Array.isArray(created.data)?created.data[0]:created.data;
+      if(!row?.id)throw new Error('Supabase created no Marketplace listing ID.');
+
+      const uploaded=[];
+      for(let i=0;i<state.files.length;i++){
+        if(button)button.textContent='Uploading photo '+(i+1)+' of '+state.files.length+'…';
+        uploaded.push(await uploadOne(row.id,state.files[i],i));
+      }
+      const urls=[...uploaded,...values.links].slice(0,MAX_FILES);
+      await attachUrls(row.id,urls);
+
+      const verify=await hcSupabase.from('marketplace_listings').select('*').eq('id',row.id).single();
+      if(verify.error)throw new Error('Listing verification failed: '+verify.error.message);
+      const saved=typeof mapSupabaseMarketListing==='function'?mapSupabaseMarketListing(verify.data):verify.data;
+      if(urls.length&&(!Array.isArray(saved.photos||verify.data.photo_urls)||(saved.photos||verify.data.photo_urls).length!==urls.length))throw new Error('The Marketplace listing reloaded without all photos.');
+
+      data.market=(data.market||[]).filter(x=>String(x.dbId||x.id)!==String(row.id));
+      data.market.unshift(saved);
+      if(typeof persistOnly==='function')persistOnly();
+      state.files=[];state.draft={};renderPreview();
+      try{if(typeof addNote==='function')addNote('admin.habeshaconnect@gmail.com','Marketplace listing waiting for approval: '+values.title+' by '+(currentUser?.name||'Seller'));}catch(_){ }
+      try{if(typeof sendAdminEmailNotice==='function')await Promise.resolve(sendAdminEmailNotice('Marketplace listing waiting for approval','A seller posted a Marketplace item.',{Seller:currentUser?.name||'',Email:currentUser?.email||'',Item:values.title,Price:String(values.price),City:values.city,Photos:String(urls.length),Status:'Pending Admin Approval'},'marketplace'));}catch(e){console.warn(e);}
+      marketplace();
+      alert(urls.length?'Item and photos submitted for admin approval.':'Item submitted for admin approval.');
+    }catch(error){
+      console.error('Marketplace V7.8.302 submission failed',error);
+      restoreDraft();
+      alert('Marketplace submission failed: '+(error?.message||error));
+    }finally{
+      state.busy=false;
+      const currentButton=document.querySelector('#marketplace button[onclick*="addMarket"]');
+      if(currentButton){currentButton.disabled=false;currentButton.textContent=currentButton.dataset.originalText||'Submit Item';}
+    }
+  };
+
+  document.addEventListener('input',function(event){if(ids.includes(event.target?.id))captureDraft();},true);
+  document.addEventListener('change',function(event){if(ids.includes(event.target?.id))captureDraft();},true);
+  document.addEventListener('click',function(event){
+    const remove=event.target.closest?.('[data-market-remove302]');if(!remove)return;
+    event.preventDefault();event.stopPropagation();
+    state.files.splice(Number(remove.dataset.marketRemove302),1);renderPreview();
+  },true);
+
+  const priorMarketplace=window.marketplace;
+  if(typeof priorMarketplace==='function')window.marketplace=function(){captureDraft();const result=priorMarketplace.apply(this,arguments);setTimeout(restoreDraft,0);return result;};
+  setTimeout(restoreDraft,0);
+  window.__hcVersion='V7.8.302';
+})();
+</script>
+<style id="v78302-marketplace-post-style">
+.market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
+</style>
