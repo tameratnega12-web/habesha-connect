@@ -2906,7 +2906,22 @@ async function updateTaxiRideDb(r,fields){
   return await hcSupabase.from('taxi_ride_requests').update(payload).eq('id',r.dbId||r.id);
 }
 function taxiRideRow(r,forDriver){
-  let action=forDriver?taxiRideActions(r):((r.riderEmail===currentUser.email||currentUser.role==='admin')?taxiRideActions(r):'-');
+  let action='-';
+  if(forDriver){
+    const me=String(currentUser?.email||'').trim().toLowerCase();
+    const driverApp=(data.taxiDriverApps||[]).find(a=>String(a.email||'').trim().toLowerCase()===me);
+    const approvedDriver=!!driverApp && String(driverApp.status||'').trim().toLowerCase()==='approved';
+    const waiting=r.status==='Approved - Waiting Driver';
+    const unclaimed=!String(r.driverEmail||'').trim();
+    const declined=(r.declinedBy||[]).some(e=>String(e||'').trim().toLowerCase()===me);
+    if(approvedDriver&&waiting&&unclaimed&&!declined){
+      action=`<button class="btn primary" onclick="driverAcceptTaxi('${r.id}')">Accept Ride</button> <button class="btn bad" onclick="driverDeclineTaxi('${r.id}')">Decline</button>`;
+    }else{
+      action=taxiRideActions(r);
+    }
+  }else if(r.riderEmail===currentUser.email||currentUser.role==='admin'){
+    action=taxiRideActions(r);
+  }
   return `<tr><td>${r.riderName||''}<br><span class="small">${r.riderPhone||''}</span></td><td>${r.pickup||''}</td><td>${r.destination||''}</td><td>${r.rideDate||''} ${r.rideTime||''}</td><td>${taxiBadge(r.status)}</td><td>${action}</td></tr>`;
 }
 
@@ -11361,6 +11376,6 @@ window.__hcVersion='V7.8.213';
     taxi();
   };
   window.driverAcceptTaxiNotifyCustomer=window.driverAcceptTaxi;
-  window.__hcVersion='V7.8.318';
+  window.__hcVersion='V7.8.319';
 })();
 </script>

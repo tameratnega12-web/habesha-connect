@@ -38,3 +38,5 @@ V7.8.317 Taxi/Limo customer-driver flow fix:
 - Atomic ride acceptance prevents two drivers from claiming the same ride.
 
 V7.8.318: Taxi/Limo Driver open customer rides now visibly shows Accept Ride and Decline after admin approval. Customer ride acceptance remains driver-only.
+
+V7.8.319: Fixed the original Taxi/Limo driver open-ride table renderer so an admin-approved driver profile always receives Accept Ride and Decline buttons for an unclaimed ride with status Approved - Waiting Driver. Hired / Not Available employment status does not block customer ride actions. No SQL change.
