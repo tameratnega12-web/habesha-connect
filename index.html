@@ -1786,7 +1786,7 @@ function rentalRequestActionButtons(q,role){
     return '-';
   }
   if(role==='owner'){
-    if(st==='Waiting Owner Review')return `<button class="btn primary" onclick="ownerAcceptRentalReq('${id}')">Accept</button> <button class="btn bad" onclick="ownerDeclineRentalReq('${id}')">Decline</button>`;
+    if(st==='Waiting Owner Review')return `<button type="button" class="btn primary" onclick="event.preventDefault();event.stopPropagation();ownerAcceptRentalReq('${id}')">Accept</button> <button type="button" class="btn bad" onclick="event.preventDefault();event.stopPropagation();ownerDeclineRentalReq('${id}')">Decline</button>`;
     return '-';
   }
   return '-';
@@ -4255,7 +4255,7 @@ rentalRequestActionButtons=function(q,role){
   if(!id)return '-';
   if(role==='owner'){
     if(['Pending Owner Review','Pending','Waiting Owner Review'].includes(st)){
-      return `<button class="btn primary" onclick="ownerAcceptRentalReq('${id}')">Accept</button> <button class="btn bad" onclick="ownerDeclineRentalReq('${id}')">Decline</button>`;
+      return `<button type="button" class="btn primary" onclick="event.preventDefault();event.stopPropagation();ownerAcceptRentalReq('${id}')">Accept</button> <button type="button" class="btn bad" onclick="event.preventDefault();event.stopPropagation();ownerDeclineRentalReq('${id}')">Decline</button>`;
     }
     return '-';
   }
