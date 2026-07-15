@@ -892,7 +892,7 @@ async function goTaxiSection(section){
 }
 function taxiOwnerHomeActions(){
  if(!currentUser||currentUser.role!=='taxi_limo_owner')return '';
- return `<section id="taxiOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚕 Taxi/Limo Owner Quick Actions</h2><p class="muted">Complete your owner setup, add vehicles, hire drivers, and manage active driver connections.</p></div><div class="grid"><div class="card"><h3>🏢 Owner Application</h3><p class="muted">Submit or review your Taxi/Limo owner application.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Owner Application</button></div><div class="card"><h3>🚘 Add Vehicle</h3><p class="muted">Add a Taxi/Limo vehicle for Admin approval.</p><button class="btn primary" onclick="goTaxiSection('addVehicle')">Add Vehicle</button></div><div class="card"><h3>🚗 My Vehicles</h3><p class="muted">Review your submitted vehicles and approval status.</p><button class="btn primary" onclick="goTaxiSection('myVehicles')">My Vehicles</button></div><div class="card"><h3>👥 Available Drivers</h3><p class="muted">See approved Taxi/Limo drivers who are available.</p><button class="btn primary" onclick="goTaxiSection('availableDrivers')">Available Drivers</button></div><div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Choose an approved driver and approved vehicle, then send a hire request.</p><button class="btn primary" onclick="goTaxiSection('postDriverJob')">Post Driver Job</button></div><div class="card"><h3>📋 Driver Hiring Activity</h3><p class="muted">Review pending hire requests, active drivers, and employment actions.</p><button class="btn primary" onclick="goTaxiSection('driverActivity')">Driver Hiring Activity</button></div><div class="card"><h3>🚖 Ride Requests</h3><p class="muted">Review customer Taxi/Limo ride requests and their status.</p><button class="btn primary" onclick="goTaxiSection('rideRequests')">Ride Requests</button></div></div></section>`;
+ return `<section id="taxiOwnerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🚕 Taxi/Limo Owner Quick Actions</h2><p class="muted">Complete your owner setup, add vehicles, hire drivers, and manage active driver connections.</p></div><div class="grid"><div class="card"><h3>🏢 Owner Application</h3><p class="muted">Submit or review your Taxi/Limo owner application.</p><button class="btn primary" onclick="goTaxiSection('ownerApplication')">Owner Application</button></div><div class="card"><h3>🚘 Add Vehicle</h3><p class="muted">Add a Taxi/Limo vehicle for Admin approval.</p><button class="btn primary" onclick="goTaxiSection('addVehicle')">Add Vehicle</button></div><div class="card"><h3>🚗 My Vehicles</h3><p class="muted">Review your submitted vehicles and approval status.</p><button class="btn primary" onclick="goTaxiSection('myVehicles')">My Vehicles</button></div><div class="card"><h3>👥 Available Drivers</h3><p class="muted">See approved Taxi/Limo drivers who are available.</p><button class="btn primary" onclick="goTaxiSection('availableDrivers')">Available Drivers</button></div><div class="card"><h3>📢 Post Driver Job</h3><p class="muted">Choose an approved driver and approved vehicle, then send a hire request.</p><button class="btn primary" onclick="goTaxiSection('postDriverJob')">Post Driver Job</button></div><div class="card"><h3>📋 Driver Hiring Activity</h3><p class="muted">Review pending hire requests, active drivers, and employment actions.</p><button class="btn primary" onclick="goTaxiSection('driverActivity')">Driver Hiring Activity</button></div></div></section>`;
 }
 function taxiDriverHomeActions(){
  if(!currentUser||!['taxi_limo_driver','taxi_driver'].includes(currentUser.role))return '';
@@ -2967,7 +2967,7 @@ function taxiRenderOnly(){
  let rideRequestCard=`<div class="card" id="taxiRequestRide"><h3>Request Taxi/Limo Ride</h3><label>Pickup Location</label><input id="taxiPickup" placeholder="Pickup address or area"><label>Drop-off Location</label><input id="taxiDestination" placeholder="Destination address or area"><div class="row"><div><label>Date</label><input id="taxiRideDate" type="date"></div><div><label>Time</label><input id="taxiRideTime" type="time"></div></div><label>Passengers</label><input id="taxiPassengers" type="number" min="1" value="1"><label>Notes</label><textarea id="taxiRideNotes" placeholder="Airport, luggage, child seat, special request, etc."></textarea><button class="btn primary" onclick="submitTaxiRide()">Submit Ride Request</button></div>`;
  let openRideCard=isDriver?`<div class="card" id="taxiOpenRides"><h3>Open Customer Ride Requests</h3><table><tr><th>Customer</th><th>Pickup</th><th>Destination</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${openRideRows}</table></div>`:'';
  let allRideRequestRows=rides.map(r=>taxiRideRow(r,isDriver)).join('')||'<tr><td colspan="6">No customer ride requests yet.</td></tr>';
- let rideRequestsCard=(isOwner||isDriver)?`<div class="card" id="taxiRideRequests"><h3>Customer Ride Requests</h3><table><tr><th>Customer</th><th>Pickup</th><th>Destination</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${allRideRequestRows}</table></div>`:'';
+ let rideRequestsCard=isDriver?`<div class="card" id="taxiRideRequests"><h3>Customer Ride Requests</h3><table><tr><th>Customer</th><th>Pickup</th><th>Destination</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${allRideRequestRows}</table></div>`:'';
  let myRidesCard=`<div class="card" id="taxiMyRides"><h3>My Ride Activity</h3><table><tr><th>Customer</th><th>Pickup</th><th>Destination</th><th>Date / Time</th><th>Status</th><th>Action</th></tr>${myRideRows}</table></div>`;
  let driverForm='';
  if(currentUser.role==='taxi_limo_driver'||currentUser.role==='taxi_driver'){
@@ -10989,7 +10989,7 @@ window.__hcVersion='V7.8.213';
 
 <script id="v78315-taxi-owner-driver-customer-agreement-flow">
 /* V7.8.315 — Taxi/Limo ride flow only.
-   Admin approves customer request -> approved Taxi/Limo owner OR driver accepts/declines
+   Admin approves customer request -> approved Taxi/Limo driver accepts/declines
    -> customer agrees -> accepted provider contact information is released. */
 (function(){
   'use strict';
@@ -10998,18 +10998,12 @@ window.__hcVersion='V7.8.213';
   const same=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
   const escHtml=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function role(){return String((window.currentUser&&currentUser.role)||'').trim().toLowerCase();}
-  function approvedOwner(){
-    if(role()!=='taxi_limo_owner')return null;
-    return (data.taxiLimoOwners||[]).find(o=>same(o.ownerEmail,currentUser.email)&&String(o.status)==='Approved')||null;
-  }
   function approvedDriver(){
     if(!['taxi_limo_driver','taxi_driver'].includes(role()))return null;
     return (data.taxiDriverApps||[]).find(a=>same(a.email,currentUser.email)&&String(a.status)==='Approved')||null;
   }
   function acceptedByMe(r){return r&&currentUser&&same(r.driverEmail,currentUser.email);}
   function providerProfile(){
-    const owner=approvedOwner();
-    if(owner)return {type:'Taxi/Limo Owner',name:owner.ownerName||currentUser.name,email:owner.ownerEmail||currentUser.email,phone:owner.phone||currentUser.phone||'',company:owner.companyName||'',area:owner.city||''};
     const driver=approvedDriver();
     if(driver)return {type:'Taxi/Limo Driver',name:driver.name||currentUser.name,email:driver.email||currentUser.email,phone:driver.phone||currentUser.phone||'',company:'',area:driver.area||''};
     return null;
@@ -11022,7 +11016,7 @@ window.__hcVersion='V7.8.213';
   window.driverAcceptTaxi=async function(id){
     const r=findTaxiRide(id),p=providerProfile();
     if(!r)return alert('Taxi/Limo ride request not found.');
-    if(!p)return alert('Admin must approve your Taxi/Limo owner or driver profile before you accept rides.');
+    if(!p)return alert('Admin must approve your Taxi/Limo driver application before you accept rides.');
     if(r.status!==waitingStatus)return alert('This ride is no longer available.');
     if((r.declinedBy||[]).some(e=>same(e,currentUser.email)))return alert('You already declined this ride.');
     const fields={driverName:p.name,driverEmail:p.email,driverPhone:p.phone,status:acceptedStatus,providerType:p.type,providerCompany:p.company,providerArea:p.area,customerAgreed:false,acceptedAt:new Date().toISOString()};
@@ -11039,7 +11033,7 @@ window.__hcVersion='V7.8.213';
   window.driverDeclineTaxi=async function(id){
     const r=findTaxiRide(id),p=providerProfile();
     if(!r)return alert('Taxi/Limo ride request not found.');
-    if(!p)return alert('Only an approved Taxi/Limo owner or driver can decline this ride.');
+    if(!p)return alert('Only an approved Taxi/Limo driver can decline this ride.');
     if(r.status!==waitingStatus)return alert('This ride is no longer available.');
     const declined=[...(r.declinedBy||[])];
     if(!declined.some(e=>same(e,currentUser.email)))declined.push(currentUser.email);
@@ -11101,7 +11095,7 @@ window.__hcVersion='V7.8.213';
     const result=await previousAdminApprove.apply(this,arguments);
     const r=findTaxiRide(id);
     if(r&&r.status===waitingStatus){
-      addNote(r.riderEmail,'Your ride request is approved. Waiting for a Taxi/Limo owner or driver to accept.');
+      addNote(r.riderEmail,'Your ride request is approved. Waiting for a Taxi/Limo driver to accept.');
     }
     return result;
   };
@@ -11110,7 +11104,7 @@ window.__hcVersion='V7.8.213';
     if(!currentUser||role()!=='customer')return '';
     const pending=(data.taxiRideRequests||[]).filter(r=>same(r.riderEmail,currentUser.email)&&r.status===acceptedStatus&&r.customerAgreed!==true);
     if(!pending.length)return '';
-    return `<section id="taxiCustomerAgreementHomeV78315"><div class="grid">${pending.map(r=>`<div class="card" style="border:2px solid #16a34a"><h3>🚕 Taxi/Limo Agreement Required</h3><p><b>${escHtml(r.pickup||'')}</b> → <b>${escHtml(r.destination||'')}</b></p><p>${escHtml(r.providerType||'Taxi/Limo provider')} accepted your request.</p><button class="btn primary" onclick="customerAgreeTaxiRide('${escHtml(r.id)}')">Agree & View Information</button></div>`).join('')}</div></section>`;
+    return `<section id="taxiCustomerAgreementHomeV78315"><div class="grid">${pending.map(r=>`<div class="card" style="border:2px solid #16a34a"><h3>🚕 Taxi/Limo Agreement Required</h3><p><b>${escHtml(r.pickup||'')}</b> → <b>${escHtml(r.destination||'')}</b></p><p>A Taxi/Limo driver accepted your request.</p><button class="btn primary" onclick="customerAgreeTaxiRide('${escHtml(r.id)}')">Agree & View Information</button></div>`).join('')}</div></section>`;
   }
   function applyCustomerHomeAgreement(){
     const home=document.getElementById('home');
@@ -11127,6 +11121,6 @@ window.__hcVersion='V7.8.213';
   const previousTaxi=window.taxi;
   if(typeof previousTaxi==='function')window.taxi=async function(){const out=await previousTaxi.apply(this,arguments);scheduleCustomerHomeAgreement();return out;};
   document.addEventListener('DOMContentLoaded',scheduleCustomerHomeAgreement);
-  window.__hcVersion='V7.8.315';
+  window.__hcVersion='V7.8.316';
 })();
 </script>

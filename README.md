@@ -1,4 +1,4 @@
-Habesha Agenagn V7.8.315
+Habesha Agenagn V7.8.316
 
 Home layout only: Marketplace, Customer, Job Seeker, and Event Organizer keep all task buttons at the top while Your New Activity and introductory role heading cards are removed. No workflow, Supabase, form, email, or SQL changes.
 
@@ -25,4 +25,7 @@ V7.8.313 — Taxi/Limo, Business, and Home Service Provider home layout only
 - No Supabase, SQL, form, email, button action, or transaction-flow changes.
 
 
-V7.8.315: Taxi/Limo customer ride flow updated only. After admin approval, an approved Taxi/Limo owner or driver can accept or decline. After acceptance, the customer must click Agree before provider contact information is shown. No SQL change required.
+V7.8.316: Taxi/Limo customer ride flow updated only. After admin approval, an approved Taxi/Limo owner or driver can accept or decline. After acceptance, the customer must click Agree before provider contact information is shown. No SQL change required.
+
+
+V7.8.316: Removed the Taxi/Limo Owner Ride Requests task and restricted customer ride acceptance to approved Taxi/Limo Drivers only. Flow: customer request, admin approval, driver accept/decline, customer Agree, driver contact release. No SQL changes.
