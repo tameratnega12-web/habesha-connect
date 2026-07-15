@@ -29,3 +29,10 @@ V7.8.316: Taxi/Limo customer ride flow updated only. After admin approval, an ap
 
 
 V7.8.316: Removed the Taxi/Limo Owner Ride Requests task and restricted customer ride acceptance to approved Taxi/Limo Drivers only. Flow: customer request, admin approval, driver accept/decline, customer Agree, driver contact release. No SQL changes.
+
+
+V7.8.317 Taxi/Limo customer-driver flow fix:
+- Run supabase/v7_8_317_taxi_customer_driver_flow_match.sql before testing.
+- Customer request -> admin approval -> one approved driver accepts/declines -> customer agrees -> contacts released.
+- Agreement/provider fields now restore from Supabase after refresh.
+- Atomic ride acceptance prevents two drivers from claiming the same ride.
