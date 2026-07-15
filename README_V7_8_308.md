@@ -1,9 +1,5 @@
 # Habesha Agenagn V7.8.308
 
-Rental-only completion of the property photo experience.
+Base: V7.8.307 (which used V7.8.305 as its code base).
 
-- Adds the missing selected-photo preview function used by the Rental form.
-- Adds the missing large-photo viewer used by Rental listing thumbnails.
-- Preserves the existing V7.8.307 Supabase Storage upload and attachment flow.
-- No other category or Rental transaction status was changed.
-- No new SQL is required if V7.8.307 Rental photo SQL already ran successfully.
+Rental-only correction: Property-owner Accept and Decline controls are now explicit non-submit buttons, prevent the surrounding property form/navigation from firing, and allow each Supabase RPC to run only once per click. No other category code was changed. No new SQL is required after the V7.8.307 rental RPC SQL has already been run.

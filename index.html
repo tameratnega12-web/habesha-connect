@@ -10730,3 +10730,81 @@ window.__hcVersion='V7.8.213';
 <style id="v78302-marketplace-post-style">
 .market-photo-grid302{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.market-photo-item302{position:relative}.market-photo-item302 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;border:1px solid #d1d5db}.market-photo-item302 button{position:absolute;right:5px;top:5px;min-height:40px;border-radius:10px}@media(max-width:760px){#marketPostPanel input,#marketPostPanel select,#marketPostPanel textarea,#marketPostPanel button{font-size:16px}#marketPostPanel button[onclick*="addMarket"]{width:100%;min-height:54px;touch-action:manipulation}}
 </style>
+
+<script id="v78308-rental-owner-action-button-form-isolation-fix">
+/* V7.8.308 — Rentals only.
+   Keep owner Accept/Decline buttons from submitting the surrounding property form.
+   Run each Supabase RPC once and leave all other categories unchanged. */
+(function(){
+  const acceptCore=window.ownerAcceptRentalReq;
+  const declineCore=window.ownerDeclineRentalReq;
+  const busy=new Set();
+
+  function stopRentalButtonEvent(event){
+    if(!event||typeof event.preventDefault!=='function')return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  function requestKey(id,action){return action+':'+String(id||'');}
+
+  window.rentalRequestActionButtons=function(q,role){
+    const st=String((q&&q.status)||'Pending');
+    const id=q&&(q.dbId||q.id);
+    if(!id)return '-';
+    if(role==='owner'){
+      if(['Pending Owner Review','Pending','Waiting Owner Review'].includes(st)){
+        const safeId=String(id).replace(/'/g,"\\'");
+        return `<button type="button" class="btn primary" data-rental-owner-action="accept" onclick="return ownerAcceptRentalReq(event,'${safeId}')">Accept</button> <button type="button" class="btn bad" data-rental-owner-action="decline" onclick="return ownerDeclineRentalReq(event,'${safeId}')">Decline</button>`;
+      }
+      return '-';
+    }
+    if(role==='admin'){
+      if(['Pending Owner Review','Pending','Waiting Owner Review'].includes(st))return '<span class="pill warn">Waiting Owner Review</span>';
+      if(st==='Approved'||st==='Rented')return '<span class="pill good">Owner Accepted</span>';
+      if(st==='Declined')return '<span class="pill bad">Declined</span>';
+      return '-';
+    }
+    return '-';
+  };
+
+  window.ownerAcceptRentalReq=async function(eventOrId,possibleId){
+    const event=eventOrId&&typeof eventOrId.preventDefault==='function'?eventOrId:null;
+    const id=event?possibleId:eventOrId;
+    stopRentalButtonEvent(event);
+    const key=requestKey(id,'accept');
+    if(busy.has(key))return false;
+    busy.add(key);
+    try{
+      if(typeof acceptCore!=='function')throw new Error('Rental Accept action did not load.');
+      await acceptCore(id);
+    }finally{busy.delete(key);}
+    return false;
+  };
+
+  window.ownerDeclineRentalReq=async function(eventOrId,possibleId){
+    const event=eventOrId&&typeof eventOrId.preventDefault==='function'?eventOrId:null;
+    const id=event?possibleId:eventOrId;
+    stopRentalButtonEvent(event);
+    const key=requestKey(id,'decline');
+    if(busy.has(key))return false;
+    busy.add(key);
+    try{
+      if(typeof declineCore!=='function')throw new Error('Rental Decline action did not load.');
+      await declineCore(id);
+    }finally{busy.delete(key);}
+    return false;
+  };
+
+  window.approveRentalReq=window.ownerAcceptRentalReq;
+  window.declineRentalReq=window.ownerDeclineRentalReq;
+
+  document.addEventListener('click',function(event){
+    const button=event.target&&event.target.closest?event.target.closest('button[data-rental-owner-action]'):null;
+    if(!button)return;
+    // Explicitly isolate these controls from any ancestor form or navigation handler.
+    if(button.type!=='button')button.type='button';
+  },true);
+
+  window.__hcVersion='V7.8.308';
+})();
+</script>
