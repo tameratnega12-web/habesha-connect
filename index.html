@@ -1893,7 +1893,7 @@ async function addRental(){
   if(!title||!city||!price)return alert('Please enter property title, city, and monthly rent.');
   let moveDate=$('rentMoveDate').value;
   if(moveDate && moveDate<addDaysIso(0))return alert('Please choose today or a future move-in date. Previous days are not allowed.');
-  const files=Array.from(($('rentPhotos')&&$('rentPhotos').files)||[]);
+  const files=(typeof getRentalSelectedFiles310==='function'&&getRentalSelectedFiles310().length)?getRentalSelectedFiles310():Array.from(($('rentPhotos')&&$('rentPhotos').files)||[]);
   if(files.length>6)return alert('You can upload a maximum of 6 property photos.');
   for(const file of files){
     if(!String(file.type||'').startsWith('image/'))return alert('Property photos must be image files.');
@@ -10720,3 +10720,22 @@ window.__hcVersion='V7.8.213';
 @media(max-width:720px){.rentalPhotoPicker309{width:100%!important;min-height:54px!important;font-size:16px!important}}
 </style>
 
+
+<script id="v78310-rental-photo-selection-persist-fix">
+/* V7.8.310 — Rental-only selected-photo persistence. */
+(function(){
+  'use strict';
+  const state=window.__rentalPhotoState310=window.__rentalPhotoState310||{files:[],urls:[]};
+  function revokeUrls(){while(state.urls.length){try{URL.revokeObjectURL(state.urls.pop());}catch(_){}}}
+  function validate(files){if(files.length>6)throw new Error('You can upload a maximum of 6 property photos.');for(const file of files){if(!String(file.type||'').startsWith('image/'))throw new Error('Property photos must be image files.');if(Number(file.size||0)>5*1024*1024)throw new Error(file.name+' is larger than 5 MB.');}}
+  function draw(){const preview=document.getElementById('rentPhotoPreview307');if(!preview)return;revokeUrls();if(!state.files.length){preview.innerHTML='';return;}preview.innerHTML='<p><b>Selected photos:</b> '+state.files.length+'</p><div class="rental-photo-preview-grid308">'+state.files.map((file,index)=>{const url=URL.createObjectURL(file);state.urls.push(url);return '<img src="'+url+'" alt="Selected rental photo '+(index+1)+'" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px">';}).join('')+'</div>';}
+  function restoreInput(){const input=document.getElementById('rentPhotos');if(!input||!state.files.length)return;try{const dt=new DataTransfer();state.files.forEach(file=>dt.items.add(file));input.files=dt.files;}catch(e){console.warn('Rental file input restore not supported; saved files will still upload.',e);}draw();}
+  window.previewRentalPhotos307=function(input){try{const files=Array.from((input&&input.files)||[]);validate(files);state.files=files;draw();}catch(e){state.files=[];if(input)input.value='';draw();alert(e.message||e);}};
+  window.getRentalSelectedFiles310=function(){return state.files.slice();};
+  window.clearRentalSelectedFiles310=function(){state.files=[];revokeUrls();const input=document.getElementById('rentPhotos');if(input)input.value='';draw();};
+  const originalRentals=window.rentals;if(typeof originalRentals==='function'){window.rentals=async function(){const result=await originalRentals.apply(this,arguments);setTimeout(restoreInput,0);return result;};}
+  const observer=new MutationObserver(()=>{if(document.getElementById('rentPhotos')&&state.files.length)setTimeout(restoreInput,0);});
+  document.addEventListener('DOMContentLoaded',()=>{observer.observe(document.body,{childList:true,subtree:true});setTimeout(restoreInput,0);});
+  window.__hcVersion='V7.8.310';
+})();
+</script>
