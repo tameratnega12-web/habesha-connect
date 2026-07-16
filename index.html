@@ -11553,3 +11553,136 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.324';
 })();
 </script>
+
+
+<script id="v78325-remove-customer-taxi-rides-only">
+/* V7.8.325 — Remove only the Taxi/Limo customer ride-request feature.
+   Taxi/Limo owner, vehicle, driver application, job, hire, and assignment flows remain unchanged. */
+(function(){
+  'use strict';
+
+  function clearRideData(){
+    if(window.data){
+      data.taxiRideRequests=[];
+      if(Array.isArray(data.taxiLimoSyncErrors)){
+        data.taxiLimoSyncErrors=data.taxiLimoSyncErrors.filter(x=>!String(x||'').toLowerCase().includes('taxi_ride_requests'));
+      }
+    }
+  }
+  clearRideData();
+
+  // Keep the existing customer dashboard exactly as-is except for Request Ride.
+  const oldCustomerHomeActions=window.customerHomeActions;
+  if(typeof oldCustomerHomeActions==='function'){
+    window.customerHomeActions=function(){
+      const html=oldCustomerHomeActions.apply(this,arguments);
+      const t=document.createElement('template');
+      t.innerHTML=html||'';
+      t.content.querySelectorAll('button[onclick*="requestTaxiRideFromHome"]').forEach(btn=>{
+        const card=btn.closest('.card');
+        if(card)card.remove(); else btn.remove();
+      });
+      return t.innerHTML;
+    };
+  }
+
+  // Keep driver application and owner-hire job tasks; remove customer-ride tasks only.
+  const oldTaxiDriverHomeActions=window.taxiDriverHomeActions;
+  if(typeof oldTaxiDriverHomeActions==='function'){
+    window.taxiDriverHomeActions=function(){
+      const html=oldTaxiDriverHomeActions.apply(this,arguments);
+      const t=document.createElement('template');
+      t.innerHTML=html||'';
+      t.content.querySelectorAll('button[onclick*="openRides"],button[onclick*="rideActivity"],button[onclick*="rideRequests"]').forEach(btn=>{
+        const card=btn.closest('.card');
+        if(card)card.remove(); else btn.remove();
+      });
+      const intro=t.content.querySelector('#taxiDriverHomeActions .card p.muted');
+      if(intro)intro.textContent='Apply as a driver and review Taxi/Limo owner job opportunities.';
+      return t.innerHTML;
+    };
+  }
+
+  function removeRideSections(root){
+    if(!root||!root.querySelectorAll)return;
+    ['taxiRequestRide','taxiOpenRides','taxiRideRequests','taxiMyRides','taxiCustomerAgreementHomeV78317'].forEach(id=>{
+      const el=root.querySelector('#'+id);
+      if(el)el.remove();
+    });
+    root.querySelectorAll('button[onclick*="requestTaxiRideFromHome"],button[onclick*="submitTaxiRide"],button[onclick*="driverAcceptTaxi"],button[onclick*="driverDeclineTaxi"],button[onclick*="customerAgreeTaxiRide"]').forEach(btn=>{
+      const card=btn.closest('.card');
+      if(card&&(/ride/i.test(card.textContent||'')))card.remove(); else btn.remove();
+    });
+  }
+
+  // Let the existing Taxi/Limo renderer build owner/driver hiring content, then remove only ride sections.
+  const oldTaxiRenderOnly=window.taxiRenderOnly;
+  if(typeof oldTaxiRenderOnly==='function'){
+    window.taxiRenderOnly=function(){
+      clearRideData();
+      const result=oldTaxiRenderOnly.apply(this,arguments);
+      removeRideSections(document.getElementById('taxi')||document);
+      return result;
+    };
+  }
+
+  const oldTaxi=window.taxi;
+  if(typeof oldTaxi==='function'){
+    window.taxi=async function(){
+      clearRideData();
+      const result=await oldTaxi.apply(this,arguments);
+      removeRideSections(document.getElementById('taxi')||document);
+      return result;
+    };
+  }
+
+  // Remove customer-ride records and instructions from Taxi/Limo admin output only.
+  const oldTaxiAdminHtml=window.taxiAdminHtml;
+  if(typeof oldTaxiAdminHtml==='function'){
+    window.taxiAdminHtml=function(){
+      clearRideData();
+      const html=oldTaxiAdminHtml.apply(this,arguments);
+      const t=document.createElement('template');
+      t.innerHTML=html||'';
+      t.content.querySelectorAll('.card').forEach(card=>{
+        const text=(card.textContent||'').trim();
+        if(/^Pending Rides\b/i.test(text)||/No customer ride requests/i.test(text))card.remove();
+      });
+      t.content.querySelectorAll('h3,h4').forEach(h=>{
+        if(/Customer Ride Requests|Driver Acceptances Waiting Admin Approval/i.test(h.textContent||'')){
+          const next=h.nextElementSibling;
+          if(next&&(next.classList.contains('tableWrap')||next.classList.contains('grid')))next.remove();
+          h.remove();
+        }
+      });
+      let out=t.innerHTML;
+      out=out.replace(/Run both Taxi\/Limo SQL files[^<]*/gi,'Run the Taxi/Limo owner/driver SQL file in Supabase, then refresh.');
+      out=out.replace(/v7_8_91_taxi_ride_requests\.sql/gi,'');
+      return out;
+    };
+  }
+
+  // Keep owner/driver Supabase synchronization but discard the removed ride dataset after each refresh.
+  const oldLoad=window.loadSupabaseTaxiLimo;
+  if(typeof oldLoad==='function'){
+    window.loadSupabaseTaxiLimo=async function(){
+      const result=await oldLoad.apply(this,arguments);
+      clearRideData();
+      return result;
+    };
+  }
+
+  // Removed feature cannot be opened through stale links or cached buttons.
+  window.requestTaxiRideFromHome=function(){return false;};
+  window.submitTaxiRide=function(){return false;};
+  window.driverAcceptTaxi=function(){return false;};
+  window.driverDeclineTaxi=function(){return false;};
+  window.customerAgreeTaxiRide=function(){return false;};
+  window.taxiCustomerAgreementHome=function(){return '';};
+
+  const observer=new MutationObserver(()=>removeRideSections(document));
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  removeRideSections(document);
+  window.__hcVersion='V7.8.325';
+})();
+</script>

@@ -52,3 +52,12 @@ V7.8.321: Taxi customer rides now match only an active hired driver assignment (
 
 
 V7.8.322: Taxi/Limo customer rides match any admin-approved driver application. Owner/vehicle assignment is not required for Accept/Decline.
+
+## V7.8.325
+Removed only the Taxi/Limo customer ride-request feature:
+- Customer Request Ride task and form
+- Driver Open Customer Rides and My Ride Activity tasks
+- Customer ride-request records from Taxi/Limo admin display
+- Ride-specific Supabase SQL files
+
+Taxi/Limo owner applications, vehicles, driver applications, owner-driver jobs, hiring, and assignments were not changed.
