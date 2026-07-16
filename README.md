@@ -67,3 +67,8 @@ V7.8.326: Fixed only the Home Services customer Agree action. The signed-in Cust
 
 
 V7.8.327: Fixed only the Home Services customer Agree action Supabase client check. No SQL changes.
+
+V7.8.329
+- UI-only update: standardized category home action cards across phone and desktop.
+- Same border, badge, spacing, typography, and full-width task button style.
+- No workflow, form, Supabase, email, or transaction logic changed.

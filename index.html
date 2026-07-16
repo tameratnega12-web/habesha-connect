@@ -11699,3 +11699,230 @@ window.__hcVersion='V7.8.213';
   window.__hcVersion='V7.8.325';
 })();
 </script>
+
+<!-- V7.8.329 — Unified category home action-card styling (UI only) -->
+<style id="v78329-unified-category-home-style">
+/* All role home action groups use one consistent visual template. */
+#travelerHomeActions,
+#senderHomeActions,
+#propertyOwnerHomeActions,
+#rentSeekerHomeActions,
+#truckOwnerHomeActions,
+#truckDriverHomeActions,
+#taxiOwnerHomeActions > .grid,
+#taxiDriverHomeActions > .grid,
+#homeServiceProviderHomeActions > .grid,
+#businessOwnerHomeActions > .grid,
+#marketplaceHomeActions > .grid,
+#customerHomeActions > .grid,
+#jobSeekerHomeActions > .grid,
+#eventOrganizerHomeActions > .grid {
+  align-items: stretch;
+  gap: 18px;
+}
+
+#travelerHomeActions > .card,
+#senderHomeActions > .card,
+#propertyOwnerHomeActions > .card,
+#rentSeekerHomeActions > .card,
+#truckOwnerHomeActions > .card,
+#truckDriverHomeActions > .card,
+#taxiOwnerHomeActions > .grid > .card,
+#taxiDriverHomeActions > .grid > .card,
+#homeServiceProviderHomeActions > .grid > .card,
+#businessOwnerHomeActions > .grid > .card,
+#marketplaceHomeActions > .grid > .card,
+#customerHomeActions > .grid > .card,
+#jobSeekerHomeActions > .grid > .card,
+#eventOrganizerHomeActions > .grid > .card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  border: 2px solid #f59e0b !important;
+  border-radius: 18px !important;
+  padding: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 4px 14px rgba(245,158,11,.14) !important;
+}
+
+#travelerHomeActions > .card::before,
+#senderHomeActions > .card::before,
+#propertyOwnerHomeActions > .card::before,
+#rentSeekerHomeActions > .card::before,
+#truckOwnerHomeActions > .card::before,
+#truckDriverHomeActions > .card::before,
+#taxiOwnerHomeActions > .grid > .card::before,
+#taxiDriverHomeActions > .grid > .card::before,
+#homeServiceProviderHomeActions > .grid > .card::before,
+#businessOwnerHomeActions > .grid > .card::before,
+#marketplaceHomeActions > .grid > .card::before,
+#customerHomeActions > .grid > .card::before,
+#jobSeekerHomeActions > .grid > .card::before,
+#eventOrganizerHomeActions > .grid > .card::before {
+  content: 'NEW / ACTION NEEDED';
+  align-self: flex-start;
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+#travelerHomeActions h3,
+#senderHomeActions h3,
+#propertyOwnerHomeActions h3,
+#rentSeekerHomeActions h3,
+#truckOwnerHomeActions h3,
+#truckDriverHomeActions h3,
+#taxiOwnerHomeActions > .grid h3,
+#taxiDriverHomeActions > .grid h3,
+#homeServiceProviderHomeActions > .grid h3,
+#businessOwnerHomeActions > .grid h3,
+#marketplaceHomeActions > .grid h3,
+#customerHomeActions > .grid h3,
+#jobSeekerHomeActions > .grid h3,
+#eventOrganizerHomeActions > .grid h3 {
+  margin: 0 0 10px !important;
+  line-height: 1.25;
+}
+
+#travelerHomeActions .muted,
+#senderHomeActions .muted,
+#propertyOwnerHomeActions .muted,
+#rentSeekerHomeActions .muted,
+#truckOwnerHomeActions .muted,
+#truckDriverHomeActions .muted,
+#taxiOwnerHomeActions > .grid .muted,
+#taxiDriverHomeActions > .grid .muted,
+#homeServiceProviderHomeActions > .grid .muted,
+#businessOwnerHomeActions > .grid .muted,
+#marketplaceHomeActions > .grid .muted,
+#customerHomeActions > .grid .muted,
+#jobSeekerHomeActions > .grid .muted,
+#eventOrganizerHomeActions > .grid .muted {
+  flex: 1 1 auto;
+  margin: 0 0 16px !important;
+  line-height: 1.45;
+}
+
+#travelerHomeActions .btn,
+#senderHomeActions .btn,
+#propertyOwnerHomeActions .btn,
+#rentSeekerHomeActions .btn,
+#truckOwnerHomeActions .btn,
+#truckDriverHomeActions .btn,
+#taxiOwnerHomeActions > .grid .btn,
+#taxiDriverHomeActions > .grid .btn,
+#homeServiceProviderHomeActions > .grid .btn,
+#businessOwnerHomeActions > .grid .btn,
+#marketplaceHomeActions > .grid .btn,
+#customerHomeActions > .grid .btn,
+#jobSeekerHomeActions > .grid .btn,
+#eventOrganizerHomeActions > .grid .btn {
+  width: 100% !important;
+  min-height: 46px;
+  margin-top: auto !important;
+  white-space: normal;
+}
+
+@media (max-width:760px){
+  #travelerHomeActions,
+  #senderHomeActions,
+  #propertyOwnerHomeActions,
+  #rentSeekerHomeActions,
+  #truckOwnerHomeActions,
+  #truckDriverHomeActions,
+  #taxiOwnerHomeActions > .grid,
+  #taxiDriverHomeActions > .grid,
+  #homeServiceProviderHomeActions > .grid,
+  #businessOwnerHomeActions > .grid,
+  #marketplaceHomeActions > .grid,
+  #customerHomeActions > .grid,
+  #jobSeekerHomeActions > .grid,
+  #eventOrganizerHomeActions > .grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    margin-top: 20px !important;
+  }
+
+  #travelerHomeActions > .card,
+  #senderHomeActions > .card,
+  #propertyOwnerHomeActions > .card,
+  #rentSeekerHomeActions > .card,
+  #truckOwnerHomeActions > .card,
+  #truckDriverHomeActions > .card,
+  #taxiOwnerHomeActions > .grid > .card,
+  #taxiDriverHomeActions > .grid > .card,
+  #homeServiceProviderHomeActions > .grid > .card,
+  #businessOwnerHomeActions > .grid > .card,
+  #marketplaceHomeActions > .grid > .card,
+  #customerHomeActions > .grid > .card,
+  #jobSeekerHomeActions > .grid > .card,
+  #eventOrganizerHomeActions > .grid > .card {
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  #travelerHomeActions h3,
+  #senderHomeActions h3,
+  #propertyOwnerHomeActions h3,
+  #rentSeekerHomeActions h3,
+  #truckOwnerHomeActions h3,
+  #truckDriverHomeActions h3,
+  #taxiOwnerHomeActions > .grid h3,
+  #taxiDriverHomeActions > .grid h3,
+  #homeServiceProviderHomeActions > .grid h3,
+  #businessOwnerHomeActions > .grid h3,
+  #marketplaceHomeActions > .grid h3,
+  #customerHomeActions > .grid h3,
+  #jobSeekerHomeActions > .grid h3,
+  #eventOrganizerHomeActions > .grid h3 {
+    font-size: clamp(22px,6vw,30px) !important;
+  }
+
+  #travelerHomeActions .muted,
+  #senderHomeActions .muted,
+  #propertyOwnerHomeActions .muted,
+  #rentSeekerHomeActions .muted,
+  #truckOwnerHomeActions .muted,
+  #truckDriverHomeActions .muted,
+  #taxiOwnerHomeActions > .grid .muted,
+  #taxiDriverHomeActions > .grid .muted,
+  #homeServiceProviderHomeActions > .grid .muted,
+  #businessOwnerHomeActions > .grid .muted,
+  #marketplaceHomeActions > .grid .muted,
+  #customerHomeActions > .grid .muted,
+  #jobSeekerHomeActions > .grid .muted,
+  #eventOrganizerHomeActions > .grid .muted {
+    font-size: 17px !important;
+  }
+
+  #travelerHomeActions .btn,
+  #senderHomeActions .btn,
+  #propertyOwnerHomeActions .btn,
+  #rentSeekerHomeActions .btn,
+  #truckOwnerHomeActions .btn,
+  #truckDriverHomeActions .btn,
+  #taxiOwnerHomeActions > .grid .btn,
+  #taxiDriverHomeActions > .grid .btn,
+  #homeServiceProviderHomeActions > .grid .btn,
+  #businessOwnerHomeActions > .grid .btn,
+  #marketplaceHomeActions > .grid .btn,
+  #customerHomeActions > .grid .btn,
+  #jobSeekerHomeActions > .grid .btn,
+  #eventOrganizerHomeActions > .grid .btn {
+    width: 100% !important;
+    min-height: 52px !important;
+    font-size: 17px !important;
+  }
+}
+</style>
