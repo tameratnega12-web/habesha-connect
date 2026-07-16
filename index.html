@@ -2815,7 +2815,7 @@ async function loadSupabaseTaxiLimo(){
   }catch(e){data.taxiLimoSyncErrors.push('taxi_limo_vehicles: '+(e.message||e));console.warn('Taxi/Limo vehicles load failed',e);}
   try{
     let drivers=await hcSupabase.from('taxi_driver_applications').select('*').order('created_at',{ascending:false});
-    if(drivers.error){data.taxiLimoSyncErrors.push('taxi_driver_applications: '+drivers.error.message);}else{data.taxiDriverApps=(drivers.data||[]).map(a=>({dbId:a.id,id:a.id,name:a.full_name||a.name||a.driver_name||'',email:a.email||a.driver_email||'',phone:a.phone||'',license:a.license_number||a.license||'',experience:a.experience||'',availability:a.availability||'',area:a.service_area||a.area||'',notes:a.driver_notes||a.notes||'',status:taxiUiStatus(a.status),ownerEmail:a.owner_email||'',assignedVehicleId:a.assigned_vehicle_id||'',assignedVehicle:a.assigned_vehicle_label||a.assigned_vehicle||'',availabilityStatus:a.availability_status||(!a.owner_email?'Available':'Hired'),createdAt:a.created_at||''}));}
+    if(drivers.error){data.taxiLimoSyncErrors.push('taxi_driver_applications: '+drivers.error.message);}else{data.taxiDriverApps=(drivers.data||[]).map(a=>({dbId:a.id,id:a.id,userId:a.user_id||'',name:a.full_name||a.name||a.driver_name||'',email:a.email||a.driver_email||'',phone:a.phone||'',license:a.license_number||a.license||'',experience:a.experience||'',availability:a.availability||'',area:a.service_area||a.area||'',notes:a.driver_notes||a.notes||'',status:taxiUiStatus(a.status),ownerEmail:a.owner_email||'',assignedVehicleId:a.assigned_vehicle_id||'',assignedVehicle:a.assigned_vehicle_label||a.assigned_vehicle||'',availabilityStatus:a.availability_status||(!a.owner_email?'Available':'Hired'),createdAt:a.created_at||''}));}
   }catch(e){data.taxiLimoSyncErrors.push('taxi_driver_applications: '+(e.message||e));console.warn('Taxi/Limo driver apps load failed',e);}
   try{
     let assigns=await hcSupabase.from('taxi_limo_driver_assignments').select('*').order('created_at',{ascending:false});
@@ -2823,7 +2823,7 @@ async function loadSupabaseTaxiLimo(){
   }catch(e){data.taxiLimoSyncErrors.push('taxi_limo_driver_assignments: '+(e.message||e));console.warn('Taxi/Limo assignments load failed',e);}
   try{
     let rides=await hcSupabase.from('taxi_ride_requests').select('*').order('created_at',{ascending:false});
-    if(rides.error){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+rides.error.message);}else{data.taxiRideRequests=(rides.data||[]).map(r=>{let d=r.details||{};return {dbId:r.id,id:r.id,riderName:r.rider_name||d.riderName||'',riderEmail:r.rider_email||d.riderEmail||'',riderPhone:r.rider_phone||d.riderPhone||'',pickup:r.pickup_location||r.pickup||d.pickup||d.pickup_location||'',destination:r.dropoff_location||r.destination||d.destination||d.dropoff_location||'',rideDate:r.ride_date||d.rideDate||'',rideTime:r.ride_time||d.rideTime||'',passengers:r.passengers||d.passengers||'',notes:r.notes||d.notes||'',status:taxiUiStatus(r.status),driverName:r.driver_name||d.driverName||'',driverEmail:r.driver_email||d.driverEmail||'',driverPhone:r.driver_phone||d.driverPhone||'',driverAvailability:d.driverAvailability||'',declinedBy:d.declinedBy||[],adminApproved:!!d.adminApproved,adminApprovedAt:d.adminApprovedAt||'',createdAt:r.created_at||''};});}
+    if(rides.error){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+rides.error.message);}else{data.taxiRideRequests=(rides.data||[]).map(r=>{let d=r.details||{};return {dbId:r.id,id:r.id,riderName:r.rider_name||d.riderName||'',riderEmail:r.rider_email||d.riderEmail||'',riderPhone:r.rider_phone||d.riderPhone||'',pickup:r.pickup_location||r.pickup||d.pickup||d.pickup_location||'',destination:r.dropoff_location||r.destination||d.destination||d.dropoff_location||'',rideDate:r.ride_date||d.rideDate||'',rideTime:r.ride_time||d.rideTime||'',passengers:r.passengers||d.passengers||'',notes:r.notes||d.notes||'',status:taxiUiStatus(r.status),driverId:r.driver_id||d.driverId||'',driverName:r.driver_name||d.driverName||'',driverEmail:r.driver_email||d.driverEmail||'',driverPhone:r.driver_phone||d.driverPhone||'',driverAvailability:d.driverAvailability||'',declinedBy:d.declinedBy||[],adminApproved:!!d.adminApproved,adminApprovedAt:d.adminApprovedAt||'',createdAt:r.created_at||''};});}
   }catch(e){data.taxiLimoSyncErrors.push('taxi_ride_requests: '+(e.message||e));console.warn('Taxi/Limo ride requests load failed',e);}
   persistOnly();
 }
@@ -11472,5 +11472,87 @@ window.__hcVersion='V7.8.213';
   };
 
   window.__hcVersion='V7.8.322';
+})();
+</script>
+
+
+<script id="v78323-taxi-driver-auth-uuid-match">
+/* V7.8.323 — Customer ride eligibility and acceptance use the same Supabase
+   Auth UUID as taxi_driver_applications.user_id and taxi_ride_requests.driver_id. */
+(function(){
+  'use strict';
+  const WAITING='Approved - Waiting Driver';
+  const ACCEPTED='Driver Accepted - Waiting Customer Agreement';
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ride=id=>typeof findTaxiRide==='function'?findTaxiRide(id):(data.taxiRideRequests||[]).find(r=>String(r.id)===String(id)||String(r.dbId)===String(id));
+
+  function authDriverProfile(){
+    const authId=String(data.taxiCurrentAuthUserId||window.__taxiCurrentAuthUserId||currentUser?.id||currentUser?.user_id||'').trim();
+    const email=norm(currentUser?.email);
+    const apps=data.taxiDriverApps||[];
+    let app=authId?apps.find(a=>String(a.userId||'').trim()===authId):null;
+    if(!app&&email)app=apps.find(a=>norm(a.email)===email);
+    if(!app||norm(app.status)!=='approved')return null;
+    return {id:app.userId||authId,name:app.name||currentUser?.name||'',email:app.email||currentUser?.email||'',phone:app.phone||currentUser?.phone||'',area:app.area||''};
+  }
+
+  async function refreshTaxiAuthId(){
+    if(!authReady())return '';
+    try{
+      const r=await hcSupabase.auth.getUser();
+      const id=r?.data?.user?.id||'';
+      data.taxiCurrentAuthUserId=id;
+      window.__taxiCurrentAuthUserId=id;
+      return id;
+    }catch(e){console.warn('Taxi auth UUID load failed',e);return '';}
+  }
+
+  const oldLoad=window.loadSupabaseTaxiLimo;
+  if(typeof oldLoad==='function'){
+    window.loadSupabaseTaxiLimo=async function(){
+      await refreshTaxiAuthId();
+      const out=await oldLoad.apply(this,arguments);
+      return out;
+    };
+  }
+
+  const priorActions=window.taxiRideActions;
+  window.taxiRideActions=function(r){
+    if(!r||!window.currentUser)return '-';
+    const p=authDriverProfile();
+    const declined=(r.declinedBy||[]).some(e=>norm(e)===norm(currentUser.email));
+    if(p&&r.status===WAITING&&!String(r.driverEmail||'').trim()&&!String(r.driverId||'').trim()&&!declined){
+      return `<button class="btn primary" onclick="driverAcceptTaxi('${esc(r.id)}')">Accept Ride</button> <button class="btn bad" onclick="driverDeclineTaxi('${esc(r.id)}')">Decline</button>`;
+    }
+    return typeof priorActions==='function'?priorActions(r):'-';
+  };
+
+  window.driverAcceptTaxi=async function(id){
+    const r=ride(id);
+    if(!r)return alert('Taxi/Limo ride request not found.');
+    await refreshTaxiAuthId();
+    const p=authDriverProfile();
+    if(!p)return alert('Your Taxi/Limo driver application is not matched to this signed-in Supabase account or is not approved. Run the V7.8.323 SQL, then sign out and sign in again.');
+    if(r.status!==WAITING||String(r.driverEmail||'').trim()||String(r.driverId||'').trim())return alert('This ride is no longer available.');
+    const result=await hcSupabase.rpc('accept_taxi_ride_v78323',{p_ride_id:r.dbId||r.id});
+    if(result.error){
+      const msg=String(result.error.message||'');
+      if(msg.includes('DRIVER_NOT_APPROVED'))return alert('Supabase could not match this signed-in account to an approved Taxi/Limo driver application.');
+      if(msg.includes('RIDE_NOT_AVAILABLE'))return alert('Another driver already accepted this ride. Please refresh.');
+      if(msg.toLowerCase().includes('function')||msg.toLowerCase().includes('schema cache'))return alert('Run supabase/v7_8_323_taxi_driver_auth_uuid_match.sql in Supabase, then sign out and sign in again.');
+      return alert('Could not accept ride: '+msg);
+    }
+    Object.assign(r,{driverId:p.id,driverName:p.name,driverEmail:p.email,driverPhone:p.phone,status:ACCEPTED,providerType:'Taxi/Limo Driver',providerArea:p.area,customerAgreed:false,customerAgreedAt:'',acceptedAt:new Date().toISOString()});
+    addNote(r.riderEmail,'An approved Taxi/Limo driver accepted your ride request. Click Agree to view the driver information.');
+    try{await Promise.resolve(sendEmailNotice({to:r.riderEmail,name:r.riderName,subject:'Taxi/Limo ride accepted — agreement required',summary:'An approved Taxi/Limo driver accepted your ride request. Open Taxi/Limo and click Agree to view the driver information.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Driver:p.name,Pickup:r.pickup,Destination:r.destination,Status:'Waiting for Customer Agreement'}}));}catch(e){console.warn(e);}
+    persistOnly();
+    try{await loadSupabaseTaxiLimo();}catch(e){console.warn(e);}
+    alert('Ride accepted. The customer was notified and must click Agree.');
+    taxi();
+  };
+  window.driverAcceptTaxiNotifyCustomer=window.driverAcceptTaxi;
+  refreshTaxiAuthId();
+  window.__hcVersion='V7.8.323';
 })();
 </script>

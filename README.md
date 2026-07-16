@@ -1,3 +1,7 @@
+Habesha Agenagn V7.8.323
+Taxi customer ride and approved driver UUID match fix.
+Run supabase/v7_8_323_taxi_driver_auth_uuid_match.sql before testing.
+
 Habesha Agenagn V7.8.316
 
 Home layout only: Marketplace, Customer, Job Seeker, and Event Organizer keep all task buttons at the top while Your New Activity and introductory role heading cards are removed. No workflow, Supabase, form, email, or SQL changes.
