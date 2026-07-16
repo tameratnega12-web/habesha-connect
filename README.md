@@ -64,3 +64,6 @@ Taxi/Limo owner applications, vehicles, driver applications, owner-driver jobs, 
 
 
 V7.8.326: Fixed only the Home Services customer Agree action. The signed-in Customer role is now recognized correctly, and after agreement the accepted provider name, phone, and email are shown.
+
+
+V7.8.327: Fixed only the Home Services customer Agree action Supabase client check. No SQL changes.
