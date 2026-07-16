@@ -561,7 +561,54 @@ async function refreshPageData(p){
 function roleSwitcherHtml(){if(!currentUser)return '';let roles=currentUser.roles||[currentUser.role||'customer'];let opts=roles.map(r=>`<option value="${r}" ${r===currentUser.role?'selected':''}>${(ROLE_INFO[r]?.icon||'')+' '+roleTitle(r)}</option>`).join('');return `<select id="topRoleSwitch" onchange="switchRole(this.value)" style="width:auto;min-width:150px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700">${opts}</select>`}
 function render(){nav();$('userBox').innerHTML=currentUser?`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn" onclick="logout()">Logout</button>`:`<button class="btn" onclick="show('account')">Login / Register</button>`;let active=pages.find(p=>!$(p).classList.contains('hide'))||'home';if(!isAllowedPage(active))active='home';renderPage(active).catch(err=>{console.error('Render error',err);if($(active))$(active).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Please refresh the app and try again.</p></div>';})}
 function requireLogin(){if(!currentUser){show('account');return false}return true}
-async function login(){let e=cleanEmail($('loginEmail')?.value),p=String($('loginPass')?.value||'');if(!e||!p)return alert('Enter your email and password.');if(!e.includes('@'))return alert('Please enter the full email address you used to create the account.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signInWithPassword({email:e,password:p});if(error){let localAdmin=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p&&x.role==='admin');if(localAdmin){currentUser=localAdmin;addNote(localAdmin.email,'You signed in with local admin access.');save();show('home');return;}let msg=String(error.message||'');if(msg.toLowerCase().includes('invalid'))msg='Login failed. Please check the email and password. Make sure there are no spaces and use the same email used during signup.';return alert(msg);}let u=await loadSupabaseProfile(authData.user);if(!u)return alert('Login worked, but profile was not found.');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home');return;}let u=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p);if(!u)return alert('Wrong email or password');currentUser=u;addNote(u.email,'You signed in successfully.');save();show('home')}
+let loginInProgress331=false;
+async function finishLoginWithoutShake331(user,message){
+ currentUser=user;
+ addNote(user.email,message||'You signed in successfully.');
+ data.currentUser=currentUser;
+ safeSetHC(data);
+ // Load shared Home data while the login page is still visible, then paint the
+ // signed-in dashboard once. This prevents save(), show(), and background sync
+ // from rebuilding the page two or three times during sign-in.
+ if(authReady()){
+   try{await safeAsync(refreshPageData('home'),12000,'sign-in home sync');}catch(e){console.warn('Sign-in home sync skipped',e);}
+ }
+ nav();
+ $('userBox').innerHTML=`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn" onclick="logout()">Logout</button>`;
+ window.__hcSkipNextPageSync328=true;
+ await show('home');
+}
+async function login(){
+ if(loginInProgress331)return;
+ let e=cleanEmail($('loginEmail')?.value),p=String($('loginPass')?.value||'');
+ if(!e||!p)return alert('Enter your email and password.');
+ if(!e.includes('@'))return alert('Please enter the full email address you used to create the account.');
+ loginInProgress331=true;
+ let loginButton=document.querySelector('#account button[onclick="login()"]');
+ if(loginButton){loginButton.disabled=true;loginButton.dataset.oldText=loginButton.textContent;loginButton.textContent='Signing in...';}
+ try{
+   if(authReady()){
+     let {data:authData,error}=await hcSupabase.auth.signInWithPassword({email:e,password:p});
+     if(error){
+       let localAdmin=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p&&x.role==='admin');
+       if(localAdmin){await finishLoginWithoutShake331(localAdmin,'You signed in with local admin access.');return;}
+       let msg=String(error.message||'');
+       if(msg.toLowerCase().includes('invalid'))msg='Login failed. Please check the email and password. Make sure there are no spaces and use the same email used during signup.';
+       return alert(msg);
+     }
+     let u=await loadSupabaseProfile(authData.user);
+     if(!u)return alert('Login worked, but profile was not found.');
+     await finishLoginWithoutShake331(u,'You signed in successfully.');
+     return;
+   }
+   let u=data.users.find(x=>cleanEmail(x.email)===e&&x.pass===p);
+   if(!u)return alert('Wrong email or password');
+   await finishLoginWithoutShake331(u,'You signed in successfully.');
+ }finally{
+   loginInProgress331=false;
+   if(loginButton&&document.body.contains(loginButton)){loginButton.disabled=false;loginButton.textContent=loginButton.dataset.oldText||'Login';}
+ }
+}
 async function register(){let name=$('regName').value.trim(),phone=$('regPhone').value.trim(),email=cleanEmail($('regEmail')?.value),pass=$('regPass').value;let selected=['customer'];let role='customer';if(!name||!phone||!email||!pass)return alert('Please complete all fields including phone number');if($('agreeTerms')&&!$('agreeTerms').checked)return alert('Please agree to the Terms and Privacy Policy.');if(!settings().registrationOpen&&(!currentUser||currentUser.role!=='admin'))return alert('Registration is currently closed.');if(authReady()){let {data:authData,error}=await hcSupabase.auth.signUp({email,password:pass,options:{data:{name,phone,role,roles:selected,active_role:role}}});if(error)return alert(error.message);let authUser=authData.user;let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:false};if(authUser){let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();if(res.error){console.warn('Profile save error',res.error);alert('Account created, but profile roles were not saved. Please run the V6 SQL migration if you have not run it yet.');}}
 let u=upsertLocalUser(profile);currentUser=u;addNote(email,'Account created. Check your email if Supabase asks you to confirm before login.');sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your Habesha Agenagn account was created successfully. You can open your dashboard and continue setup.',buttonText:'Open Home Page',page:'home',details:{Phone:phone}});sendAdminEmailNotice('New user registered','A new user registered on Habesha Agenagn.',{Name:name,Email:email,Phone:phone});save();alert('Account created. If email confirmation is enabled, please check your email before signing in.');show('home');return;}if(data.users.some(u=>u.email===email))return alert('Account already exists');let u={name,phone,email,pass,role,roles:selected,active_role:role,verified:false};data.users.push(u);currentUser=u;addNote(email,'Account created. Welcome to Habesha Connect.');sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your Habesha Agenagn account was created successfully. You can open your dashboard and continue setup.',buttonText:'Open Home Page',page:'home',details:{Phone:phone}});sendAdminEmailNotice('New user registered','A new user registered on Habesha Agenagn.',{Name:name,Email:email,Phone:phone});save();show('home')}
 async function logout(){currentUser=null;save();show('home');if(authReady())fireAndForget(hcSupabase.auth.signOut(),'Supabase sign out')}

@@ -1,3 +1,5 @@
+V7.8.331 — Sign-In Page Shake Fix
+
 Habesha Agenagn V7.8.324
 Taxi customer ride and approved driver UUID match fix.
 Run supabase/v7_8_323_taxi_driver_auth_uuid_match.sql before testing.
