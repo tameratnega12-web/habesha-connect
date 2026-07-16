@@ -72,3 +72,6 @@ V7.8.329
 - UI-only update: standardized category home action cards across phone and desktop.
 - Same border, badge, spacing, typography, and full-width task button style.
 - No workflow, form, Supabase, email, or transaction logic changed.
+
+
+V7.8.330 UI-only update: standardized the existing `.btn.good` positive/Agree button class with a green background and white text on phone and desktop. No workflows, actions, Supabase code, or SQL changed.
