@@ -1,0 +1,221 @@
+HABESHA AGENAGN
+FUTURE PAYMENT BUTTON PLAN
+Project Base: V7.8.332
+Status: PLANNING ONLY — NOT ACTIVE DURING TESTING
+
+============================================================
+PURPOSE
+============================================================
+
+This document records which existing buttons may become payment steps in the future.
+
+During the testing period:
+• Do not display Pay buttons.
+• Keep the current Accept, Decline, Apply, Request, and Agree buttons unchanged.
+• Do not collect money.
+• Contact information continues to be released through the current Agree flow.
+
+When monetization is activated:
+• The accepting party will click Accept first, then receive a Pay button.
+• The second party’s Agree button will become Pay & Agree.
+• Contact information will be released only after both parties complete payment.
+
+============================================================
+1. SHIPPING — TRAVELER AND SENDER
+============================================================
+
+Traveler side:
+Current button: Accept
+Future sequence: Accept → Pay
+Future payment button: Pay Service Fee
+
+Sender side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release traveler and sender contact information only after both payments succeed.
+
+============================================================
+2. RENTALS — PROPERTY OWNER AND RENT SEEKER
+============================================================
+
+Property Owner side:
+Current button: Accept
+Future sequence: Accept → Pay
+Future payment button: Pay Service Fee
+
+Rent Seeker side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release property owner and rent seeker contact information only after both payments succeed.
+
+============================================================
+3. TRUCK DRIVER JOBS — TRUCK OWNER AND TRUCK DRIVER
+============================================================
+
+Truck Owner side:
+Current button: Accept Driver
+Future sequence: Accept Driver → Pay
+Future payment button: Pay Service Fee
+
+Truck Driver side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release truck owner and driver contact information only after both payments succeed.
+
+============================================================
+4. TRAILER RENTAL — TRAILER OWNER AND REQUESTER
+============================================================
+
+Trailer Owner side:
+Current button: Accept
+Future sequence: Accept → Pay
+Future payment button: Pay Service Fee
+
+Trailer Requester side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release trailer owner and requester contact information only after both payments succeed.
+
+============================================================
+5. TAXI/LIMO DRIVER HIRING — OWNER AND DRIVER
+============================================================
+
+Taxi/Limo Owner side:
+Current button: Accept Driver / Hire Driver
+Future sequence: Accept Driver → Pay
+Future payment button: Pay Service Fee
+
+Taxi/Limo Driver side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release Taxi/Limo owner and driver contact information only after both payments succeed.
+
+Note:
+Customer ride requests are not part of the current project and are not included in this plan.
+
+============================================================
+6. HOME SERVICES — SERVICE PROVIDER AND CUSTOMER
+============================================================
+
+Service Provider side:
+Current button: Accept
+Future sequence: Accept → Pay
+Future payment button: Pay Service Fee
+
+Customer side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release provider and customer contact information only after both payments succeed.
+
+============================================================
+7. MARKETPLACE — SELLER AND BUYER
+============================================================
+
+Seller side:
+Current button: Accept
+Future sequence: Accept → Pay
+Future payment button: Pay Service Fee
+
+Buyer side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release seller and buyer contact information only after both payments succeed.
+
+============================================================
+8. BUSINESS JOBS — BUSINESS OWNER AND JOB SEEKER
+============================================================
+
+Business Owner side:
+Current button: Accept Applicant
+Future sequence: Accept Applicant → Pay
+Future payment button: Pay Service Fee
+
+Job Seeker side:
+Current button: Agree
+Future button: Pay & Agree
+
+Future contact-release rule:
+Release business owner and job seeker contact information only after both payments succeed.
+
+Note:
+The public Business Directory profile itself remains free unless a separate advertising plan is added later.
+
+============================================================
+9. EVENT ORGANIZER
+============================================================
+
+Current project:
+The Event Organizer posts an event and admin approves it. There is no two-party event transaction or attendee agreement flow.
+
+Current payment-button change:
+None.
+
+Future option:
+If attendee registration or ticket requests are added later:
+• Organizer side: Accept Registration → Pay Service Fee
+• Attendee side: Pay & Confirm Registration
+• Release registration details or ticket only after both required payments succeed.
+
+Do not add Pay buttons to the current Event Organizer flow yet.
+
+============================================================
+STANDARD FUTURE TWO-PARTY PAYMENT FLOW
+============================================================
+
+1. First party posts an offer, listing, job, trip, property, trailer, service, or item.
+2. Admin approves it.
+3. Second party requests or applies.
+4. Admin approves the request or application when required.
+5. First party clicks Accept.
+6. First party sees Pay Service Fee.
+7. First party completes payment.
+8. Second party sees Pay & Agree.
+9. Second party completes payment and agreement.
+10. The system confirms that both parties paid.
+11. Contact information is released to both parties.
+12. The normal completion workflow continues.
+
+============================================================
+BUTTON CHANGES SUMMARY
+============================================================
+
+Accepting party:
+Current: Accept
+Future: Accept → Pay Service Fee
+
+Agreeing party:
+Current: Agree
+Future: Pay & Agree
+
+Decline buttons:
+Remain unchanged and free.
+
+Posting, browsing, requesting, and applying buttons:
+Remain unchanged unless a different business decision is made later.
+
+============================================================
+TESTING-PERIOD RULE
+============================================================
+
+For the current testing period:
+• No Pay button is visible.
+• No button name is changed.
+• No payment status is added to the live workflow.
+• No payment provider is connected.
+• No SQL or application logic is changed for payments.
+
+This document is a future implementation record only.
