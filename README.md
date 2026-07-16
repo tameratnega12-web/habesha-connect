@@ -43,3 +43,8 @@ V7.8.319: Fixed the original Taxi/Limo driver open-ride table renderer so an adm
 
 
 V7.8.320: Fixed Taxi/Limo customer ride action visibility for hired, admin-approved drivers. Owner/vehicle assignment no longer hides Accept/Decline.
+
+V7.8.321: Taxi customer rides now match only an active hired driver assignment (Approved taxi_limo_driver_assignments record by driver email).
+
+
+V7.8.322: Taxi/Limo customer rides match any admin-approved driver application. Owner/vehicle assignment is not required for Accept/Decline.

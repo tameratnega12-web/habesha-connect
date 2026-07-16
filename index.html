@@ -11390,3 +11390,87 @@ window.__hcVersion='V7.8.213';
    customer ride eligibility. */
 (function(){ window.__hcVersion='V7.8.320'; })();
 </script>
+
+<script id="v78322-taxi-customer-any-approved-driver-match">
+/* V7.8.322 — Customer rides are available to any admin-approved Taxi/Limo driver.
+   Eligibility comes from taxi_driver_applications status Approved, matched by
+   the signed-in driver's email. Owner/vehicle assignment does not control rides. */
+(function(){
+  'use strict';
+  const WAITING='Approved - Waiting Driver';
+  const ACCEPTED='Driver Accepted - Waiting Customer Agreement';
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const same=(a,b)=>norm(a)===norm(b);
+  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ride=id=>typeof findTaxiRide==='function'?findTaxiRide(id):(data.taxiRideRequests||[]).find(r=>String(r.id)===String(id)||String(r.dbId)===String(id));
+
+  function approvedDriverProfile(){
+    if(!window.currentUser||!currentUser.email)return null;
+    const app=(data.taxiDriverApps||[]).find(a=>same(a.email,currentUser.email));
+    if(!app||norm(app.status)!=='approved')return null;
+    return {
+      name:app.name||currentUser.name||'',
+      email:app.email||currentUser.email||'',
+      phone:app.phone||currentUser.phone||'',
+      area:app.area||'',
+      availability:app.availability||'',
+      availabilityStatus:app.availabilityStatus||''
+    };
+  }
+  function declined(r){return (r.declinedBy||[]).some(e=>same(e,currentUser.email));}
+
+  const priorActions=window.taxiRideActions;
+  window.taxiRideActions=function(r){
+    if(!r||!window.currentUser)return '-';
+    const driver=approvedDriverProfile();
+    if(driver&&r.status===WAITING&&!norm(r.driverEmail)&&!declined(r)){
+      return `<button class="btn primary" onclick="driverAcceptTaxi('${esc(r.id)}')">Accept Ride</button> <button class="btn bad" onclick="driverDeclineTaxi('${esc(r.id)}')">Decline</button>`;
+    }
+    return typeof priorActions==='function'?priorActions(r):'-';
+  };
+
+  window.driverAcceptTaxi=async function(id){
+    const r=ride(id),p=approvedDriverProfile();
+    if(!r)return alert('Taxi/Limo ride request not found.');
+    if(!p)return alert('Only an admin-approved Taxi/Limo driver can accept customer rides.');
+    if(r.status!==WAITING||norm(r.driverEmail))return alert('This ride is no longer available.');
+    if(declined(r))return alert('You already declined this ride.');
+    if(!authReady())return alert('Supabase is not connected. Please sign in again.');
+    const result=await hcSupabase.rpc('accept_taxi_ride_v78317',{
+      p_ride_id:r.dbId||r.id,
+      p_driver_name:p.name,
+      p_driver_email:p.email,
+      p_driver_phone:p.phone,
+      p_provider_type:'Taxi/Limo Driver',
+      p_provider_area:p.area
+    });
+    if(result.error){
+      const msg=String(result.error.message||'');
+      if(msg.includes('RIDE_NOT_AVAILABLE'))return alert('Another driver already accepted this ride. Please refresh.');
+      if(msg.toLowerCase().includes('function')||msg.toLowerCase().includes('schema cache'))return alert('Run supabase/v7_8_317_taxi_customer_driver_flow_match.sql in Supabase, then try again.');
+      return alert('Could not accept ride: '+msg);
+    }
+    Object.assign(r,{driverName:p.name,driverEmail:p.email,driverPhone:p.phone,status:ACCEPTED,providerType:'Taxi/Limo Driver',providerArea:p.area,customerAgreed:false,customerAgreedAt:'',acceptedAt:new Date().toISOString()});
+    addNote(r.riderEmail,'An approved Taxi/Limo driver accepted your ride request. Click Agree to view the driver information.');
+    try{await Promise.resolve(sendEmailNotice({to:r.riderEmail,name:r.riderName,subject:'Taxi/Limo ride accepted — agreement required',summary:'An approved Taxi/Limo driver accepted your ride request. Open Taxi/Limo and click Agree to view the driver information.',buttonText:'Open Taxi/Limo',page:'taxi',details:{Driver:p.name,Pickup:r.pickup,Destination:r.destination,Status:'Waiting for Customer Agreement'}}));}catch(e){console.warn(e);}
+    persistOnly();
+    try{await loadSupabaseTaxiLimo();}catch(e){console.warn(e);}
+    alert('Ride accepted. The customer was notified and must click Agree.');
+    taxi();
+  };
+
+  window.driverDeclineTaxi=async function(id){
+    const r=ride(id),p=approvedDriverProfile();
+    if(!r)return alert('Taxi/Limo ride request not found.');
+    if(!p)return alert('Only an admin-approved Taxi/Limo driver can decline customer rides.');
+    if(r.status!==WAITING)return alert('This ride is no longer available.');
+    const list=[...(r.declinedBy||[])];
+    if(!list.some(e=>same(e,currentUser.email)))list.push(currentUser.email);
+    const res=await updateTaxiRideDb(r,{declinedBy:list});
+    if(res&&res.error)return alert('Could not decline ride: '+res.error.message);
+    r.declinedBy=list;persistOnly();alert('Ride declined.');taxi();
+  };
+
+  window.__hcVersion='V7.8.322';
+})();
+</script>
