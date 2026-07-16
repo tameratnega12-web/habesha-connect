@@ -10505,8 +10505,9 @@ window.__hcVersion='V7.8.213';
   const norm=v=>String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,' ');
   const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const refOf=x=>String((x&&((x.dbId!==undefined&&x.dbId!==null&&x.dbId!=='')?x.dbId:x.id))||'');
-  const customerMode=()=>window.currentUser&&['customer','admin'].includes(String(currentUser.role||''));
-  const email=()=>norm(window.currentUser&&currentUser.email);
+  const activeUser=()=>{try{return (typeof currentUser!=='undefined'&&currentUser)?currentUser:(window.currentUser||null);}catch(_){return window.currentUser||null;}};
+  const customerMode=()=>{const u=activeUser();return !!u&&['customer','admin'].includes(String(u.role||''));};
+  const email=()=>{const u=activeUser();return norm(u&&u.email);};
   const terminal=new Set(['completed','closed','cancelled','canceled','customer declined','declined']);
   const busy=new Set();
   function belongs(row){return email()&&norm(row&&row.customerEmail)===email();}
@@ -10557,7 +10558,7 @@ window.__hcVersion='V7.8.213';
     const key=`${kind}:${refOf(row)}:${action}`;if(busy.has(key))return;
     const question=action==='agree'?'Agree to continue with this service provider?':action==='decline'?'Decline this service provider?':'Confirm that this home service work is completed?';if(!confirm(question))return;
     busy.add(key);if(button){button.disabled=true;button.dataset.oldText=button.textContent;button.textContent='Saving…';}
-    try{await rpc(kind,row,action);if(action==='confirm'||action==='decline')removeLocal(kind,row);else row.status='Customer Agreed';await notify(row,action);await reload();alert(action==='confirm'?'Completion confirmed. The transaction was removed.':action==='agree'?'Agreement saved. The provider was notified.':'Declined. The transaction was removed.');}
+    try{await rpc(kind,row,action);if(action==='confirm'||action==='decline')removeLocal(kind,row);else row.status='Customer Agreed';await notify(row,action);await reload();if(action==='agree'){const providerName=row.providerName||'Service Provider';const providerPhone=row.providerPhone||'Not provided';const providerEmail=row.providerEmail||'Not provided';alert('Agreement saved. Service Provider Information:\n\nName: '+providerName+'\nPhone: '+providerPhone+'\nEmail: '+providerEmail);}else alert(action==='confirm'?'Completion confirmed. The transaction was removed.':'Declined. The transaction was removed.');}
     catch(e){console.error('V7.8.301 customer Home Services action failed',e);alert('Could not save this action: '+(e.message||e));if(button){button.disabled=false;button.textContent=button.dataset.oldText||'Try Again';}}
     finally{setTimeout(()=>busy.delete(key),1000);}
   }
