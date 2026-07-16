@@ -2909,15 +2909,12 @@ function taxiRideRow(r,forDriver){
   let action='-';
   if(forDriver){
     const me=String(currentUser?.email||'').trim().toLowerCase();
-    const driverApp=(data.taxiDriverApps||[]).find(a=>String(a.email||'').trim().toLowerCase()===me);
-    const appStatus=String(driverApp?.status||'').trim().toLowerCase();
-    // A hired driver remains admin-approved for customer rides. ownerEmail only marks
-    // the separate owner/vehicle assignment and must not hide ride Accept/Decline.
-    const approvedDriver=!!driverApp && (appStatus==='approved' || !!String(driverApp.ownerEmail||'').trim());
     const waiting=r.status==='Approved - Waiting Driver';
-    const unclaimed=!String(r.driverEmail||'').trim();
+    const unclaimed=!String(r.driverEmail||'').trim()&&!String(r.driverId||'').trim();
     const declined=(r.declinedBy||[]).some(e=>String(e||'').trim().toLowerCase()===me);
-    if(approvedDriver&&waiting&&unclaimed&&!declined){
+    // Button visibility depends only on the active Taxi/Limo Driver page and an open ride.
+    // Driver approval is verified when Accept is clicked.
+    if(waiting&&unclaimed&&!declined){
       action=`<button class="btn primary" onclick="driverAcceptTaxi('${r.id}')">Accept Ride</button> <button class="btn bad" onclick="driverDeclineTaxi('${r.id}')">Decline</button>`;
     }else{
       action=taxiRideActions(r);
@@ -11341,7 +11338,7 @@ window.__hcVersion='V7.8.213';
 
   const previousActions=window.taxiRideActions;
   window.taxiRideActions=function(r){
-    if(!r||!window.currentUser)return '-';
+    if(!r||!currentUser)return '-';
     if(isTaxiDriver()&&r.status===WAITING&&!String(r.driverEmail||'').trim()&&!(r.declinedBy||[]).some(e=>same(e,currentUser.email))){
       return `<button class="btn primary" onclick="driverAcceptTaxi('${esc(r.id)}')">Accept Ride</button> <button class="btn bad" onclick="driverDeclineTaxi('${esc(r.id)}')">Decline</button>`;
     }
@@ -11553,6 +11550,6 @@ window.__hcVersion='V7.8.213';
   };
   window.driverAcceptTaxiNotifyCustomer=window.driverAcceptTaxi;
   refreshTaxiAuthId();
-  window.__hcVersion='V7.8.323';
+  window.__hcVersion='V7.8.324';
 })();
 </script>
