@@ -3180,7 +3180,7 @@ async function endTaxiEmploymentByAssignment(a,endedBy){
 async function taxiOwnerEndEmployment(id){let a=(data.taxiLimoDriverAssignments||[]).find(x=>x.id===id);if(!a)return alert('Employment record not found.');if(a.ownerEmail!==currentUser.email&&currentUser.role!=='admin')return alert('Only this owner can end this employment.');if(!confirm('End employment for '+a.driverName+'? The driver will become available to other Taxi/Limo owners.'))return;await endTaxiEmploymentByAssignment(a,'Owner');}
 async function taxiDriverLeaveEmployer(){let a=(data.taxiLimoDriverAssignments||[]).find(x=>x.driverEmail===currentUser.email&&x.status==='Approved');if(!a)return alert('You do not have an active Taxi/Limo employment record.');if(!confirm('Leave your current Taxi/Limo employer? Your driver profile will become available again.'))return;await endTaxiEmploymentByAssignment(a,'Driver');}
 
-async function applyTaxiDriver(){let license=($('taxiLicense')?.value||'').trim(),experience=($('taxiExperience')?.value||'').trim(),availability=($('taxiAvailability')?.value||'').trim(),area=($('taxiArea')?.value||'').trim(),notes=($('taxiDriverNotes')?.value||'').trim();if(!license||!experience||!availability||!area)return alert('Please complete license, experience, availability, and service area.');let existing=(data.taxiDriverApps||[]).find(a=>a.email===currentUser.email&&a.status!=='Declined');if(existing)return alert('You already have a Taxi/Limo driver profile. If you leave a job, your approved profile becomes available again.');let app={id:'TD'+Date.now().toString().slice(-6),name:currentUser.name,email:currentUser.email,phone:currentUser.phone||'',license,experience,availability,area,notes,status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};let res=await insertTaxiDriverDb(app);if(res.error)return alert('Driver application was not saved to Supabase. Run supabase/v7_8_347_taxi_driver_application_rls_fix.sql in Supabase, then try again. '+res.error.message);if(res.data){app.id=res.data.id;app.dbId=res.data.id;}data.taxiDriverApps.unshift(app);addNote('admin.habeshaconnect@gmail.com','Taxi/Limo driver application needs approval: '+currentUser.name);sendAdminEmailNotice('Taxi/Limo driver application waiting for approval','A taxi/limo driver submitted availability for owner matching. Vehicle information is not required because the owner provides the vehicle.',{Driver:currentUser.name,Email:currentUser.email,Phone:currentUser.phone||'',License:license,Experience:experience,Availability:availability,Area:area,Notes:notes},'admin');persistOnly();fireAndForget(loadSupabaseTaxiLimo(), 'taxi/limo driver refresh');alert('Taxi/Limo driver application submitted. ');taxi();}
+async function applyTaxiDriver(){let license=($('taxiLicense')?.value||'').trim(),experience=($('taxiExperience')?.value||'').trim(),availability=($('taxiAvailability')?.value||'').trim(),area=($('taxiArea')?.value||'').trim(),notes=($('taxiDriverNotes')?.value||'').trim();if(!license||!experience||!availability||!area)return alert('Please complete license, experience, availability, and service area.');let existing=(data.taxiDriverApps||[]).find(a=>a.email===currentUser.email&&a.status!=='Declined');if(existing)return alert('You already have a Taxi/Limo driver profile. If you leave a job, your approved profile becomes available again.');let app={id:'TD'+Date.now().toString().slice(-6),name:currentUser.name,email:currentUser.email,phone:currentUser.phone||'',license,experience,availability,area,notes,status:'Pending Admin Approval',createdAt:new Date().toLocaleString()};let res=await insertTaxiDriverDb(app);if(res.error)return alert('Driver application was not saved to Supabase. Please run the Taxi/Limo SQL, then try again. '+res.error.message);if(res.data){app.id=res.data.id;app.dbId=res.data.id;}data.taxiDriverApps.unshift(app);addNote('admin.habeshaconnect@gmail.com','Taxi/Limo driver application needs approval: '+currentUser.name);sendAdminEmailNotice('Taxi/Limo driver application waiting for approval','A taxi/limo driver submitted availability for owner matching. Vehicle information is not required because the owner provides the vehicle.',{Driver:currentUser.name,Email:currentUser.email,Phone:currentUser.phone||'',License:license,Experience:experience,Availability:availability,Area:area,Notes:notes},'admin');persistOnly();fireAndForget(loadSupabaseTaxiLimo(), 'taxi/limo driver refresh');alert('Taxi/Limo driver application submitted. ');taxi();}
 // V7.8.94: first taxi/limo ride submission sends admin email notification.
 async function submitTaxiRide(){
  if(!currentUser)return show('account');
@@ -12437,5 +12437,53 @@ const priorHome=window.home;if(typeof priorHome==='function')window.home=functio
 const observer=new MutationObserver(()=>setTimeout(place,0));function start(){const home=document.getElementById('home');if(home){observer.observe(home,{childList:true,subtree:true});place();}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.hcPlaceAllCategoryNextActionsV78342=place;
+})();
+</script>
+
+<script id="v78348-taxi-driver-agreement-panel-close-fix">
+/* V7.8.348 — Taxi/Limo hire agreement only.
+   After the driver agrees and owner contact is released, remove the stale
+   Agree/Decline panel from Home immediately and prevent repeated clicks. */
+(function(){
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sid=v=>String(v==null?'':v).trim();
+  function assignment(id){const key=sid(id);return (data.taxiLimoDriverAssignments||[]).find(a=>sid(a.id)===key||sid(a.dbId)===key);}
+  function removeAgreementPanel(id){
+    const a=assignment(id);
+    document.querySelectorAll('#taxiDriverAgreeOwnerV78271').forEach(panel=>{
+      if(!a){panel.remove();return;}
+      const text=norm(panel.textContent);
+      if(text.includes(norm(a.ownerName))&&text.includes(norm(a.vehicleLabel))) panel.remove();
+    });
+  }
+  const priorAgree=window.taxiDriverAgreeHire;
+  if(typeof priorAgree==='function'){
+    window.taxiDriverAgreeHire=async function(id){
+      const a=assignment(id);
+      if(!a)return priorAgree.apply(this,arguments);
+      if(['Pending Admin Approval','Approved'].includes(String(a.status||''))){
+        removeAgreementPanel(id);
+        return typeof window.viewTaxiOwnerInformation==='function'?window.viewTaxiOwnerInformation(id):undefined;
+      }
+      const buttons=[...document.querySelectorAll('#taxiDriverAgreeOwnerV78271 button')];
+      buttons.forEach(b=>{b.disabled=true;b.setAttribute('aria-disabled','true');});
+      try{
+        const out=await priorAgree.apply(this,arguments);
+        const updated=assignment(id)||a;
+        if(['Pending Admin Approval','Approved'].includes(String(updated.status||''))){
+          removeAgreementPanel(id);
+          if(typeof window.home==='function'&&String(window.currentPage||'')==='home') window.home();
+        }else{
+          buttons.forEach(b=>{b.disabled=false;b.removeAttribute('aria-disabled');});
+        }
+        return out;
+      }catch(err){
+        buttons.forEach(b=>{b.disabled=false;b.removeAttribute('aria-disabled');});
+        throw err;
+      }
+    };
+    window.taxiDriverAcceptHire=window.taxiDriverAgreeHire;
+  }
+  window.__hcVersion='V7.8.348';
 })();
 </script>
