@@ -1,8 +1,8 @@
-Habesha Agenagn V7.8.335
+Habesha Agenagn V7.8.337
 
-Fixes only the Shipping sender agreement error after traveler acceptance. Fallback shipping items stored in public.shipments now use the correct consent RPC. No SQL is required.
-
-## V7.8.336 bilingual display update
-- Keeps the original English text visible.
-- Adds Amharic beside English for user-facing page text, buttons, labels, placeholders, alerts, confirmations, and dynamically loaded dashboard content.
-- Does not change Supabase tables, stored status values, action handlers, or transaction workflows.
+Language display correction only:
+- Users choose English to see English only.
+- Users choose አማርኛ to see Amharic only.
+- The selected language is saved on the device.
+- Removed side-by-side English + Amharic display.
+- No Supabase tables, statuses, SQL, transaction flows, or unrelated application logic were changed.

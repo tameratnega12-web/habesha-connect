@@ -4003,7 +4003,7 @@ function adminSuccess(message){
 
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-data.json';a.click();}
 
-/* V7.8.336: Always-visible English + Amharic bilingual user interface.
+/* V7.8.337: User-selectable English or Amharic interface.
    This layer changes display text only. It does not change stored values,
    Supabase records, workflow statuses, IDs, or action logic. */
 const LANG_KEY='hc_language';
@@ -4032,7 +4032,7 @@ const HC_I18N={am:{
 const HC_AM_WORDS={
 'please':'እባክዎ','your':'የእርስዎ','you':'እርስዎ','admin':'አስተዳዳሪ','approval':'ፈቃድ','request':'ጥያቄ','requests':'ጥያቄዎች','property':'ቤት','rental':'ኪራይ','shipping':'ጭነት','traveler':'ተጓዥ','sender':'ላኪ','driver':'አሽከርካሪ','owner':'ባለቤት','customer':'ደንበኛ','provider':'አገልግሎት ሰጪ','seller':'ሻጭ','buyer':'ገዢ','business':'ንግድ','job':'ሥራ','service':'አገልግሎት','payment':'ክፍያ','profile':'መገለጫ','information':'መረጃ','available':'ይገኛል','pending':'በመጠባበቅ ላይ','approved':'ጸድቋል','accepted':'ተቀብሏል','declined':'ውድቅ ተደርጓል','completed':'ተጠናቋል','submit':'አስገባ','save':'አስቀምጥ','update':'አዘምን','open':'ክፈት','view':'ይመልከቱ','post':'አስገባ','apply':'አመልክት','accept':'ተቀበል','decline':'ውድቅ አድርግ','agree':'ተስማማ','confirm':'አረጋግጥ','name':'ስም','phone':'ስልክ','email':'ኢሜይል','city':'ከተማ','address':'አድራሻ','date':'ቀን','time':'ሰዓት','status':'ሁኔታ','details':'ዝርዝሮች','description':'መግለጫ','required':'ያስፈልጋል','optional':'አማራጭ','not':'አይደለም','found':'ተገኝቷል','waiting':'በመጠባበቅ ላይ','successfully':'በተሳካ ሁኔታ','again':'እንደገና','first':'መጀመሪያ','account':'መለያ','password':'የይለፍ ቃል','login':'ግባ','logout':'ውጣ','photo':'ፎቶ','photos':'ፎቶዎች','item':'ዕቃ','trip':'ጉዞ','ride':'ጉዞ','vehicle':'ተሽከርካሪ','trailer':'ተጎታች','marketplace':'ገበያ','event':'ዝግጅት','home':'መነሻ'
 };
-function currentLang(){return 'bi';}
+function currentLang(){return localStorage.getItem(LANG_KEY)==='am'?'am':'en';}
 function hcHasAmharic(s){return /[\u1200-\u137F]/.test(String(s||''));}
 function hcAmharicOnly(s){
   const raw=String(s??'').trim(); if(!raw)return raw;
@@ -4044,50 +4044,78 @@ function hcAmharicOnly(s){
     translated=translated.split(k).join(d[k]);
   });
   translated=translated.replace(/\b[A-Za-z][A-Za-z/-]*\b/g,w=>HC_AM_WORDS[w.toLowerCase()]||w);
-  return translated===raw?'':translated;
+  return translated===raw?raw:translated;
 }
 function tText(s){
-  const raw=String(s??''); const trimmed=raw.trim();
-  if(!trimmed||hcHasAmharic(trimmed)||trimmed.includes(' • '))return raw;
-  /* Do not alter codes, email addresses, URLs, currency-only values, dates, or IDs. */
+  const raw=String(s??'');
+  if(currentLang()!=='am')return raw;
+  const trimmed=raw.trim();
+  if(!trimmed||hcHasAmharic(trimmed))return raw;
   if(/^https?:\/\//i.test(trimmed)||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)||/^[$#]?\d[\d.,:/ -]*$/.test(trimmed)||/^[A-Z]{1,5}\d{3,}$/i.test(trimmed))return raw;
-  const am=hcAmharicOnly(trimmed); if(!am)return raw;
+  const translated=hcAmharicOnly(trimmed);
   const lead=raw.match(/^\s*/)?.[0]||'', tail=raw.match(/\s*$/)?.[0]||'';
-  return lead+trimmed+' • '+am+tail;
+  return lead+translated+tail;
 }
+const HC_ORIGINAL_TEXT=new WeakMap();
+const HC_ORIGINAL_ATTR=new WeakMap();
 function translateNodeTree(root){
   if(!root)return;
   const skip=['SCRIPT','STYLE','NOSCRIPT','CODE','PRE'];
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){
-    const p=node.parentElement;if(!p||skip.includes(p.tagName)||p.closest('[data-no-bilingual="true"]'))return NodeFilter.FILTER_REJECT;
+    const p=node.parentElement;if(!p||skip.includes(p.tagName)||p.closest('[data-language-switcher="true"]'))return NodeFilter.FILTER_REJECT;
     const v=node.nodeValue;if(!v||!v.trim())return NodeFilter.FILTER_REJECT;
     return NodeFilter.FILTER_ACCEPT;
   }});
   const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
-  nodes.forEach(n=>{n.nodeValue=tText(n.nodeValue);});
-  document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{el.placeholder=tText(el.placeholder);});
-  document.querySelectorAll('input[type="button"],input[type="submit"],input[type="reset"]').forEach(el=>{el.value=tText(el.value);});
-  document.querySelectorAll('[title]').forEach(el=>{el.title=tText(el.title);});
-  document.documentElement.lang='en';
+  nodes.forEach(n=>{
+    if(!HC_ORIGINAL_TEXT.has(n))HC_ORIGINAL_TEXT.set(n,n.nodeValue);
+    const original=HC_ORIGINAL_TEXT.get(n);
+    n.nodeValue=currentLang()==='am'?tText(original):original;
+  });
+  document.querySelectorAll('input[placeholder],textarea[placeholder],input[type="button"],input[type="submit"],input[type="reset"],[title]').forEach(el=>{
+    if(el.closest('[data-language-switcher="true"]'))return;
+    let originals=HC_ORIGINAL_ATTR.get(el);
+    if(!originals){originals={};HC_ORIGINAL_ATTR.set(el,originals);}
+    const attrs=[];
+    if(el.hasAttribute('placeholder'))attrs.push('placeholder');
+    if(['button','submit','reset'].includes((el.type||'').toLowerCase()))attrs.push('value');
+    if(el.hasAttribute('title'))attrs.push('title');
+    attrs.forEach(a=>{
+      if(!(a in originals))originals[a]=el.getAttribute(a)||'';
+      el.setAttribute(a,currentLang()==='am'?tText(originals[a]):originals[a]);
+    });
+  });
+  document.documentElement.lang=currentLang()==='am'?'am':'en';
 }
-function languageSwitcherHtml(){return `<span data-no-bilingual="true" style="display:inline-block;margin:0 6px;padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;font-weight:700;background:#fff">🇺🇸 English + 🇪🇹 አማርኛ</span>`;}
-function setLanguage(){applyLanguageUi();}
-function applyLanguageUi(){
+function languageSwitcherHtml(){
+  const lang=currentLang();
+  return `<span data-language-switcher="true" style="display:inline-flex;gap:6px;margin:0 6px;vertical-align:middle">
+    <button type="button" class="btn ${lang==='en'?'primary':''}" onclick="setLanguage('en')" style="padding:7px 10px">🇺🇸 English</button>
+    <button type="button" class="btn ${lang==='am'?'primary':''}" onclick="setLanguage('am')" style="padding:7px 10px">🇪🇹 አማርኛ</button>
+  </span>`;
+}
+function setLanguage(lang){
+  localStorage.setItem(LANG_KEY,lang==='am'?'am':'en');
+  applyLanguageUi(true);
+}
+function applyLanguageUi(rebuildSwitcher=false){
   const userBox=$('userBox');
-  if(userBox&&!document.querySelector('[data-no-bilingual="true"]'))userBox.insertAdjacentHTML('afterbegin',languageSwitcherHtml());
+  const old=document.querySelector('[data-language-switcher="true"]');
+  if(old&&(rebuildSwitcher||!userBox))old.remove();
+  if(userBox&&!document.querySelector('[data-language-switcher="true"]'))userBox.insertAdjacentHTML('afterbegin',languageSwitcherHtml());
   translateNodeTree(document.body);
 }
-const _hcRender=render; render=function(){_hcRender();setTimeout(applyLanguageUi,0);};
-const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);setTimeout(applyLanguageUi,0);};
-const _hcShow=show; show=function(p){const r=_hcShow(p);setTimeout(applyLanguageUi,0);return r;};
+const _hcRender=render; render=function(){_hcRender();setTimeout(()=>applyLanguageUi(),0);};
+const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);setTimeout(()=>applyLanguageUi(),0);};
+const _hcShow=show; show=function(p){const r=_hcShow(p);setTimeout(()=>applyLanguageUi(),0);return r;};
 
-/* Translate browser dialogs while preserving the original English message. */
+/* Translate browser dialogs only when Amharic is selected. */
 const _hcNativeAlert=window.alert.bind(window);
 const _hcNativeConfirm=window.confirm.bind(window);
 const _hcNativePrompt=window.prompt.bind(window);
-window.alert=function(message){return _hcNativeAlert(tText(message));};
-window.confirm=function(message){return _hcNativeConfirm(tText(message));};
-window.prompt=function(message,defaultValue){return _hcNativePrompt(tText(message),defaultValue);};
+window.alert=function(message){return _hcNativeAlert(currentLang()==='am'?tText(message):String(message??''));};
+window.confirm=function(message){return _hcNativeConfirm(currentLang()==='am'?tText(message):String(message??''));};
+window.prompt=function(message,defaultValue){return _hcNativePrompt(currentLang()==='am'?tText(message):String(message??''),defaultValue);};
 
 /* Translate content inserted after async Supabase loads without changing data. */
 let _hcBilingualTimer=null;
@@ -4096,7 +4124,7 @@ const _hcBilingualObserver=new MutationObserver(()=>{
   _hcBilingualTimer=setTimeout(()=>translateNodeTree(document.body),40);
 });
 document.addEventListener('DOMContentLoaded',()=>{
-  localStorage.setItem(LANG_KEY,'bi');
+  if(!localStorage.getItem(LANG_KEY))localStorage.setItem(LANG_KEY,'en');
   applyLanguageUi();
   _hcBilingualObserver.observe(document.body,{childList:true,subtree:true});
 });
