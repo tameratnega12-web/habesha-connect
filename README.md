@@ -1,8 +1,3 @@
-Habesha Agenagn V7.8.337
+Habesha Agenagn V7.8.340
 
-Language display correction only:
-- Users choose English to see English only.
-- Users choose አማርኛ to see Amharic only.
-- The selected language is saved on the device.
-- Removed side-by-side English + Amharic display.
-- No Supabase tables, statuses, SQL, transaction flows, or unrelated application logic were changed.
+Traveler page Amharic translations added for Open Trip and View Requests. No workflow or Supabase logic changed.
