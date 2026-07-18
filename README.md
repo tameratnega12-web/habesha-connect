@@ -1,22 +1,15 @@
-# Habesha Agenagn V7.8.334B
+Habesha Agenagn V7.8.338 — Phase 3 Dashboard Display Only
 
-Amharic Translation Pass 2 — Shipping user interface.
+Base: V7.8.337 Service Page Presentation Only.
 
-Changes are limited to user-visible Shipping text:
-- Traveler and Sender task cards
-- Shipping forms, labels, placeholders, tables, statuses, and empty states
-- Shipping action buttons
-- Sender/Traveler consent screens
-- Shipping alerts, confirmations, and common browser dialogs
+Presentation-only changes:
+- Adds consistent visual status colors for active transaction cards.
+- Adds a compact active-item summary to transaction/activity sections.
+- Hides completed cards by default and provides a Show completed activity toggle.
+- Adds an all-caught-up message when a section has no active items.
+- Improves mobile display of the summary and completed toggle.
 
-No workflow, Supabase, SQL, internal status value, function, ID, or business logic was changed.
-No SQL is required.
-
-## V7.8.335 — Require Admin Verification Before Access
-- New signups remain signed out and cannot enter the Customer dashboard.
-- Login and restored Supabase sessions are blocked until `profiles.verified = true`.
-- Admin accounts remain accessible.
-- No SQL changes required.
-
-
-V7.8.337 Phase 2: presentation-only service-page ordering and mobile styling. No workflow, Supabase, email, approval, or action logic changed.
+Not changed:
+- No Supabase or SQL changes.
+- No transaction-flow, status-update, approval, email, form, or action-function changes.
+- No transaction elements are moved, replaced, or cloned.
