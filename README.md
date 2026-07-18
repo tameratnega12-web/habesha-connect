@@ -38,3 +38,5 @@ Removed the Amharic translation layer and language switcher. No workflow, Supaba
 
 
 V7.8.354: Prevented page shaking by lazy-loading Google Translate only after Amharic is selected and permanently suppressing the Google banner layout offset. No workflow or Supabase changes.
+
+Version 7.8.355: Fixed Amharic-mode page shaking by removing the self-triggering translation style observer and using throttled banner cleanup only. No workflow or Supabase changes.

@@ -582,10 +582,13 @@ let hcGoogleTranslateReady=false;
 let hcGoogleTranslateLoading=false;
 function hcAmharicSelected(){return document.cookie.split(';').some(v=>v.trim()==='googtrans=/en/am');}
 function hcRemoveTranslateBanner(){
-  document.documentElement.style.setProperty('margin-top','0px','important');
-  document.body.style.setProperty('top','0px','important');
-  document.body.style.setProperty('margin-top','0px','important');
-  document.querySelectorAll('.goog-te-banner-frame, iframe.goog-te-banner-frame, body > iframe.skiptranslate').forEach(el=>{el.style.display='none';el.style.height='0';});
+  if(document.documentElement.style.marginTop!=='0px')document.documentElement.style.setProperty('margin-top','0px','important');
+  if(document.body.style.top!=='0px')document.body.style.setProperty('top','0px','important');
+  if(document.body.style.marginTop!=='0px')document.body.style.setProperty('margin-top','0px','important');
+  document.querySelectorAll('.goog-te-banner-frame, iframe.goog-te-banner-frame, body > iframe.skiptranslate').forEach(el=>{
+    if(el.style.display!=='none')el.style.setProperty('display','none','important');
+    if(el.style.height!=='0px')el.style.setProperty('height','0px','important');
+  });
 }
 function googleTranslateElementInit(){
   try{
@@ -607,7 +610,16 @@ function hcLoadGoogleTranslate(){
 }
 if(hcAmharicSelected()){
   hcLoadGoogleTranslate();
-  new MutationObserver(hcRemoveTranslateBanner).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+  let hcBannerCleanupTimer=0;
+  new MutationObserver(()=>{
+    clearTimeout(hcBannerCleanupTimer);
+    hcBannerCleanupTimer=setTimeout(hcRemoveTranslateBanner,80);
+  }).observe(document.documentElement,{childList:true,subtree:true});
+  window.addEventListener('load',()=>{
+    hcRemoveTranslateBanner();
+    setTimeout(hcRemoveTranslateBanner,500);
+    setTimeout(hcRemoveTranslateBanner,1500);
+  },{once:true});
 }
 function toggleLanguageMenu(ev){
   if(ev){ev.preventDefault();ev.stopPropagation();}
