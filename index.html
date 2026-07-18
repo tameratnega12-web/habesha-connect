@@ -10654,7 +10654,7 @@ window.__hcVersion='V7.8.213';
     const r=item.row,title=r.title||r.serviceTitle||r.category||'Home Service',provider=r.providerName||'Service Provider',id=refOf(r);
     const buttons=item.action==='agree'
       ? `<button type="button" class="btn primary" data-hs-customer-v301="agree" data-kind="${item.kind}" data-ref="${esc(id)}">Agree</button> <button type="button" class="btn bad" data-hs-customer-v301="decline" data-kind="${item.kind}" data-ref="${esc(id)}">Decline</button>`
-      : `<button type="button" class="btn primary" data-hs-customer-v301="confirm" data-kind="${item.kind}" data-ref="${esc(id)}">Confirm Completed</button>`;
+      : `<button type="button" class="btn primary" data-hs-customer-v301="confirm" data-kind="${item.kind}" data-ref="${esc(id)}" style="touch-action:manipulation;pointer-events:auto;-webkit-tap-highlight-color:transparent">Confirm Completed</button>`;
     return `<div class="card hs-customer-v301-card" data-hs-customer-kind="${item.kind}" data-hs-customer-ref="${esc(id)}" style="border-left:5px solid #dc2626"><h3>🛠️ ${esc(title)}</h3><p><b>${esc(item.label)}</b></p><p class="muted">${esc(r.status)} · ${esc(provider)}</p><div class="actions">${buttons}</div></div>`;
   }
   function removeLegacyCustomerActions(root){
@@ -10685,9 +10685,20 @@ window.__hcVersion='V7.8.213';
     catch(e){console.error('V7.8.301 customer Home Services action failed',e);alert('Could not save this action: '+(e.message||e));if(button){button.disabled=false;button.textContent=button.dataset.oldText||'Try Again';}}
     finally{setTimeout(()=>busy.delete(key),1000);}
   }
-  function capture(e){const button=e.target&&e.target.closest&&e.target.closest('[data-hs-customer-v301]');if(!button)return;if(e.type==='mousedown'&&typeof e.button==='number'&&e.button!==0)return;if(e.type==='click'&&e.detail!==0)return;e.preventDefault();e.stopImmediatePropagation();act(button.dataset.kind,button.dataset.ref,button.dataset.hsCustomerV301,button);}
-  // Mouse uses mousedown because an older page-level click controller can stop the generated click.
-  // Touch keeps touchend, and keyboard activation keeps the synthetic click (detail === 0).
+  const inputStamp=new WeakMap();
+  function capture(e){
+    const button=e.target&&e.target.closest&&e.target.closest('[data-hs-customer-v301]');if(!button)return;
+    if(e.type==='mousedown'&&typeof e.button==='number'&&e.button!==0)return;
+    if(e.type==='click'&&e.detail!==0)return;
+    const now=Date.now(),last=inputStamp.get(button)||0;
+    if(now-last<700)return;
+    inputStamp.set(button,now);
+    e.preventDefault();e.stopImmediatePropagation();
+    act(button.dataset.kind,button.dataset.ref,button.dataset.hsCustomerV301,button);
+  }
+  // Pointer-up is the primary phone/tablet path. Mouse-down protects laptop mouse clicks
+  // from the older page-level click controller. Touch-end and keyboard click remain fallbacks.
+  document.addEventListener('pointerup',capture,true);
   document.addEventListener('mousedown',capture,true);
   document.addEventListener('touchend',capture,{capture:true,passive:false});
   document.addEventListener('click',capture,true);
@@ -10695,7 +10706,7 @@ window.__hcVersion='V7.8.213';
   const oldHome=window.home;if(typeof oldHome==='function')window.home=function(){const result=oldHome.apply(this,arguments);setTimeout(render,0);return result;};
   const oldPage=window.homeServices;if(typeof oldPage==='function')window.homeServices=function(){const result=oldPage.apply(this,arguments);setTimeout(render,0);return result;};
   let timer=0;const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(render,30);});document.addEventListener('DOMContentLoaded',()=>{observer.observe(document.body,{childList:true,subtree:true});render();});
-  window.__hcVersion='V7.8.350';
+  window.__hcVersion='V7.8.351';
 })();
 </script>
 

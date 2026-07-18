@@ -1,11 +1,9 @@
-# Habesha Agenagn V7.8.350 — Home Service Agree Mouse + Phone Fix
+# Habesha Agenagn V7.8.351
 
-Changed only the customer Home Service action-card input handler.
+Exact fix only: Home Service customer **Confirm Completed / Mark as Complete** now responds to phone taps through a unified pointer handler.
 
-- Mouse: primary-button `mousedown` now starts Agree, Decline, and Confirm actions.
-- Phone/tablet: existing `touchend` support remains.
-- Keyboard: synthetic click activation remains supported.
-- The existing busy lock prevents duplicate submissions from follow-up browser events.
-- No Supabase SQL, transaction status, notification, or other category code was changed.
-
-Deploy the included `index.html`. The V7.8.349 SQL still applies; no new SQL is required.
+- Customer Agree/Decline flow unchanged.
+- Provider Mark Work Complete unchanged.
+- Supabase SQL unchanged; no SQL is required for this input-only fix.
+- No other category was modified.
+- ZIP contains only the latest updated files.
