@@ -1,3 +1,3 @@
-Habesha Agenagn V7.8.332
+Habesha Agenagn V7.8.335
 
-Change: Removed only the photo upload control from Rentals > Add Property. No other code or workflow changed.
+Fixes only the Shipping sender agreement error after traveler acceptance. Fallback shipping items stored in public.shipments now use the correct consent RPC. No SQL is required.

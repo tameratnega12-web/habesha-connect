@@ -7146,7 +7146,7 @@ window.__hcVersion='V7.8.213';
   async function saveConsent(party,kind,r){
     const at=new Date().toISOString();
     if(authReady()&&r.dbId){
-      const rpc=kind==='shipment'?'record_shipping_consent':'record_shipping_item_consent';
+      const rpc=(kind==='shipment'||r.source==='shipments_fallback'||r.fallbackDb)?'record_shipping_consent':'record_shipping_item_consent';
       const res=await hcSupabase.rpc(rpc,{p_record_id:r.dbId,p_party:party,p_version:CONSENT_VERSION});
       if(res.error)return {error:res.error};
     }
