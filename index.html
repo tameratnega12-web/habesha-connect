@@ -10685,13 +10685,17 @@ window.__hcVersion='V7.8.213';
     catch(e){console.error('V7.8.301 customer Home Services action failed',e);alert('Could not save this action: '+(e.message||e));if(button){button.disabled=false;button.textContent=button.dataset.oldText||'Try Again';}}
     finally{setTimeout(()=>busy.delete(key),1000);}
   }
-  function capture(e){const button=e.target&&e.target.closest&&e.target.closest('[data-hs-customer-v301]');if(!button)return;e.preventDefault();e.stopImmediatePropagation();act(button.dataset.kind,button.dataset.ref,button.dataset.hsCustomerV301,button);}
-  document.addEventListener('click',capture,true);document.addEventListener('touchend',capture,{capture:true,passive:false});
+  function capture(e){const button=e.target&&e.target.closest&&e.target.closest('[data-hs-customer-v301]');if(!button)return;if(e.type==='mousedown'&&typeof e.button==='number'&&e.button!==0)return;if(e.type==='click'&&e.detail!==0)return;e.preventDefault();e.stopImmediatePropagation();act(button.dataset.kind,button.dataset.ref,button.dataset.hsCustomerV301,button);}
+  // Mouse uses mousedown because an older page-level click controller can stop the generated click.
+  // Touch keeps touchend, and keyboard activation keeps the synthetic click (detail === 0).
+  document.addEventListener('mousedown',capture,true);
+  document.addEventListener('touchend',capture,{capture:true,passive:false});
+  document.addEventListener('click',capture,true);
   window.customerAgreeHomeServiceRequest=id=>act('direct',String(id),'agree',null);window.customerDeclineHomeServiceRequest=id=>act('direct',String(id),'decline',null);window.customerAgreeCustomerHomeServiceJob=id=>act('job',String(id),'agree',null);window.customerDeclineCustomerHomeServiceJob=id=>act('job',String(id),'decline',null);window.customerConfirmHomeServiceRequest=id=>act('direct',String(id),'confirm',null);window.customerConfirmDirectHomeServiceRequest=id=>act('direct',String(id),'confirm',null);window.customerConfirmHomeServiceJob=id=>act('job',String(id),'confirm',null);
   const oldHome=window.home;if(typeof oldHome==='function')window.home=function(){const result=oldHome.apply(this,arguments);setTimeout(render,0);return result;};
   const oldPage=window.homeServices;if(typeof oldPage==='function')window.homeServices=function(){const result=oldPage.apply(this,arguments);setTimeout(render,0);return result;};
   let timer=0;const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(render,30);});document.addEventListener('DOMContentLoaded',()=>{observer.observe(document.body,{childList:true,subtree:true});render();});
-  window.__hcVersion='V7.8.301';
+  window.__hcVersion='V7.8.350';
 })();
 </script>
 
