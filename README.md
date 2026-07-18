@@ -29,3 +29,9 @@ No SQL is required.
 
 ## V7.8.351 English-only
 Removed the Amharic translation layer and language switcher. No workflow, Supabase, form, ID, status, or action logic was changed.
+
+
+## V7.8.353
+- Added a visible Language / ቋንቋ button to desktop and mobile navigation.
+- The menu offers English and Amharic through Google Translate.
+- All Supabase SQL files and existing workflow code remain included.

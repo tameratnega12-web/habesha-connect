@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.133">
+<meta name="app-version" content="V7.8.353">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -10,6 +10,8 @@
 #admin h2{font-size:22px}#admin h3{margin-top:22px}.adminMobileSummary{position:sticky;top:105px;z-index:1;border:2px solid #f59e0b;background:#fffbeb}.adminPendingNumber{font-size:36px;font-weight:900;color:#b45309}.adminQuickFilters{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}.adminQuickFilters .btn{white-space:nowrap;min-height:44px}
 #admin table.adminMobileTable,#admin table.adminMobileTable tbody,#admin table.adminMobileTable tr,#admin table.adminMobileTable td{display:block;width:100%}#admin table.adminMobileTable{background:transparent;border-radius:0}#admin table.adminMobileTable thead,#admin table.adminMobileTable tr:first-child:has(th){display:none}#admin table.adminMobileTable tr{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;margin:0 0 12px;box-shadow:0 5px 14px rgba(15,23,42,.06)}#admin table.adminMobileTable td{border:0;border-bottom:1px solid #eef2f7;padding:9px 4px;text-align:left;overflow-wrap:anywhere;white-space:normal}#admin table.adminMobileTable td:last-child{border-bottom:0}#admin table.adminMobileTable td::before{content:attr(data-label);display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:4px}#admin table.adminMobileTable td[data-label="Actions"],#admin table.adminMobileTable td[data-label="Action"]{padding-top:12px}#admin table.adminMobileTable td .btn,#admin table.adminMobileTable td[data-label="Actions"] button,#admin table.adminMobileTable td[data-label="Action"] button{width:100%;min-height:44px;margin:4px 0;display:block}#admin .tableWrap{overflow-x:visible}.adminDesktopOnly{display:none!important}}
 @media(min-width:721px){.adminMobileSummary{display:none}}
+.hcLanguageMenu{position:fixed;min-width:170px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 12px 28px rgba(15,23,42,.22);z-index:9999}.hcLanguageMenu button{display:block;width:100%;text-align:left;margin:4px 0;background:#fff;color:#111827;border:0;border-radius:9px;padding:10px 12px;font-weight:700;cursor:pointer}.hcLanguageMenu button:hover{background:#f1f5f9}.hcLanguageButton{white-space:nowrap}.hcMobileLanguage{margin-top:8px;width:100%}#google_translate_element{position:absolute!important;left:-9999px!important;top:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important}.goog-te-banner-frame.skiptranslate{display:none!important}body{top:0!important}
+
 
 .adminTopActions{position:relative;margin-bottom:14px}
 .adminTopActions h3{margin-top:0}
@@ -40,8 +42,13 @@
 <header>
   <div class="top"><div><div class="brand">Habesha Connect</div><div class="tag">Community • Customer • Shipping • Rentals • Taxi/Limo • Marketplace • Job Seekers • Trucking • Home Services • Business Directory • Events</div></div><div id="userBox"></div></div>
   <div class="nav" id="nav"></div>
-  <div class="mobilebar"><select id="mobileNav" onchange="openNavPage253(this.value)"></select></div>
+  <div class="mobilebar"><select id="mobileNav" onchange="openNavPage253(this.value)"></select><button type="button" class="btn hcMobileLanguage" onclick="toggleLanguageMenu(event)">🌐 Language / ቋንቋ</button></div>
 </header>
+<div id="hcLanguageMenu" class="hcLanguageMenu hide" role="menu" aria-label="Language selection">
+  <button type="button" onclick="setAppLanguage('en')">English</button>
+  <button type="button" onclick="setAppLanguage('am')">አማርኛ</button>
+</div>
+<div id="google_translate_element" aria-hidden="true"></div>
 <main class="container">
   <section id="home" class="page"></section>
   <section id="account" class="page hide"></section>
@@ -408,7 +415,7 @@ function roleNavPages(){
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
 function taxiNavAllowed(){return !currentUser || ['customer','taxi_limo_owner','taxi_limo_driver','taxi_driver','admin'].includes(currentUser.role)}
-function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p)).filter(p=>p!=='taxi'||taxiNavAllowed());let n=visible.map(p=>`<button onclick="${p==='services'?'openManageMyRoles253()':`show('${p}')`}" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
+function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p)).filter(p=>p!=='taxi'||taxiNavAllowed());let n=visible.map(p=>`<button onclick="${p==='services'?'openManageMyRoles253()':`show('${p}')`}" id="nav_${p}">${labels[p]}</button>`).join('');n+=`<button type="button" class="hcLanguageButton" onclick="toggleLanguageMenu(event)">🌐 Language / ቋንቋ</button>`;$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
 async function openManageMyRoles253(){
  if(!requireLogin())return;
  await show('services');
@@ -571,6 +578,37 @@ async function refreshPageData(p){
  }
 }
 function roleSwitcherHtml(){if(!currentUser)return '';let roles=currentUser.roles||[currentUser.role||'customer'];let opts=roles.map(r=>`<option value="${r}" ${r===currentUser.role?'selected':''}>${(ROLE_INFO[r]?.icon||'')+' '+roleTitle(r)}</option>`).join('');return `<select id="topRoleSwitch" onchange="switchRole(this.value)" style="width:auto;min-width:150px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700">${opts}</select>`}
+let hcGoogleTranslateReady=false;
+function googleTranslateElementInit(){
+  try{
+    new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'en,am',autoDisplay:false},'google_translate_element');
+    hcGoogleTranslateReady=true;
+  }catch(err){console.warn('Google Translate did not initialize.',err);}
+}
+function toggleLanguageMenu(ev){
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  const menu=$('hcLanguageMenu');if(!menu)return;
+  const source=ev&&ev.currentTarget;
+  if(source&&source.getBoundingClientRect){
+    const r=source.getBoundingClientRect();
+    menu.style.top=Math.min(window.innerHeight-130,r.bottom+8)+'px';
+    menu.style.left=Math.max(8,Math.min(window.innerWidth-180,r.left))+'px';
+  }
+  menu.classList.toggle('hide');
+}
+function hcSetTranslateCookie(lang){
+  const value=lang==='am'?'/en/am':'/en/en';
+  document.cookie='googtrans='+value+'; path=/; max-age=31536000; SameSite=Lax';
+  if(location.hostname&&location.hostname.includes('.'))document.cookie='googtrans='+value+'; path=/; max-age=31536000; SameSite=Lax; domain=.'+location.hostname;
+}
+function setAppLanguage(lang){
+  $('hcLanguageMenu')?.classList.add('hide');
+  hcSetTranslateCookie(lang);
+  const combo=document.querySelector('.goog-te-combo');
+  if(combo){combo.value=lang==='am'?'am':'en';combo.dispatchEvent(new Event('change'));setTimeout(()=>location.reload(),250);return;}
+  location.reload();
+}
+document.addEventListener('click',e=>{const menu=$('hcLanguageMenu');if(menu&&!menu.classList.contains('hide')&&!menu.contains(e.target)&&!e.target.closest('.hcLanguageButton,.hcMobileLanguage'))menu.classList.add('hide');});
 function render(){nav();$('userBox').innerHTML=currentUser?`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn" onclick="logout()">Logout</button>`:`<button class="btn" onclick="show('account')">Login / Register</button>`;let active=pages.find(p=>!$(p).classList.contains('hide'))||'home';if(!isAllowedPage(active))active='home';renderPage(active).catch(err=>{console.error('Render error',err);if($(active))$(active).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Please refresh the app and try again.</p></div>';})}
 function requireLogin(){if(!currentUser){show('account');return false}if(!isAccountVerified(currentUser)){blockUnverifiedSession(currentUser);return false}return true}
 let loginInProgress331=false;
@@ -11992,3 +12030,5 @@ window.__hcVersion='V7.8.213';
   }
 }
 </style>
+
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
