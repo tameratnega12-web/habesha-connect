@@ -1,13 +1,16 @@
-# Habesha Agenagn V7.8.352
+# Habesha Agenagn V7.8.353
 
-Fixes only the approved Business Directory profile visibility for customers.
+## Exact fix
+Business Owner profile -> Admin approval -> Customer Business Directory visibility.
 
-Changes:
-- Customer Business Directory now forces a fresh Supabase load whenever opened instead of reusing a cached empty list.
-- Added one Supabase RLS policy allowing anon/authenticated users to select approved public business profiles only.
-- Owner/admin workflow, profile form, approval action, jobs, and all other categories are unchanged.
+The previous policy could let the Admin screen show a local Approved state while Supabase kept the row pending. V7.8.353 aligns the Business Directory table permissions with the project's existing custom sign-in architecture, synchronizes old approved status values, and keeps the current customer fresh-load code.
 
-Deployment:
-1. Replace the deployed `index.html` with this one.
-2. Run `supabase/v7_8_352_business_directory_customer_visibility.sql` once in Supabase SQL Editor.
-3. Open the Customer page, click **Find Business**, and verify the approved profile appears.
+## Required Supabase step
+Run this file once in Supabase SQL Editor:
+
+`supabase/v7_8_353_business_directory_approval_visibility_alignment.sql`
+
+Then deploy the included `index.html`, sign out/in or refresh, approve the business again if it is still pending, and open Customer -> Find Business.
+
+## Package
+This package contains the latest `index.html` and the complete current Supabase SQL folder. It contains no previous ZIPs, archived folders, verification reports, or duplicate project copies.
