@@ -17,3 +17,12 @@ No SQL is required.
 - Login and restored Supabase sessions are blocked until `profiles.verified = true`.
 - Admin accounts remain accessible.
 - No SQL changes required.
+
+
+## V7.8.350 Translation audit
+- Base: V7.8.335.
+- Imported the existing full-phrase Amharic dictionary from V7.8.347.
+- Disabled partial and word-by-word translation fallback.
+- Amharic mode changes text only when the entire displayed phrase exactly matches an existing translation entry.
+- Existing mixed hard-coded phrases are corrected only when an exact dictionary entry exists.
+- No workflow, Supabase, status, ID, form, or action logic was intentionally changed.

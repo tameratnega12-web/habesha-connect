@@ -4050,50 +4050,143 @@ function adminSuccess(message){
 
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-data.json';a.click();}
 
-/* V7.0.0 Language Support: English / Amharic */
+/* V7.8.340: Traveler page Amharic translation added.
+   V7.8.339: Approved home-category English or Amharic interface.
+   This layer changes display text only. It does not change stored values,
+   Supabase records, workflow statuses, IDs, or action logic. */
 const LANG_KEY='hc_language';
-const HC_I18N={
-  am:{
-    'Home':'መነሻ','Account':'መለያ','Profile':'መገለጫ','My Services':'የእኔ አገልግሎቶች','Shipping':'ጭነት','Rentals':'ቤት ኪራይ','Marketplace':'ገበያ','Job Seekers':'ስራ ፈላጊዎች','Trucking':'የጭነት መኪና','Business Directory':'የንግድ ማውጫ','Events':'ዝግጅቶች','Messages':'መልዕክቶች','Notifications':'ማሳወቂያዎች','Admin':'አስተዳዳሪ',
-    'Login / Register':'ግባ / ተመዝገብ','Login':'ግባ','Create Account':'መለያ ፍጠር','Logout':'ውጣ','Save':'አስቀምጥ','Cancel':'ሰርዝ','Approve':'አጽድቅ','Decline':'ውድቅ','Delete':'ሰርዝ','Edit':'አስተካክል','Open':'ክፈት','Open My Dashboard':'የእኔን ዳሽቦርድ ክፈት','Admin Dashboard':'የአስተዳዳሪ ዳሽቦርድ','Start Shipping':'ጭነት ጀምር','Find Rentals':'ቤት ኪራይ ፈልግ','Show All':'ሁሉንም አሳይ',
-    'Traveler':'ተጓዥ','Sender':'ላኪ','Property Owner':'የቤት ባለቤት','Rent Seeker':'ቤት ፈላጊ','Truck Driver':'የጭነት መኪና አሽከርካሪ','Business Owner':'የንግድ ባለቤት','Events Organizer':'የዝግጅት አዘጋጅ','Customer':'ደንበኛ','Verified':'ተረጋግጧል','Not Verified':'አልተረጋገጠም','Pending':'በመጠባበቅ ላይ','Approved':'ጸድቋል','Paid':'ተከፍሏል','Available':'ይገኛል','Rented':'ተከራይቷል',
-    'Request Space':'ቦታ ጠይቅ','Request Viewing':'ቤት ለማየት ጠይቅ','Request Viewing - Pay $10':'ቤት ማየት ጠይቅ - $10 ክፈል','Pay Now':'አሁን ክፈል','Pay Traveler':'ተጓዥን ክፈል','Approve Payment':'ክፍያ አጽድቅ','Mark Delivered':'እንደደረሰ ምልክት አድርግ','Pay $25 & Post Property':'$25 ክፈል እና ቤቱን አትም','Pay $10 & Post Trip':'$10 ክፈል እና ጉዞ አትም',
-    'Full Name':'ሙሉ ስም','Phone Number':'ስልክ ቁጥር','Email':'ኢሜይል','Password':'የይለፍ ቃል','New Password':'አዲስ የይለፍ ቃል','Confirm Password':'የይለፍ ቃል ያረጋግጡ','Forgot Password':'የይለፍ ቃል ረሳሁ','Update Password':'የይለፍ ቃል አዘምን','Name':'ስም','Phone':'ስልክ','City':'ከተማ','Status':'ሁኔታ','Payment':'ክፍያ','Payments':'ክፍያዎች','Amount':'መጠን','Time':'ጊዜ','Description':'መግለጫ','Property':'ቤት','Owner':'ባለቤት','Seeker':'ፈላጊ','Traveler commission':'የተጓዥ ኮሚሽን','Trip listing fee refund':'የጉዞ ማስታወቂያ ክፍያ ተመላሽ','Total traveler payout':'ጠቅላላ የተጓዥ ክፍያ',
-    'Available Services':'ያሉ አገልግሎቶች','My Dashboard':'የእኔ ዳሽቦርድ','My Activity':'የእኔ እንቅስቃሴ','My Payment History':'የእኔ የክፍያ ታሪክ','Rental Listings Management':'የቤት ዝርዝር አስተዳደር','Rental Requests Management':'የቤት ማየት ጥያቄዎች አስተዳደር','No rental requests yet.':'እስካሁን የቤት ማየት ጥያቄ የለም።','No rental listings to show yet.':'እስካሁን የሚታይ የቤት ዝርዝር የለም።','Language':'ቋንቋ',
-    'My Service':'የእኔ አገልግሎቶች','Home Services':'የቤት አገልግሎቶች','Taxi/Limo':'ታክሲ/ሊሞ','How It Works':'እንዴት እንደሚሰራ','About':'ስለ እኛ','Contact':'ያግኙን','Help':'እርዳታ','Help / FAQ':'እርዳታ / ተደጋጋሚ ጥያቄዎች','Report Problem':'ችግር ሪፖርት ያድርጉ','Privacy':'ግላዊነት','Terms':'የአጠቃቀም ውሎች','Information & Support':'መረጃ እና ድጋፍ',
-    'Open My Services':'የእኔን አገልግሎቶች ክፈት','Open Shipping':'መላኪያን ክፈት','Open Rentals':'ኪራይን ክፈት','Open Trucking':'ትራክን ክፈት','Open Taxi/Limo':'ታክሲ/ሊሞን ክፈት','Open Home Services':'የቤት አገልግሎቶችን ክፈት','Open Business Directory':'የንግድ ማውጫውን ክፈት','Open Marketplace':'ገበያውን ክፈት','Open Admin Dashboard':'የአስተዳዳሪ ዳሽቦርድን ክፈት',
-    'Signed in:':'ገብተዋል፦','Supabase connected':'Supabase ተገናኝቷል','Not connected':'አልተገናኘም','Show password':'የይለፍ ቃሉን አሳይ','Loading Admin Dashboard...':'የአስተዳዳሪ ዳሽቦርድ በመጫን ላይ...','Please wait.':'እባክዎ ይጠብቁ።','Page loading problem':'ገጹን በመጫን ላይ ችግር ተፈጥሯል','Refresh App':'መተግበሪያውን ያድሱ',
-    'Something stopped this page from opening. Please refresh once. If it continues, send a screenshot of this page.':'ይህ ገጽ እንዳይከፈት ችግር ተፈጥሯል። እባክዎ አንድ ጊዜ ገጹን ያድሱ። ችግሩ ከቀጠለ የዚህን ገጽ ስክሪንሾት ይላኩ።','Please refresh the app and try again.':'እባክዎ መተግበሪያውን ያድሱና እንደገና ይሞክሩ።',
-    'Shipping Dashboard':'የመላኪያ ዳሽቦርድ','Choose what you want to do in Shipping.':'በመላኪያ ውስጥ ማድረግ የሚፈልጉትን ይምረጡ።','Shipping Connect':'የመላኪያ ግንኙነት','Search Filters':'የፍለጋ ማጣሪያዎች','Search route, city, or date':'መንገድ፣ ከተማ ወይም ቀን ይፈልጉ','Find Traveler Trips':'የተጓዥ ጉዞዎችን ፈልግ','Post Item to Ship':'የሚላክ ዕቃ ያስገቡ','Open Trip':'ጉዞ ይክፈቱ','My Open Trips':'የእኔ ክፍት ጉዞዎች','Sender Requests':'የላኪ ጥያቄዎች','View Requests':'ጥያቄዎችን ይመልከቱ','Post a new traveler trip for senders.':'ለላኪዎች አዲስ የተጓዥ ጉዞ ያስገቡ።','Manage trips you already posted.':'ከዚህ በፊት ያስገቧቸውን ጉዞዎች ያስተዳድሩ።','Review requests and update space after accepting.':'ጥያቄዎችን ይመልከቱ እና ከተቀበሉ በኋላ ያለውን ቦታ ያዘምኑ።','Chat with senders.':'ከላኪዎች ጋር ይወያዩ።',
-    'Post Traveler Trip':'የተጓዥ ጉዞ ያስገቡ','Travel Date':'የጉዞ ቀን','Available Space lb':'ያለ ቦታ በፓውንድ','Post Trip':'ጉዞ ያስገቡ','From City':'መነሻ ከተማ','To City':'መድረሻ ከተማ','Choose from main U.S. international-flight cities and major Ethiopia cities.':'ከዋና የአሜሪካ ዓለም አቀፍ በረራ ከተሞች እና ከዋና የኢትዮጵያ ከተሞች ይምረጡ።','Needed By Date':'የሚያስፈልግበት ቀን','Item Description':'የዕቃ መግለጫ','Weight lb':'ክብደት በፓውንድ','Sender Phone':'የላኪ ስልክ','Receiver Name':'የተቀባይ ስም','Receiver Phone':'የተቀባይ ስልክ','Notes':'ማስታወሻ','Submit Item to Admin':'ዕቃውን ለአስተዳዳሪ ያስገቡ','Post your item even when no traveler trip is available yet. You can post U.S. to Ethiopia or Ethiopia to U.S.':'የተጓዥ ጉዞ ባይኖርም ዕቃዎን ማስገባት ይችላሉ። ከአሜሪካ ወደ ኢትዮጵያ ወይም ከኢትዮጵያ ወደ አሜሪካ ማስገባት ይችላሉ።','Pickup details or special notes':'የመውሰጃ ዝርዝር ወይም ልዩ ማስታወሻ','Receiver full name':'የተቀባይ ሙሉ ስም','Example: clothes, documents, small box':'ምሳሌ፦ ልብስ፣ ሰነዶች፣ ትንሽ ሳጥን',
-    'Available Traveler Trips':'ያሉ የተጓዥ ጉዞዎች','Available Trips':'ያሉ ጉዞዎች','Total Trips':'ጠቅላላ ጉዞዎች','Total Shipments':'ጠቅላላ መላኪያዎች','Paid Shipments':'የተከፈሉ መላኪያዎች','Trip':'ጉዞ','Trips':'ጉዞዎች','Shipment':'መላኪያ','Shipments':'መላኪያዎች','Route':'መንገድ','Tracking':'መከታተያ','Weight':'ክብደት','Space':'ቦታ','Available Space':'ያለ ቦታ','Travel Date':'የጉዞ ቀን','Action':'እርምጃ','Actions':'እርምጃዎች','Receiver':'ተቀባይ','From':'ከ','To':'ወደ','Requested':'ተጠይቋል','Accepted':'ተቀብሏል','Delivered':'ደርሷል','Completed':'ተጠናቋል','Cancelled':'ተሰርዟል','Closed':'ተዘግቷል','Open':'ክፍት','Full':'ሞልቷል','In Transit':'በመንገድ ላይ','Payment Pending Admin Review':'ክፍያው የአስተዳዳሪ ምርመራ እየጠበቀ ነው','Pending Admin Approval':'የአስተዳዳሪ ፈቃድ እየጠበቀ ነው','Waiting for traveler response':'የተጓዥ ምላሽ እየጠበቀ ነው','Traveler contact will show after admin approves payment.':'አስተዳዳሪው ክፍያውን ካጸደቀ በኋላ የተጓዥ መገኛ መረጃ ይታያል።','No traveler trips available yet.':'እስካሁን ያለ የተጓዥ ጉዞ የለም።','No shipping requests yet.':'እስካሁን የመላኪያ ጥያቄ የለም።','No shipments yet.':'እስካሁን መላኪያ የለም።','No sender-posted shipping items yet.':'እስካሁን በላኪ የተለጠፈ የመላኪያ ዕቃ የለም።',
-    'Accept':'ተቀበል','Review Sender':'ላኪውን ይገምግሙ','Review Traveler':'ተጓዡን ይገምግሙ','Confirm Agreement / Payment':'ስምምነትን / ክፍያን ያረጋግጡ','Approve Post':'ልጥፉን አጽድቅ','Delivered':'ደርሷል','Opening request...':'ጥያቄውን በመክፈት ላይ...','Request sent':'ጥያቄው ተልኳል','Submit Request':'ጥያቄውን ያስገቡ','Requested Space':'የተጠየቀ ቦታ','Requested Weight':'የተጠየቀ ክብደት','Update Space':'ቦታውን ያዘምኑ',
-    'Sender Shipping Agreement':'የላኪ መላኪያ ስምምነት','Traveler Shipping Agreement':'የተጓዥ መላኪያ ስምምነት','Before payment and before personal contact information is released, please read and agree:':'ክፍያ ከመፈጸሙ እና የግል መገኛ መረጃ ከመጋራቱ በፊት እባክዎ ያንብቡና ይስማሙ፦','Before contact information is released, please read and agree:':'የመገኛ መረጃ ከመጋራቱ በፊት እባክዎ ያንብቡና ይስማሙ፦','Consent record:':'የስምምነት መዝገብ፦','I Agree & Continue':'እስማማለሁ እና እቀጥላለሁ','I Agree':'እስማማለሁ','I have read, understood, and agree to the Traveler Shipping Agreement.':'የተጓዥ መላኪያ ስምምነቱን አንብቤ፣ ተረድቼ እና ተስማምቻለሁ።','I have read, understood, and agree to the Sender Shipping Agreement and certify that my package contains no prohibited or illegal items.':'የላኪ መላኪያ ስምምነቱን አንብቤ፣ ተረድቼ እና ተስማምቻለሁ፤ ጥቅሌም የተከለከለ ወይም ሕገ-ወጥ ዕቃ እንደሌለበት አረጋግጣለሁ።','Shipping transaction not found. Please refresh and try again.':'የመላኪያ ግብይቱ አልተገኘም። እባክዎ ገጹን ያድሱና እንደገና ይሞክሩ።','Consent form could not open. Please refresh.':'የስምምነት ቅጹ ሊከፈት አልቻለም። እባክዎ ገጹን ያድሱ።','Please check the agreement box first.':'እባክዎ መጀመሪያ የስምምነት ሳጥኑን ያረጋግጡ።',
-    'Only travelers can post trips.':'ጉዞ ማስገባት የሚችሉት ተጓዦች ብቻ ናቸው።','From and To cannot be the same.':'መነሻና መድረሻ ተመሳሳይ ሊሆኑ አይችሉም።','Please enter travel date.':'እባክዎ የጉዞ ቀን ያስገቡ።','You cannot post a trip for a previous day.':'ላለፈ ቀን ጉዞ ማስገባት አይችሉም።','Please post traveler trips at least 5 days before the flight date.':'እባክዎ የተጓዥ ጉዞን ከበረራው ቀን ቢያንስ 5 ቀናት በፊት ያስገቡ።','Enter available space.':'ያለውን ቦታ ያስገቡ።','Publish this traveler trip? Sender and traveler will agree on shipping details before payment.':'ይህን የተጓዥ ጉዞ ያትሙ? ላኪውና ተጓዡ ከክፍያ በፊት በመላኪያ ዝርዝሮች ይስማማሉ።','Your profile is still loading on this device. Please refresh once, sign in again, and post the trip. The trip was not submitted to admin yet.':'መገለጫዎ በዚህ መሣሪያ ላይ ገና በመጫን ላይ ነው። እባክዎ አንድ ጊዜ ገጹን ያድሱ፣ እንደገና ይግቡ እና ጉዞውን ያስገቡ። ጉዞው ገና ለአስተዳዳሪ አልተላከም።'
-  }
-};
-function currentLang(){return localStorage.getItem(LANG_KEY)||'en';}
-function tText(s){if(currentLang()==='en')return s;let d=HC_I18N.am||{};let exact=d[s];if(exact)return exact;let out=s;Object.keys(d).sort((a,b)=>b.length-a.length).forEach(k=>{if(out.includes(k))out=out.split(k).join(d[k]);});return out;}
-// V7.8.334B: translate user-visible browser dialogs without changing action logic.
-const __hcNativeAlert334B=window.alert.bind(window);
-const __hcNativeConfirm334B=window.confirm.bind(window);
-const __hcNativePrompt334B=window.prompt.bind(window);
-window.alert=function(message){return __hcNativeAlert334B(tText(String(message??'')));};
-window.confirm=function(message){return __hcNativeConfirm334B(tText(String(message??'')));};
-window.prompt=function(message,defaultValue){return __hcNativePrompt334B(tText(String(message??'')),defaultValue);};
-function translateNodeTree(root){if(!root||currentLang()==='en')return;let skip=['SCRIPT','STYLE','INPUT','TEXTAREA','OPTION','SELECT'];let walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){let p=node.parentElement;if(!p||skip.includes(p.tagName))return NodeFilter.FILTER_REJECT;let v=node.nodeValue;if(!v||!v.trim())return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}});let nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(n=>{n.nodeValue=tText(n.nodeValue);});document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{el.placeholder=tText(el.placeholder);});document.querySelectorAll('button,th,td,label,p,h1,h2,h3,span,option').forEach(el=>{if(el.childNodes.length===1&&el.childNodes[0].nodeType===3)el.textContent=tText(el.textContent);});}
-function languageSwitcherHtml(){return `<select id="langSwitch" onchange="setLanguage(this.value)" style="width:auto;min-width:130px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700"><option value="en" ${currentLang()==='en'?'selected':''}>🇺🇸 English</option><option value="am" ${currentLang()==='am'?'selected':''}>🇪🇹 አማርኛ</option></select>`;}
-function setLanguage(lang){localStorage.setItem(LANG_KEY,lang==='am'?'am':'en');render();setTimeout(()=>translateNodeTree(document.body),0);}
-function applyLanguageUi(){
-  let userBox=$('userBox');
-  if(userBox && !$('langSwitch')) userBox.insertAdjacentHTML('afterbegin',languageSwitcherHtml());
-  let mobile=$('mobileNav'); if(mobile && currentLang()==='am') Array.from(mobile.options).forEach(o=>o.text=tText(o.text));
+const HC_I18N={am:{
+'Habesha Connect':'ሀበሻ አገናኝ',
+
+'Services':'አገልግሎቶች',
+'My Service':'አገልግሎቶች',
+'My Services':'አገልግሎቶች',
+'Taxi/Limo':'ታክሲ እና ሊሞ',
+'Connecting the Habesha community with services, housing, shipping, jobs, business, marketplace, and events.':'የሀበሻን ማህበረሰብ በአገልግሎቶች፣ በቤት ኪራይ፣ በእቃ መላክ፣ በስራ፣ በንግድ ድርጅቶች፣ በግዢና ሽያጭ፣ እና በተለያዩ ዝግጅቶች የሚያገናኝ።',
+'Create an account or sign in to open your dashboard.':'ወደ መቆጣጠሪያ ገጽዎ ለመግባት መለያ ይክፈቱ ወይም ይግቡ።',
+'Create Account':'መለያ ይክፈቱ',
+'Create account':'መለያ ይክፈቱ',
+'Request home services, marketplace items, businesses, and events from one place.':'የቤት ውስጥ አገልግሎቶችን፣ እቃ መግዛትና መሸጥን፣ የንግድ ተቋማትን እና የተለያዩ ዝግጅቶችን ሁሉ በአንድ ቦታ ያግኙ።',
+'Connect travelers and senders to send items back home.':'ወደ ሀገር ቤት እቃ የሚያጓጉዙ ተጓዦችን እና እቃ ላኪዎችን ያገናኛል።',
+'Connect property owners and rent seekers.':'የቤት ባለቤቶችን እና ቤት ፈላጊዎችን ያገናኛል።',
+'Buy and sell new and used community items.':'አዲስና ያገለገሉ እቃዎችን ይግዙ እና ይሽጡ።',
+'Connect business owners and job seekers.':'የንግድ ባለቤቶችን እና ስራ ፈላጊዎችን ያገናኛል።',
+'Connect truck owners, drivers, and trailer rental owners.':'የትራክ ባለቤቶችን፣ የትራክ ሹፌሮችን እና ተሳቢ የሚያከራዩ ባለቤቶችን ያገናኛል።',
+'Customers can find cleaners, movers, repair technicians, electricians, plumbers, and helpers.':'ቤት ማጽዳት፣ ሳር ማጨድ፣ የአየር ማቀዝቀዣ (AC) ጥገና፣ ቀለም መቀባት፣ የቧንቧ ጥገና፣ የኤሌክትሪክ ስራ፣ እቃ ማጓጓዝ እና ሌሎች በርካታ አገልግሎቶችን ያግኙ።',
+'Taxi/Limo owners and drivers can manage vehicles, availability, and hiring connections.':'የታክሲና የሊሞ ባለቤቶችን ከሹፌሮች ጋር ለመቅጠር እና ለማገናኘት ያግዛል።',
+'Business locations, services, and hiring opportunities.':'የንግድ ቤቶች የሚገኙበትን ቦታ፣ የሚሰጡትን አገልግሎት እና የስራ ቅጥር እድሎችን ያሳያል።',
+'Community, church, cultural, business, family, charity, and sports events.':'የቤተ ክርስቲያን፣ የማህበረሰብ፣ የባህል፣ የንግድ፣ የቤተሰብ፣ የበጎ አድራጎት እና የስፖርት ዝግጅቶችን ያግኙ።',
+'Account':'መለያ','Profile':'መገለጫ','Shipping':'እቃ ወደ ሀገር ቤት መላክ','Rentals':'ቤት ኪራይ','Marketplace':'እቃ መሸጥ እና መግዛት','Job Seekers':'ስራ ፈላጊዎች','Trucking':'ትራክ ስራ','Trucking & Trailer':'ትራክ ስራ እና ተሳቢ ማከራየት','Home Services':'የቤት ውስጥና ውጪ አገልግሎቶች','Business Directory':'የንግድ ቤቶች ማውጫ','Events':'የተለያዩ ዝግጅቶች','Messages':'መልዕክቶች','Notifications':'ማሳወቂያዎች','Admin':'አስተዳዳሪ',
+'Login / Register':'ግባ / ተመዝገብ','Login':'ግባ','Sign In':'ግባ','Register':'ተመዝገብ','Logout':'ውጣ','Save':'አስቀምጥ','Cancel':'ሰርዝ','Approve':'አጽድቅ','Decline':'ውድቅ አድርግ','Delete':'ሰርዝ','Edit':'አስተካክል','Update':'አዘምን','Submit':'አስገባ','Continue':'ቀጥል','Back':'ተመለስ','Next':'ቀጣይ','Close':'ዝጋ','Open':'ክፈት','View':'ይመልከቱ','Search':'ፈልግ','Filter':'አጣራ','Refresh':'አድስ','Show All':'ሁሉንም አሳይ','Learn More':'ተጨማሪ ይወቁ','Contact':'ያግኙ','Call':'ይደውሉ','Email':'ኢሜይል',
+'Open My Dashboard':'የእኔን ዳሽቦርድ ክፈት','Admin Dashboard':'የአስተዳዳሪ ዳሽቦርድ','My Dashboard':'የእኔ ዳሽቦርድ','Your New Activity':'አዲስ እንቅስቃሴዎ','Quick Actions':'ፈጣን እርምጃዎች','How It Works':'እንዴት እንደሚሰራ','How it works':'እንዴት እንደሚሰራ','Available Services':'ያሉ አገልግሎቶች','My Activity':'የእኔ እንቅስቃሴ','My Payment History':'የእኔ የክፍያ ታሪክ','Manage My Role':'የእኔን ሚና አስተዳድር',
+'Traveler':'ተጓዥ','Sender':'ላኪ','Property Owner':'የቤት ባለቤት','Rent Seeker':'ቤት ፈላጊ','Truck Owner':'የጭነት መኪና ባለቤት','Truck Driver':'የጭነት መኪና አሽከርካሪ','Trailer Owner':'ተጎታች ባለቤት','Taxi/Limo Owner':'ታክሲ እና ሊሞ ባለቤት','Taxi/Limo Driver':'ታክሲ እና ሊሞ አሽከርካሪ','Business Owner':'የንግድ ባለቤት','Events Organizer':'የዝግጅት አዘጋጅ','Service Provider':'አገልግሎት ሰጪ','Customer':'አገልግሎት ተጠቃሚ','Seller':'ሻጭ','Buyer':'ገዢ','Job Seeker':'ሥራ ፈላጊ','Driver':'አሽከርካሪ','Owner':'ባለቤት','Seeker':'ፈላጊ','Provider':'አገልግሎት ሰጪ',
+'Full Name':'ሙሉ ስም','First Name':'የመጀመሪያ ስም','Last Name':'የአባት ስም','Phone Number':'ስልክ ቁጥር','Phone':'ስልክ','Password':'የይለፍ ቃል','New Password':'አዲስ የይለፍ ቃል','Confirm Password':'የይለፍ ቃል ያረጋግጡ','Forgot Password':'የይለፍ ቃል ረሳሁ','Update Password':'የይለፍ ቃል አዘምን','Name':'ስም','City':'ከተማ','State':'ግዛት','ZIP Code':'ዚፕ ኮድ','Address':'አድራሻ','Location':'ቦታ','Date':'ቀን','Time':'ሰዓት','Status':'ሁኔታ','Payment':'ክፍያ','Payments':'ክፍያዎች','Amount':'መጠን','Price':'ዋጋ','Description':'መግለጫ','Details':'ዝርዝሮች','Notes':'ማስታወሻ','Category':'ምድብ','Type':'ዓይነት','Title':'ርዕስ','Language':'ቋንቋ','Languages':'ቋንቋዎች','Experience':'ልምድ','Requirements':'መስፈርቶች','Schedule':'መርሐ ግብር','Availability':'የሚገኝበት ጊዜ','Service Area':'የአገልግሎት አካባቢ','Business Hours':'የሥራ ሰዓት','Payment Methods':'የክፍያ ዘዴዎች',
+'Pending':'በመጠባበቅ ላይ','Pending Admin Approval':'የአስተዳዳሪ ፈቃድ በመጠባበቅ ላይ','Pending Admin Review':'የአስተዳዳሪ ምርመራ በመጠባበቅ ላይ','Approved':'ጸድቋል','Accepted':'ተቀብሏል','Declined':'ውድቅ ተደርጓል','Rejected':'ውድቅ ተደርጓል','Verified':'ተረጋግጧል','Not Verified':'አልተረጋገጠም','Active':'ንቁ','Inactive':'ንቁ አይደለም','Available':'ይገኛል','Not Available':'አይገኝም','Completed':'ተጠናቋል','Delivered':'ደርሷል','Paid':'ተከፍሏል','Unpaid':'አልተከፈለም','Rented':'ተከራይቷል','Hired':'ተቀጥሯል','Agreed':'ተስማምቷል','Waiting':'በመጠባበቅ ላይ','Open Requests':'ክፍት ጥያቄዎች','No records found.':'ምንም መዝገብ አልተገኘም።','No activity yet.':'እስካሁን እንቅስቃሴ የለም።','No new activity.':'አዲስ እንቅስቃሴ የለም።',
+'Agree':'እስማማለሁ','Accept':'ተቀበል','Request':'ጠይቅ','Apply':'አመልክት','Confirm':'አረጋግጥ','Mark Complete':'እንደተጠናቀቀ ምልክት አድርግ','Mark Completed':'እንደተጠናቀቀ ምልክት አድርግ','Mark Delivered':'እንደደረሰ ምልክት አድርግ','Approve Payment':'ክፍያን አጽድቅ','Pay Now':'አሁን ክፈል','Pay Traveler':'ተጓዥን ክፈል','Request Space':'ቦታ ጠይቅ','Requested Space':'የተጠየቀ ቦታ','Post Trip':'ጉዞ አስገባ','የሚላክ እቃ ማስገቢያ':'የሚላክ ዕቃ አስገባ','እቃ የሚያጓጉዙ ተጓዦች':'ያሉ ተጓዦች','Open Shipping':'ክፍት ጭነቶች','Open Trip':'ጉዞ ክፈት','Post a new trip and available package space.':'እቃ ይዞ ለመሄድ ያለ ክፍት ቦታ ማስገባት።','View Requests':'ቦታ ጠይቅ','Review sender requests for your trips.':'ተጓዥ ያለውን ክፍት ቦታ ላኪዎች የጠየቁትን ይመልከቱ።','Review sender requests for your trip and space':'ተጓዥ ያለውን ክፍት ቦታ ላኪዎች የጠየቁትን ይመልከቱ።','Start Shipping':'ጭነት ጀምር','Shipping Agreement':'የጭነት ስምምነት','Sender Agreement':'የላኪ ስምምነት','Traveler Agreement':'የተጓዥ ስምምነት','Contact Information':'የመገናኛ መረጃ',
+'የሚከራዩ ንብረቶች':'ቤት ኪራይ ፈልግ','Add Property':'ቤት ጨምር','Post Property':'ቤት አስገባ','My Properties':'የእኔ ቤቶች','ተከራዮችን ይመልከቱ':'ቤት ፈላጊዎችን ይመልከቱ','Request Viewing':'ቤቱን ለማየት ጠይቅ','Rental Requests':'የኪራይ ጥያቄዎች','Rental Listings':'የኪራይ ዝርዝሮች','Property':'ቤት','Bedrooms':'መኝታ ቤቶች','Bathrooms':'መታጠቢያ ቤቶች','Monthly Rent':'ወርሃዊ ኪራይ','Move-in Date':'የመግቢያ ቀን',
+'Post a Job':'ሥራ አስገባ','የሹፌር ሥራ ያስተዋውቁ':'ሥራ አስገባ','Post Driver Job':'የአሽከርካሪ ሥራ አስገባ','Available Jobs':'ያሉ ሥራዎች','Apply for Job':'ለሥራ አመልክት','Apply This Job':'ለዚህ ሥራ አመልክት','Job Title':'የሥራ ርዕስ','Job Type':'የሥራ ዓይነት','Company / Business':'ድርጅት / ንግድ','Pay':'ክፍያ','Full Time':'ሙሉ ጊዜ','Part Time':'የትርፍ ጊዜ','Temporary':'ጊዜያዊ','Contract':'ውል','አመልካቾችን ይመልከቱ':'አመልካቾችን ይመልከቱ','My Applications':'የእኔ ማመልከቻዎች','የአሽከርካሪ መገለጫ':'የአሽከርካሪ የሥራ መገለጫ','Save Driver Profile':'የአሽከርካሪ መገለጫን አስቀምጥ',
+'Post Trailer for Rent':'ተጎታች ለኪራይ አስገባ','የሚከራዩ ተሳቢዎች':'ለኪራይ ያሉ ተጎታቾች','Trailer Requests':'የተጎታች ጥያቄዎች','Request Trailer':'ተጎታች ጠይቅ','Open Trucking':'ክፍት የጭነት መኪና ሥራዎች',
+'Owner Application':'የባለቤት ማመልከቻ','Driver Application':'የአሽከርካሪ ማመልከቻ','Apply as Taxi/Limo Driver':'እንደ ታክሲ/ሊሞ አሽከርካሪ አመልክት','Submit Driver Application':'የአሽከርካሪ ማመልከቻ አስገባ','Add Vehicle':'ተሽከርካሪ ጨምር','Available Drivers':'ያሉ አሽከርካሪዎች','Request Ride':'ጉዞ ጠይቅ','Ride Requested':'የተጠየቀ ጉዞ','Open Customer Rides':'ክፍት የደንበኛ ጉዞዎች','My Ride Activity':'የእኔ የጉዞ እንቅስቃሴ','Pickup Location':'መነሻ ቦታ','Drop-off Location':'መድረሻ ቦታ','Pickup Date':'የመነሻ ቀን','Pickup Time':'የመነሻ ሰዓት',
+'ዕቃ ይለጥፉ':'ዕቃ አስገባ','ገበያ ቦታውን ይቃኙ':'ገበያውን ይመልከቱ','Item Name':'የዕቃ ስም','Item Price':'የዕቃ ዋጋ','Seller Information':'የሻጭ መረጃ','Buyer Information':'የገዢ መረጃ','Request Item':'ዕቃውን ጠይቅ','View Seller':'ሻጩን ይመልከቱ',
+'የቤት ውስጥ አገልግሎት ይጠይቁ':'የቤት አገልግሎት ጠይቅ','አገልግሎት ይለጥፉ':'አገልግሎት አስገባ','Requested Services':'የተጠየቁ አገልግሎቶች','የተጠየቁ አገልግሎቶችን ይመልከቱ':'የተጠየቁ አገልግሎቶችን ይመልከቱ','Work Complete':'ሥራው ተጠናቋል','Confirm Completion':'መጠናቀቁን አረጋግጥ',
+'የድርጅቴ መገለጫ':'የእኔ የንግድ መገለጫ','Create የድርጅቴ መገለጫ':'የእኔን የንግድ መገለጫ ፍጠር','Update የድርጅቴ መገለጫ':'የእኔን የንግድ መገለጫ አዘምን','Business Name':'የንግድ ስም','Business Category':'የንግድ ምድብ','About / What do you serve?':'ስለ ንግድዎ / ምን ያቀርባሉ?','What do you offer?':'ምን ያቀርባሉ?','Save Business Profile':'የንግድ መገለጫን አስቀምጥ','View Business Profile':'የንግድ መገለጫን ይመልከቱ','Share Profile':'መገለጫን አጋራ','Business Photo Gallery':'የንግድ ፎቶ ማዕከለ ስዕላት',
+'ኩነት ይፍጠሩ':'ዝግጅት ፍጠር','Post Event':'ዝግጅት አስገባ','Event Name':'የዝግጅት ስም','Event Date':'የዝግጅት ቀን','Event Location':'የዝግጅት ቦታ','Event Description':'የዝግጅት መግለጫ','Event Photo Gallery':'የዝግጅት ፎቶ ማዕከለ ስዕላት',
+'Choose File':'ፋይል ይምረጡ','Choose Files':'ፋይሎችን ይምረጡ','Upload Photo':'ፎቶ ስቀል','Upload Photos':'ፎቶዎችን ስቀል','Photo':'ፎቶ','Photos':'ፎቶዎች','Required':'ያስፈልጋል','Optional':'አማራጭ','Please wait...':'እባክዎ ይጠብቁ...','Loading...':'በመጫን ላይ...','Success':'ተሳክቷል','Error':'ስህተት','Warning':'ማስጠንቀቂያ','Are you sure?':'እርግጠኛ ነዎት?','Yes':'አዎ','No':'አይ','Terms and Privacy Policy':'የአጠቃቀም ውሎች እና የግላዊነት ፖሊሲ','I agree':'እስማማለሁ',
+'Please complete all required fields.':'እባክዎ ሁሉንም አስፈላጊ መስኮች ይሙሉ።','Please log in first.':'እባክዎ መጀመሪያ ይግቡ።','Please refresh and try again.':'እባክዎ ገጹን አድሰው እንደገና ይሞክሩ።','Request submitted.':'ጥያቄው ገብቷል።','Saved successfully.':'በተሳካ ሁኔታ ተቀምጧል።','Updated successfully.':'በተሳካ ሁኔታ ተዘምኗል።','Waiting for admin approval.':'የአስተዳዳሪ ፈቃድ በመጠባበቅ ላይ።','Your request was approved.':'ጥያቄዎ ጸድቋል።','Your request was declined.':'ጥያቄዎ ውድቅ ተደርጓል።','Contact information is now available.':'የመገናኛ መረጃ አሁን ይገኛል።'
+}};
+
+/* Exact translations only. No word-by-word or partial replacement. */
+function currentLang(){return localStorage.getItem(LANG_KEY)==='am'?'am':'en';}
+function hcHasAmharic(s){return /[\u1200-\u137F]/.test(String(s||''));}
+function hcAmharicOnly(s){
+  const raw=String(s??'').trim();
+  if(!raw)return raw;
+  const d=HC_I18N.am||{};
+  return Object.prototype.hasOwnProperty.call(d,raw)?d[raw]:raw;
+}
+function tText(s){
+  const raw=String(s??'');
+  if(currentLang()!=='am')return raw;
+  const trimmed=raw.trim();
+  if(!trimmed)return raw;
+  if(/^https?:\/\//i.test(trimmed)||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)||/^[$#]?\d[\d.,:/ -]*$/.test(trimmed)||/^[A-Z]{1,5}\d{3,}$/i.test(trimmed))return raw;
+  const translated=hcAmharicOnly(trimmed);
+  if(translated===trimmed)return raw;
+  const lead=raw.match(/^\s*/)?.[0]||'', tail=raw.match(/\s*$/)?.[0]||'';
+  return lead+translated+tail;
+}
+const HC_ORIGINAL_TEXT=new WeakMap();
+const HC_ORIGINAL_ATTR=new WeakMap();
+function translateNodeTree(root){
+  if(!root)return;
+  const skip=['SCRIPT','STYLE','NOSCRIPT','CODE','PRE'];
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){
+    const p=node.parentElement;if(!p||skip.includes(p.tagName)||p.closest('[data-language-switcher="true"]'))return NodeFilter.FILTER_REJECT;
+    const v=node.nodeValue;if(!v||!v.trim())return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(n=>{
+    if(!HC_ORIGINAL_TEXT.has(n))HC_ORIGINAL_TEXT.set(n,n.nodeValue);
+    const original=HC_ORIGINAL_TEXT.get(n);
+    n.nodeValue=currentLang()==='am'?tText(original):original;
+  });
+  document.querySelectorAll('input[placeholder],textarea[placeholder],input[type="button"],input[type="submit"],input[type="reset"],[title]').forEach(el=>{
+    if(el.closest('[data-language-switcher="true"]'))return;
+    let originals=HC_ORIGINAL_ATTR.get(el);
+    if(!originals){originals={};HC_ORIGINAL_ATTR.set(el,originals);}
+    const attrs=[];
+    if(el.hasAttribute('placeholder'))attrs.push('placeholder');
+    if(['button','submit','reset'].includes((el.type||'').toLowerCase()))attrs.push('value');
+    if(el.hasAttribute('title'))attrs.push('title');
+    attrs.forEach(a=>{
+      if(!(a in originals))originals[a]=el.getAttribute(a)||'';
+      el.setAttribute(a,currentLang()==='am'?tText(originals[a]):originals[a]);
+    });
+  });
   document.documentElement.lang=currentLang()==='am'?'am':'en';
+}
+function languageSwitcherHtml(){
+  const lang=currentLang();
+  return `<span data-language-switcher="true" style="display:inline-flex;gap:6px;margin:0 6px;vertical-align:middle">
+    <button type="button" class="btn ${lang==='en'?'primary':''}" onclick="setLanguage('en')" style="padding:7px 10px">🇺🇸 English</button>
+    <button type="button" class="btn ${lang==='am'?'primary':''}" onclick="setLanguage('am')" style="padding:7px 10px">🇪🇹 አማርኛ</button>
+  </span>`;
+}
+function setLanguage(lang){
+  localStorage.setItem(LANG_KEY,lang==='am'?'am':'en');
+  applyLanguageUi(true);
+}
+function applyLanguageUi(rebuildSwitcher=false){
+  const userBox=$('userBox');
+  const old=document.querySelector('[data-language-switcher="true"]');
+  if(old&&(rebuildSwitcher||!userBox))old.remove();
+  if(userBox&&!document.querySelector('[data-language-switcher="true"]'))userBox.insertAdjacentHTML('afterbegin',languageSwitcherHtml());
   translateNodeTree(document.body);
 }
-const _hcRender=render; render=function(){_hcRender();applyLanguageUi();};
-const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);applyLanguageUi();};
-const _hcShow=show; show=function(p){let r=_hcShow(p);applyLanguageUi();return r;};
+const _hcRender=render; render=function(){_hcRender();setTimeout(()=>applyLanguageUi(),0);};
+const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);setTimeout(()=>applyLanguageUi(),0);};
+const _hcShow=show; show=function(p){const r=_hcShow(p);setTimeout(()=>applyLanguageUi(),0);return r;};
+
+/* Translate browser dialogs only when Amharic is selected. */
+const _hcNativeAlert=window.alert.bind(window);
+const _hcNativeConfirm=window.confirm.bind(window);
+const _hcNativePrompt=window.prompt.bind(window);
+window.alert=function(message){return _hcNativeAlert(currentLang()==='am'?tText(message):String(message??''));};
+window.confirm=function(message){return _hcNativeConfirm(currentLang()==='am'?tText(message):String(message??''));};
+window.prompt=function(message,defaultValue){return _hcNativePrompt(currentLang()==='am'?tText(message):String(message??''),defaultValue);};
+
+/* Translate content inserted after async Supabase loads without changing data. */
+let _hcBilingualTimer=null;
+const _hcBilingualObserver=new MutationObserver(()=>{
+  clearTimeout(_hcBilingualTimer);
+  _hcBilingualTimer=setTimeout(()=>translateNodeTree(document.body),40);
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  if(!localStorage.getItem(LANG_KEY))localStorage.setItem(LANG_KEY,'en');
+  applyLanguageUi();
+  _hcBilingualObserver.observe(document.body,{childList:true,subtree:true});
+});
 
 // V7.8.44: global click guard. If any async action or Supabase request leaves the page in a bad state,
 // normal navigation buttons still work without needing to refresh/reset the page.
