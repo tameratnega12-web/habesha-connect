@@ -1,6 +1,15 @@
-Habesha Agenagn V7.8.341 — Exact V7.8.335 Flow Restore
+Habesha Agenagn V7.8.338 — Phase 3 Dashboard Display Only
 
-Base: V7.8.335 Require Admin Verification BEFORE ACCESS.
+Base: V7.8.337 Service Page Presentation Only.
 
-This release removes all Phase 1–4 presentation overlays by restoring the original V7.8.335 application files exactly.
-No transaction flow, Supabase SQL, approvals, emails, statuses, forms, action buttons, or translations were changed.
+Presentation-only changes:
+- Adds consistent visual status colors for active transaction cards.
+- Adds a compact active-item summary to transaction/activity sections.
+- Hides completed cards by default and provides a Show completed activity toggle.
+- Adds an all-caught-up message when a section has no active items.
+- Improves mobile display of the summary and completed toggle.
+
+Not changed:
+- No Supabase or SQL changes.
+- No transaction-flow, status-update, approval, email, form, or action-function changes.
+- No transaction elements are moved, replaced, or cloned.
