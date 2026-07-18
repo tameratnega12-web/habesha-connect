@@ -1,0 +1,26 @@
+V7.8.345 — TRUCKING SHAKE / SCROLL LOOP FIX
+
+Scope: Trucking display only.
+
+Root cause found by comparison with stable categories:
+- The trailer requester agreement renderer watched Home with MutationObserver.
+- The Phase 3 dashboard display renderer modified the same trucking agreement HTML.
+- The trailer renderer compared the decorated HTML with its original template and replaced it.
+- Phase 3 then decorated the replacement again.
+- This repeated indefinitely, changing page height and pushing the scrollbar downward.
+
+Exact fix:
+1. The trailer agreement renderer now uses a stable transaction-data signature and does not replace its panel because another display layer added harmless UI markup.
+2. The generic Phase 3 decorator skips the two native trucking action containers, which already have their own layout controller.
+
+Not changed:
+- Trucking workflow
+- Agreement buttons
+- Statuses
+- Supabase calls or SQL
+- Emails
+- Forms
+- Other categories
+
+Validation:
+- 90 inline JavaScript sections passed syntax compilation.

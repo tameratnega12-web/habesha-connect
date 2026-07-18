@@ -15,3 +15,5 @@ The V7.8.342 all-category next-action display controller now excludes the existi
 - Made the trailer agreement top panel idempotent so it is not deleted and rebuilt after every mutation.
 - Disabled the all-category next-action mover for native Truck Driver and Truck Owner dashboards.
 - No workflow, status, Supabase, form, email, approval, or action-handler code was changed.
+
+V7.8.346: Fixed the remaining trailer Agree page shake by removing the trailer agreement panel's full-page DOM mutation observer. The panel refreshes only after Home or trucking data reloads; no transaction workflow was changed.

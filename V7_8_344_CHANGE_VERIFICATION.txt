@@ -1,0 +1,17 @@
+V7.8.344 CHANGE VERIFICATION
+Base: V7.8.343 Trucking Shake Scroll Fix
+
+Root cause found:
+- The trailer agreement observer removed and recreated its own top panel after every DOM mutation.
+- The all-category next-action coordinator and native trucking controllers competed for first position on Home.
+- This produced repeated layout changes, page shaking, scrollbar/thumb movement, and difficulty returning to the top.
+
+Changed only:
+- index.html: made the trailer requester top agreement renderer idempotent.
+- index.html: stopped the all-category next-action coordinator for Truck Driver and Truck Owner roles, which already use native trucking controllers.
+- README.md and this verification report.
+
+Preserved:
+- Trucking and trailer workflows.
+- Agree, accept, decline, contact release, completion, and cleanup handlers.
+- Supabase tables, SQL, statuses, approvals, emails, forms, and all other categories.

@@ -1,0 +1,13 @@
+V7.8.346 — Trailer Agree Page Shake Fix
+
+Changed only the trailer requester agreement UI refresh controller:
+- Removed its full Home-page MutationObserver.
+- The panel now refreshes only after Home renders or Supabase trucking data reloads.
+- Added a one-frame scheduling lock to prevent duplicate simultaneous placement passes.
+
+Unchanged:
+- Trailer Agree button handler and renterAgreeTrailer workflow
+- Supabase writes and statuses
+- Contact release
+- Truck job flow
+- All other categories

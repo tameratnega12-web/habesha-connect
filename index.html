@@ -11008,36 +11008,50 @@ window.__hcVersion='V7.8.213';
     const next=holder.firstElementChild;
     if(!next)return;
 
+    const signature=rows.map(t=>[recordId(t),String(t.status||''),String(t.trailerType||''),String(t.location||''),String(t.ownerName||'')].join('|')).join('||');
     let panel=existing;
     if(!panel){
       panel=next;
+      panel.dataset.trailerAgreementSignatureV78345=signature;
       homeRoot.insertBefore(panel,homeRoot.firstElementChild);
-    }else if(panel.innerHTML!==next.innerHTML){
-      panel.replaceWith(next);
-      panel=next;
+    }else{
+      const previousSignature=panel.dataset.trailerAgreementSignatureV78345;
+      if(previousSignature&&previousSignature!==signature){
+        next.dataset.trailerAgreementSignatureV78345=signature;
+        panel.replaceWith(next);
+        panel=next;
+      }else if(!previousSignature){
+        panel.dataset.trailerAgreementSignatureV78345=signature;
+      }
     }
     if(homeRoot.firstElementChild!==panel)homeRoot.insertBefore(panel,homeRoot.firstElementChild);
   }
 
-  function schedule(){requestAnimationFrame(()=>requestAnimationFrame(apply));}
+  /* V7.8.346 — Trailer agreement stability fix.
+     Do not observe every Home DOM mutation. The old observer re-ran cleanup while
+     other trucking layout scripts were rendering, which caused repeated height
+     changes and visible page shaking. Refresh only after real Home/data renders. */
+  let scheduled=false;
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{scheduled=false;apply();}));
+  }
   const previousHome=window.home;
   if(typeof previousHome==='function')window.home=function(){
     const result=previousHome.apply(this,arguments);
     schedule();
     return result;
   };
-  let timer=0;
-  const observer=new MutationObserver(()=>{
-    clearTimeout(timer);
-    timer=setTimeout(apply,40);
-  });
-  document.addEventListener('DOMContentLoaded',()=>{
-    const root=document.getElementById('home')||document.body;
-    observer.observe(root,{childList:true,subtree:true});
+  const previousLoadTrucking=window.loadSupabaseTrucking;
+  if(typeof previousLoadTrucking==='function')window.loadSupabaseTrucking=async function(){
+    const result=await previousLoadTrucking.apply(this,arguments);
     schedule();
-  });
-  schedule();
-  window.__hcVersion='V7.8.311';
+    return result;
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});
+  else schedule();
+  window.__hcVersion='V7.8.346';
 })();
 </script>
 
@@ -12206,7 +12220,7 @@ window.__hcVersion='V7.8.213';
  function directCards(container){const all=[...container.querySelectorAll('.card')];return all.filter(card=>!all.some(other=>other!==card&&other.contains(card)))}
  function ensureKey(container){if(container.querySelector(':scope > .hc-phase3-status-key'))return;const key=document.createElement('div');key.className='hc-phase3-status-key';key.setAttribute('aria-label','Status color guide');key.innerHTML='<span class="hc-phase3-key action"><i></i>Needs your action</span><span class="hc-phase3-key waiting"><i></i>Waiting</span><span class="hc-phase3-key review"><i></i>Admin review</span><span class="hc-phase3-key complete"><i></i>Completed</span>';const label=container.querySelector(':scope > .hc-phase2-section-label');if(label)label.insertAdjacentElement('afterend',key);else container.prepend(key)}
  function enhance(container){if(container.dataset.hcPhase3Busy==='1')return;container.dataset.hcPhase3Busy='1';container.classList.add('hc-phase3-container');try{const cards=directCards(container);let active=0,completed=0;cards.forEach(card=>{const[kind,label]=classify(card);card.classList.add('hc-phase3-card');card.classList.remove('hc-status-action','hc-status-waiting','hc-status-review','hc-status-complete');card.classList.add('hc-status-'+kind);let badge=card.querySelector(':scope > .hc-phase3-visual-status');if(!badge){badge=document.createElement('div');badge.className='hc-phase3-visual-status';card.prepend(badge)}badge.textContent=label;if(kind==='complete')completed++;else active++});ensureKey(container);let summary=container.querySelector(':scope > .hc-phase3-summary');if(!summary){summary=document.createElement('div');summary.className='hc-phase3-summary';const key=container.querySelector(':scope > .hc-phase3-status-key');if(key)key.insertAdjacentElement('afterend',summary);else container.prepend(summary)}summary.classList.toggle('is-clear',active===0);summary.innerHTML='<div class="hc-phase3-summary-text"><span class="hc-phase3-summary-dot"></span><span>'+(active?active+' active item'+(active===1?'':'s')+' in this section':'You are all caught up in this section')+'</span></div>'+(completed?'<button type="button" class="btn secondary hc-phase3-toggle" aria-expanded="'+(container.classList.contains('hc-phase3-show-completed')?'true':'false')+'">'+(container.classList.contains('hc-phase3-show-completed')?'Hide':'Show')+' completed activity ('+completed+')</button>':'');if(completed){let note=container.querySelector(':scope > .hc-phase3-completed-note');if(!note){note=document.createElement('div');note.className='hc-phase3-completed-note';container.appendChild(note)}note.textContent=completed+' completed item'+(completed===1?' is':'s are')+' hidden to keep this page clean.'}else container.querySelector(':scope > .hc-phase3-completed-note')?.remove()}catch(e){console.warn('V7.8.338 display layer skipped safely',e)}container.dataset.hcPhase3Busy='0'}
- function run(){PAGE_IDS.forEach(id=>{const page=document.getElementById(id);if(page)page.querySelectorAll(CONTAINER_SELECTOR).forEach(enhance)})}
+ function run(){PAGE_IDS.forEach(id=>{const page=document.getElementById(id);if(!page)return;page.querySelectorAll(CONTAINER_SELECTOR).forEach(container=>{if(container.id==='trailerRequesterAgreementTopV78309'||container.id==='truckingPriorityTransactionsV78266')return;enhance(container)})})}
  document.addEventListener('click',e=>{const b=e.target.closest('.hc-phase3-toggle');if(!b)return;const c=b.closest('.hc-phase3-container');if(!c)return;c.classList.toggle('hc-phase3-show-completed');b.setAttribute('aria-expanded',c.classList.contains('hc-phase3-show-completed')?'true':'false');enhance(c)},true);
  let timer=0;const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(run,70)});document.addEventListener('DOMContentLoaded',()=>{observer.observe(document.body,{childList:true,subtree:true});run()});run();window.__hcVersion='V7.8.338';
 })();
