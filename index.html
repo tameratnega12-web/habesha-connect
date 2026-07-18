@@ -960,7 +960,7 @@ async function goHomeServiceProviderSection(section){
 }
 function homeServiceProviderHomeActions(){
  if(!currentUser||currentUser.role!=='service_provider')return '';
- return `<section id="homeServiceProviderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🛠️ Home Service Provider Quick Actions</h2><p class="muted">Post your service or review customer service requests.</p></div><div class="grid"><div class="card"><h3>➕ Post Service<br>አገልግሎት ይለጥፉ</h3><p class="muted">Create and submit a home service for admin approval.<br>በአስተዳዳሪው (Admin) እንዲጸድቅ የቤት ውስጥ አገልግሎት ይፍጠሩ እና ያስገቡ።</p><button class="btn primary" onclick="goHomeServiceProviderSection('post')">አገልግሎት ይለጥፉ</button></div><div class="card"><h3>📋 See Requested Services<br>የተጠየቁ አገልግሎቶችን ይመልከቱ</h3><p class="muted">Review approved customer jobs and direct service requests.<br>የጸደቁ የደንበኛ ሥራዎችን እና በቀጥታ የቀረቡ የአገልግሎት ጥያቄዎችን ይመልከቱ።</p><button class="btn primary" onclick="goHomeServiceProviderSection('requests')">የተጠየቁ አገልግሎቶችን ይመልከቱ</button></div></div></section>`;
+ return `<section id="homeServiceProviderHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🛠️ Home Service Provider Quick Actions</h2><p class="muted">Post your service or review customer service requests.</p></div><div class="grid"><div class="card"><h3>➕ Post Service<br>አገልግሎት ይለጥፉ</h3><p class="muted">Create and submit a home service for admin approval.<br>በአስተዳዳሪው (Admin) እንዲጸድቅ የቤት ውስጥ አገልግሎት ይፍጠሩ እና ያስገቡ።</p><button class="btn primary" onclick="goHomeServiceProviderSection('post')">Post Service<br>አገልግሎት ይለጥፉ</button></div><div class="card"><h3>📋 See Requested Services<br>የተጠየቁ አገልግሎቶችን ይመልከቱ</h3><p class="muted">Review approved customer jobs and direct service requests.<br>የጸደቁ የደንበኛ ሥራዎችን እና በቀጥታ የቀረቡ የአገልግሎት ጥያቄዎችን ይመልከቱ።</p><button class="btn primary" onclick="goHomeServiceProviderSection('requests')">See Requested Services<br>የተጠየቁ አገልግሎቶችን ይመልከቱ</button></div></div></section>`;
 }
 let businessOwnerView='profile';
 async function goBusinessOwnerSection(section){
@@ -994,7 +994,7 @@ function customerHomeActions(){
 }
 function jobSeekerHomeActions(){
  if(!currentUser||currentUser.role!=='job_seeker')return '';
- return `<section id="jobSeekerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🔎 Job Seeker Quick Action</h2><p class="muted">See all currently open and approved jobs immediately after signing in.</p></div><div class="grid"><div class="card"><h3>💼 Find Jobs<br>ሥራዎችን ይፈልጉ</h3><p class="muted">Browse every open job and apply directly.<br>ማንኛውንም ክፍት የሥራ መደብ ይፈልጉ እና በቀጥታ ያመልክቱ።</p><button class="btn primary" onclick="goJobSeekerJobs()">ሥራዎችን ይፈልጉ</button></div></div></section>`;
+ return `<section id="jobSeekerHomeActions" style="margin-top:20px"><div class="card"><h2 style="margin:0">🔎 Job Seeker Quick Action</h2><p class="muted">See all currently open and approved jobs immediately after signing in.</p></div><div class="grid"><div class="card"><h3>💼 Find Jobs<br>ሥራዎችን ይፈልጉ</h3><p class="muted">Browse every open job and apply directly.<br>ማንኛውንም ክፍት የሥራ መደብ ይፈልጉ እና በቀጥታ ያመልክቱ።</p><button class="btn primary" onclick="goJobSeekerJobs()">Find Jobs<br>ሥራዎችን ይፈልጉ</button></div></div></section>`;
 }
 function eventOrganizerHomeActions(){
  if(!currentUser||currentUser.role!=='event_organizer')return '';
