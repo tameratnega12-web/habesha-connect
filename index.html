@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.133">
+<meta name="app-version" content="V7.8.336">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -12037,3 +12037,88 @@ window.__hcVersion='V7.8.213';
   }
 }
 </style>
+
+
+<style id="v78336-clean-home-pillars-progress">
+/* V7.8.336 — presentation only: grouped home navigation and visual status guidance. */
+.hc-main-pillars{margin-top:24px}
+.hc-main-pillars-head{display:flex;justify-content:space-between;align-items:end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.hc-main-pillars-head h2{margin:0}.hc-main-pillars-head p{margin:4px 0 0}
+.hc-pillar-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.hc-pillar{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
+.hc-pillar-top{display:flex;gap:13px;align-items:flex-start;margin-bottom:14px}.hc-pillar-icon{font-size:38px;line-height:1}.hc-pillar h3{margin:0 0 5px;font-size:22px}.hc-pillar p{margin:0}
+.hc-pillar-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.hc-pillar-links .btn{width:100%;min-height:48px;text-align:left;background:#f8fafc;border:1px solid var(--line)}.hc-pillar-links .btn:hover,.hc-pillar-links .btn:focus{background:#ecfeff;border-color:#99f6e4}
+.hc-progress-guide{margin:16px 0 2px;padding:14px;border-radius:14px;background:#f8fafc;border:1px solid var(--line)}
+.hc-progress-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:10px}
+.hc-progress-steps{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:3px;-webkit-overflow-scrolling:touch}
+.hc-progress-step{position:relative;min-width:120px;flex:1;text-align:center;padding:0 6px;color:#64748b;font-size:12px;font-weight:700}
+.hc-progress-step:not(:last-child):after{content:"";position:absolute;height:3px;background:#cbd5e1;left:56%;right:-44%;top:13px}
+.hc-progress-dot{position:relative;z-index:1;width:28px;height:28px;margin:0 auto 7px;border-radius:50%;display:grid;place-items:center;background:#e2e8f0;color:#475569;border:2px solid #cbd5e1}
+.hc-progress-step.done .hc-progress-dot{background:#dcfce7;color:#166534;border-color:#22c55e}.hc-progress-step.done:not(:last-child):after{background:#22c55e}.hc-progress-step.current .hc-progress-dot{background:#fef3c7;color:#92400e;border-color:#f59e0b;box-shadow:0 0 0 4px #fef3c7}
+@media(max-width:720px){.hc-pillar-grid{grid-template-columns:1fr}.hc-pillar{padding:17px}.hc-pillar-links{grid-template-columns:1fr}.hc-pillar-links .btn{font-size:16px;min-height:52px}.hc-main-pillars-head{align-items:flex-start}.hc-progress-step{min-width:105px}}
+</style>
+<script id="v78336-clean-home-pillars-progress-script">
+(function(){
+ 'use strict';
+ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+ const pillars=[
+  {icon:'🚖',title:'Transportation & Delivery',desc:'Rides, package shipping, trucking, and trailer connections.',links:[['🚕 Find a Ride','taxi'],['📦 Shipping','shipping'],['🚚 Trucking & Trailer','truck']]},
+  {icon:'🏠',title:'Housing & Home Help',desc:'Find a place to live or connect with home service providers.',links:[['🏠 Rentals','rentals'],['🛠️ Home Services','home_services']]},
+  {icon:'🛍️',title:'Buy, Sell & Find Work',desc:'Community marketplace items and approved job opportunities.',links:[['🛒 Marketplace','marketplace'],['💼 Find Jobs','jobs']]},
+  {icon:'🤝',title:'Community & Business',desc:'Discover local businesses, services, and community events.',links:[['🏢 Business Directory','business'],['📅 Events','events']]}
+ ];
+ function allowed(page){try{return !currentUser||typeof isAllowedPage!=='function'||isAllowedPage(page);}catch(_){return true;}}
+ function pillarHtml(){
+  const cards=pillars.map(p=>{
+   const links=p.links.filter(x=>allowed(x[1])).map(x=>`<button type="button" class="btn" onclick="openService('${x[1]}')">${x[0]} <span aria-hidden="true" style="float:right">→</span></button>`).join('');
+   if(!links)return '';
+   return `<article class="hc-pillar"><div class="hc-pillar-top"><div class="hc-pillar-icon">${p.icon}</div><div><h3>${esc(p.title)}</h3><p class="muted">${esc(p.desc)}</p></div></div><div class="hc-pillar-links">${links}</div></article>`;
+  }).join('');
+  return `<section class="hc-main-pillars" id="hcMainPillars336"><div class="hc-main-pillars-head"><div><h2>Choose What You Need</h2><p class="muted">Start with a main category. Detailed forms and transaction tools stay inside that service.</p></div></div><div class="hc-pillar-grid">${cards}</div></section>`;
+ }
+ function replaceAvailableServices(){
+  const root=document.getElementById('home');if(!root)return;
+  root.querySelectorAll('#hcMainPillars336').forEach(x=>x.remove());
+  const heading=[...root.querySelectorAll('h2')].find(h=>String(h.textContent||'').trim()==='Available Services');
+  if(!heading)return;
+  const grid=heading.nextElementSibling;
+  heading.insertAdjacentHTML('beforebegin',pillarHtml());
+  heading.remove();
+  if(grid&&grid.classList.contains('grid'))grid.remove();
+ }
+ function progressFor(status){
+  const s=String(status||'').toLowerCase();
+  let current=1;
+  if(/approved|accepted|matched|driver accepted|owner accepted/.test(s))current=2;
+  if(/agree|confirmed|paid|payment approved|hired|rented/.test(s))current=3;
+  if(/complete|completed|delivered|closed|finished/.test(s))current=4;
+  const labels=['Request sent','Under review','Agreement','Completed'];
+  return `<div class="hc-progress-guide"><div class="hc-progress-title">Transaction progress</div><div class="hc-progress-steps">${labels.map((label,i)=>{const n=i+1,cls=n<current?'done':n===current?'current':'';return `<div class="hc-progress-step ${cls}"><div class="hc-progress-dot">${n<current?'✓':n}</div><div>${label}</div></div>`}).join('')}</div></div>`;
+ }
+ function addProgress(){
+  const root=document.getElementById('home');if(!root)return;
+  root.querySelectorAll('#personalizedHomeActivity .card').forEach(card=>{
+   if(card.querySelector('.hc-progress-guide'))return;
+   const pill=card.querySelector('.pill');
+   if(!pill)return;
+   const button=card.querySelector('button');
+   const html=progressFor(pill.textContent);
+   if(button)button.insertAdjacentHTML('beforebegin',html);else card.insertAdjacentHTML('beforeend',html);
+  });
+  root.querySelectorAll('[id*="AgreementTop"], [id*="PriorityTransactions"], [id*="AgreementRequired"]').forEach(section=>{
+   section.querySelectorAll('.card').forEach(card=>{
+    if(card.querySelector('.hc-progress-guide')||!/agree|agreement|accepted/i.test(card.textContent||''))return;
+    const button=card.querySelector('button');const html=progressFor('agreement');
+    if(button)button.insertAdjacentHTML('beforebegin',html);else card.insertAdjacentHTML('beforeend',html);
+   });
+  });
+ }
+ function apply(){replaceAvailableServices();addProgress();}
+ function schedule(){requestAnimationFrame(()=>requestAnimationFrame(apply));}
+ const previousHome=window.home;
+ if(typeof previousHome==='function')window.home=function(){const result=previousHome.apply(this,arguments);schedule();return result;};
+ let timer=0;const observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(apply,40)});
+ document.addEventListener('DOMContentLoaded',()=>{const root=document.getElementById('home')||document.body;observer.observe(root,{childList:true,subtree:true});schedule();});
+ schedule();window.__hcVersion='V7.8.336';
+})();
+</script>
