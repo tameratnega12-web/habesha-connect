@@ -17,3 +17,6 @@ No SQL is required.
 - Login and restored Supabase sessions are blocked until `profiles.verified = true`.
 - Admin accounts remain accessible.
 - No SQL changes required.
+
+
+V7.8.337 Phase 2: presentation-only service-page ordering and mobile styling. No workflow, Supabase, email, approval, or action logic changed.

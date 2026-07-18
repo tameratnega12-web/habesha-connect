@@ -12122,3 +12122,48 @@ window.__hcVersion='V7.8.213';
  schedule();window.__hcVersion='V7.8.336';
 })();
 </script>
+
+<!-- V7.8.337 PHASE 2 PRESENTATION ONLY -->
+<style id="v78337-service-page-order-style">
+.hc-phase2-page{--hc-soft:#f8fafc;--hc-accent:#0f766e}
+.hc-phase2-section-label{display:flex;align-items:center;gap:10px;margin:18px 0 10px;font-size:20px;font-weight:850;color:#0f172a}
+.hc-phase2-section-label .hc-phase2-badge{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:#ecfeff;border:1px solid #99f6e4;font-size:18px}
+.hc-phase2-activity{margin:10px 0 18px;padding:15px;border-radius:18px;background:#fffbeb;border:1px solid #fde68a}
+.hc-phase2-activity:empty{display:none}
+.hc-phase2-activity>.hc-phase2-section-label{margin-top:0}
+.hc-phase2-quick{margin:8px 0 18px;padding:16px;border-radius:18px;background:var(--hc-soft);border:1px solid var(--line)}
+.hc-phase2-quick>h2,.hc-phase2-quick>h3,.hc-phase2-quick>h4{margin-top:0}
+.hc-phase2-how{margin:12px 0 18px!important;border-left:5px solid var(--hc-accent)!important;background:#f0fdfa!important}
+.hc-phase2-page .actions .btn,.hc-phase2-page .grid .btn{min-height:46px}
+.hc-phase2-page .hc-progress-guide{background:#fff;border-color:#cbd5e1}
+.hc-phase2-waiting-note{margin:8px 0 12px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;font-size:13px;color:#475569}
+@media(max-width:720px){.hc-phase2-activity,.hc-phase2-quick{padding:13px;border-radius:15px}.hc-phase2-section-label{font-size:18px}.hc-phase2-page .actions{gap:9px}.hc-phase2-page .actions .btn{width:100%;min-height:52px;font-size:16px}.hc-phase2-page table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+</style>
+<script id="v78337-service-page-order-script">
+(()=>{
+ const pages=['shipping','rentals','marketplace','jobs','truck','home_services','taxi','business','events','customer'];
+ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+ function headingMatch(root,re){return [...root.querySelectorAll('h2,h3,h4')].find(h=>re.test((h.textContent||'').trim()));}
+ function sectionNodesFromHeading(h){if(!h)return[];const out=[h];let n=h.nextElementSibling;while(n&&!/^H[234]$/.test(n.tagName)){if(n.classList.contains('notice')&&/how it works/i.test(n.textContent||''))break;out.push(n);n=n.nextElementSibling;}return out;}
+ function label(icon,text){const d=document.createElement('div');d.className='hc-phase2-section-label';d.innerHTML=`<span class="hc-phase2-badge">${icon}</span><span>${esc(text)}</span>`;return d;}
+ function enhance(page){
+  const root=document.getElementById(page);if(!root||root.dataset.hcPhase2Busy==='1')return;root.dataset.hcPhase2Busy='1';root.classList.add('hc-phase2-page');
+  try{
+   const title=root.querySelector(':scope > h2, :scope > h1')||root.querySelector('h2,h1');
+   const intro=[...root.querySelectorAll('.notice')].find(n=>/how it works/i.test(n.textContent||''));
+   if(intro){intro.classList.add('hc-phase2-how');if(!intro.querySelector('.hc-phase2-section-label'))intro.prepend(label('ℹ️','How It Works'));}
+   let activity=root.querySelector('.hc-transactions-top');
+   if(activity){activity.classList.add('hc-phase2-activity');if(!activity.querySelector(':scope > .hc-phase2-section-label'))activity.prepend(label('🔔','Your New Activity'));if(!activity.querySelector(':scope > .hc-phase2-waiting-note')){const note=document.createElement('div');note.className='hc-phase2-waiting-note';note.textContent='Your current request and the next required action appear here. A waiting status means the other party or admin must act next.';activity.insertBefore(note,activity.children[1]||null);}}
+   let quick=root.querySelector(':scope > .hc-phase2-quick');
+   if(!quick){const quickH=headingMatch(root,/quick actions|your actions|user actions|customer actions|owner actions|driver actions|seller actions|provider actions/i);if(quickH){const nodes=sectionNodesFromHeading(quickH);if(nodes.length){quick=document.createElement('section');quick.className='hc-phase2-quick';quickH.parentNode.insertBefore(quick,quickH);nodes.forEach(n=>quick.appendChild(n));}}}
+   const anchor=title?title.nextSibling:root.firstChild;
+   if(activity)root.insertBefore(activity,anchor);
+   if(quick)root.insertBefore(quick,activity?activity.nextSibling:anchor);
+   if(intro)root.insertBefore(intro,quick?quick.nextSibling:(activity?activity.nextSibling:anchor));
+  }catch(e){console.warn('V7.8.337 presentation layer skipped safely',e)}
+  root.dataset.hcPhase2Busy='0';
+ }
+ function run(){pages.forEach(enhance)}let queued=false;function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;run()})}
+ new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});document.addEventListener('click',schedule,true);window.addEventListener('hashchange',schedule);schedule();window.__hcVersion='V7.8.337';
+})();
+</script>
