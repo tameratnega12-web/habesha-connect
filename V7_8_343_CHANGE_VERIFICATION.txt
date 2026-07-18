@@ -1,0 +1,13 @@
+V7.8.343 CHANGE VERIFICATION
+Base: V7.8.342 All Categories Next Action Top
+
+Changed only:
+- index.html: the V7.8.342 display coordinator now skips native trucking/trailer action containers.
+- README.md: added this release note.
+- This verification report.
+
+Preserved:
+- Trucking workflow and native next-action controller.
+- Truck driver Agree freeze fix from V7.8.341.
+- All other category next-action behavior from V7.8.342.
+- Supabase SQL files, statuses, forms, emails, approvals, and action handlers.

@@ -6,3 +6,6 @@ Exact fix only:
 - Truck driver Agree button no longer leaves the screen waiting indefinitely when a Supabase request stalls.
 - Added guarded click handling, a save timeout, visible saving feedback, and error recovery.
 - Existing trucking statuses, completion behavior, Supabase tables, emails, and all other service flows remain unchanged.
+
+## V7.8.343 Trucking layout stability fix
+The V7.8.342 all-category next-action display controller now excludes the existing native trucking and trailer action containers. This prevents two display controllers from repeatedly moving the same trucking section, which caused page shaking, sidebar displacement, and scroll trapping. No workflow, status, Supabase, email, or action-handler logic was changed.

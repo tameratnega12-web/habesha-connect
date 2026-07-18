@@ -12383,16 +12383,24 @@ td{vertical-align:top}
 @media(max-width:720px){#hcAllCategoryNextActionsV78342 .actions{display:grid;grid-template-columns:1fr;gap:10px}#hcAllCategoryNextActionsV78342 .btn{width:100%;min-height:52px}}
 </style>
 <script id="v78342-all-categories-next-action-top">
-/* V7.8.342 — Home-page next-action placement only. Existing transaction logic is unchanged. */
+/* V7.8.343 — Prevent the all-category coordinator from moving native trucking/trailer action containers. Existing transaction logic is unchanged. */
 (function(){
 'use strict';
 const WRAP_ID='hcAllCategoryNextActionsV78342',ITEM_ID='hcAllCategoryNextActionItemsV78342';
-const EXACT_IDS=new Set(['truckingPriorityTransactionsV78266','truckDriverAgreementV78257','truckOwnerApplicationActions','truckOwnerApplicationActionsV78208','trailerRequesterAgreementV78202','trailerRequesterHomeAgreementV78259','trailerRequesterAgreementV78261','trailerAgreementCanonicalV78262','trailerAgreementV78263','trailerAgreementFinalV78264','trailerRequesterAgreementTopV78309','marketplaceCustomerAgreementHome','jobSeekerAgreementHome','hsV300ActionsHome','hsCustomerV301Home','taxiCustomerAgreementHomeV78315','taxiCustomerAgreementHomeV78317']);
+const EXACT_IDS=new Set(['marketplaceCustomerAgreementHome','jobSeekerAgreementHome','hsV300ActionsHome','hsCustomerV301Home','taxiCustomerAgreementHomeV78315','taxiCustomerAgreementHomeV78317']);
+/* Trucking and trailer rental already have their own native top-action controller.
+   The all-category coordinator must never move those containers. */
+const TRUCK_NATIVE_IDS=new Set(['truckingPriorityTransactionsV78266','truckDriverAgreementV78257','truckOwnerApplicationActions','truckOwnerApplicationActionsV78208','trailerRequesterAgreementV78202','trailerRequesterHomeAgreementV78259','trailerRequesterAgreementV78261','trailerAgreementCanonicalV78262','trailerAgreementV78263','trailerAgreementFinalV78264','trailerRequesterAgreementTopV78309']);
+function isTruckNative(node){
+  if(!node)return false;
+  if(TRUCK_NATIVE_IDS.has(node.id))return true;
+  return [...TRUCK_NATIVE_IDS].some(id=>node.querySelector&&node.querySelector('#'+id));
+}
 const ACTION_TEXT=/\b(action required|agreement required|agreement is required|accept or decline|accepted.*agree|click agree|confirm completed|mark work complete|waiting for your agreement|owner accepted|driver accepted|new transactions)\b/i;
 const ACTION_BUTTON=/\b(agree|accept|decline|confirm completed|mark work complete|view .* information|pay now|continue to payment)\b/i;
 let busy=false;
 function directHomeChild(home,node){let cur=node;while(cur&&cur.parentElement&&cur.parentElement!==home)cur=cur.parentElement;return cur&&cur.parentElement===home?cur:null;}
-function hasLiveAction(node){if(!node||node.id===WRAP_ID||node.closest('#'+WRAP_ID))return false;if(EXACT_IDS.has(node.id))return true;const text=String(node.textContent||'').replace(/\s+/g,' ').trim();if(!ACTION_TEXT.test(text))return false;return [...node.querySelectorAll('button')].some(b=>!b.disabled&&ACTION_BUTTON.test(String(b.textContent||'').trim()));}
+function hasLiveAction(node){if(!node||node.id===WRAP_ID||node.closest('#'+WRAP_ID)||isTruckNative(node))return false;if(EXACT_IDS.has(node.id))return true;const text=String(node.textContent||'').replace(/\s+/g,' ').trim();if(!ACTION_TEXT.test(text))return false;return [...node.querySelectorAll('button')].some(b=>!b.disabled&&ACTION_BUTTON.test(String(b.textContent||'').trim()));}
 function candidates(home){const nodes=[];home.querySelectorAll('section,.card').forEach(node=>{if(!hasLiveAction(node))return;const top=directHomeChild(home,node);if(top&&top.id!==WRAP_ID&&!nodes.includes(top))nodes.push(top);});return nodes;}
 function ensureWrap(home){let wrap=document.getElementById(WRAP_ID);if(!wrap){wrap=document.createElement('section');wrap.id=WRAP_ID;wrap.innerHTML='<div class="card hc-v78342-heading"><h2 style="margin:0">🚨 New Transactions — Action Required</h2><p class="muted">Your next required actions from every service appear here first.</p></div><div id="'+ITEM_ID+'" class="hc-v78342-items"></div>';}if(home.firstElementChild!==wrap)home.insertBefore(wrap,home.firstElementChild);return wrap;}
 function place(){if(busy)return;const home=document.getElementById('home');if(!home)return;busy=true;try{const found=candidates(home);let wrap=document.getElementById(WRAP_ID);const existing=wrap&&document.getElementById(ITEM_ID)?document.getElementById(ITEM_ID).children.length:0;if(!found.length&&!existing){if(wrap)wrap.remove();return;}wrap=ensureWrap(home);const items=document.getElementById(ITEM_ID);found.forEach(node=>items.appendChild(node));wrap.style.display=items.children.length?'block':'none';}finally{busy=false;}}
