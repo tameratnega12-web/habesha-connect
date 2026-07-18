@@ -1,0 +1,21 @@
+V7.8.342 — ALL CATEGORIES NEXT ACTION AT TOP
+Base: V7.8.341 Truck Driver Agree Freeze Fix
+
+SCOPE
+- Added one display-only home-page coordinator.
+- It moves already-rendered Action Required, Agreement, Accept/Decline, and completion sections to the absolute top of Home.
+- Existing buttons and DOM nodes are moved, not recreated.
+
+UNCHANGED
+- Existing JavaScript blocks from V7.8.341
+- Supabase calls and SQL files
+- Transaction statuses and transitions
+- Email notifications
+- Forms and navigation
+- Category-specific action handlers
+- Truck driver Agree freeze fix
+
+VALIDATION
+- 90 inline JavaScript blocks checked with Node.js syntax validation: PASS
+- Original V7.8.341 index.html is an exact prefix of V7.8.342 index.html: PASS
+- All non-index files match V7.8.341 byte-for-byte: PASS

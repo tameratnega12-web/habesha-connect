@@ -12267,3 +12267,138 @@ td{vertical-align:top}
   *,*::before,*::after{transition:none!important;animation:none!important}
 }
 </style>
+
+<script id="v78341-truck-driver-agree-freeze-fix">
+/* V7.8.341 — Truck driver Agree button reliability fix only.
+   Keeps the existing trucking agreement statuses and completion flow unchanged.
+   Prevents a stalled Supabase request from leaving the page apparently frozen. */
+(function(){
+  let truckAgreeSaving=false;
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const sameEmail=(a,b)=>!!norm(a)&&norm(a)===norm(b);
+  const waitingStatuses=new Set([
+    'Owner Accepted - Waiting Driver Agreement','Accepted - Waiting Driver Agreement',
+    'Owner Accepted','Accepted','Waiting Driver Agreement','Waiting for Driver Agreement'
+  ]);
+  const REMOVED_APP='Driver Agreed - Removed From Parties';
+  const REMOVED_JOB='Filled - Removed From Parties';
+
+  function withTimeout(promise,ms,label){
+    let timer;
+    return Promise.race([
+      Promise.resolve(promise).finally(()=>clearTimeout(timer)),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label||'The request timed out.')),ms);})
+    ]);
+  }
+
+  function matchingAgreeButtons(id){
+    return Array.from(document.querySelectorAll('button[onclick]')).filter(btn=>{
+      const code=String(btn.getAttribute('onclick')||'');
+      return code.includes('driverAgreeTruckJob')&&code.includes(String(id));
+    });
+  }
+
+  window.driverAgreeTruckJob=async function(id){
+    if(truckAgreeSaving)return;
+    if(typeof requireLogin==='function'&&!requireLogin())return;
+
+    const a=(data.truckApplications||[]).find(x=>String(x.id)===String(id)||String(x.dbId||'')===String(id));
+    if(!a)return alert('Application not found. Please refresh once and try again.');
+    if(!currentUser||!sameEmail(a.driverEmail,currentUser.email))return alert('Only the accepted driver can agree.');
+    if(!waitingStatuses.has(String(a.status||'')))return alert('This application is not waiting for your agreement.');
+
+    const j=(data.truckJobs||[]).find(job=>
+      (a.jobDbId&&job.dbId&&String(a.jobDbId)===String(job.dbId))||
+      (a.jobId&&String(a.jobId)===String(job.id))||
+      (a.jobId&&job.dbId&&String(a.jobId)===String(job.dbId))
+    )||null;
+
+    const ownerName=a.ownerName||(j&&j.ownerName)||'Not provided';
+    const ownerPhone=(j&&(j.ownerPhone||j.phone))||a.ownerPhone||'Not provided';
+    const ownerEmail=a.ownerEmail||(j&&j.ownerEmail)||'Not provided';
+    const nowIso=new Date().toISOString();
+    const oldA={...a};
+    const oldJ=j?{...j}:null;
+    const buttons=matchingAgreeButtons(id);
+
+    truckAgreeSaving=true;
+    buttons.forEach(btn=>{btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='Saving agreement...';});
+
+    try{
+      a.status=REMOVED_APP;
+      a.driverAgreedAt=new Date().toLocaleString();
+      if(j){
+        j.status=REMOVED_JOB;
+        j.hiredDriverName=a.driverName;
+        j.hiredDriverEmail=a.driverEmail;
+        j.hiredAt=new Date().toLocaleString();
+      }
+
+      const ar=await withTimeout(
+        updateTruckApplicationDb(a,{status:REMOVED_APP,approved_at:nowIso,hired_at:nowIso}),
+        15000,
+        'The agreement save took too long. Please check your connection and try again.'
+      );
+      if(ar&&ar.error)throw new Error(ar.error.message||'Could not save your agreement.');
+
+      if(j){
+        const jr=await withTimeout(
+          updateTruckJobDb(j,{status:REMOVED_JOB,hired_driver_name:a.driverName,hired_driver_email:a.driverEmail,hired_at:nowIso}),
+          15000,
+          'The truck job update took too long. Please refresh before trying again.'
+        );
+        if(jr&&jr.error)console.warn('Truck job completion status save failed',jr.error);
+      }
+
+      try{sendEmailNotice({to:ownerEmail,name:ownerName,subject:'Truck driver agreed to your job',summary:'The accepted driver agreed. The completed job was removed from both user dashboards.',buttonText:'Open Trucking Dashboard',page:'truck',details:{Job:a.jobTitle,Driver:a.driverName,Status:'Completed'}});}catch(e){console.warn(e);}
+      try{sendAdminEmailNotice('Truck driver agreed — job completed','The accepted truck driver clicked Agree. The job was completed and removed from both user dashboards.',{Job:a.jobTitle,Owner:ownerName,Driver:a.driverName,Status:'Completed'},'admin');}catch(e){console.warn(e);}
+
+      data.truckApplications=(data.truckApplications||[]).filter(x=>String(x.id)!==String(a.id)&&String(x.dbId||'')!==String(a.dbId||''));
+      if(j)data.truckJobs=(data.truckJobs||[]).filter(x=>String(x.id)!==String(j.id)&&String(x.dbId||'')!==String(j.dbId||''));
+      try{persistOnly();}catch(e){console.warn(e);}
+
+      alert('Agreement completed. This job was removed from both parties.\n\nTruck Owner Information\n\nName: '+ownerName+'\nPhone: '+ownerPhone+'\nEmail: '+ownerEmail);
+      try{if(typeof home==='function')home();}catch(e){console.warn(e);}
+    }catch(err){
+      Object.assign(a,oldA);
+      if(j&&oldJ)Object.assign(j,oldJ);
+      console.error('Truck driver agreement failed',err);
+      alert('The agreement was not completed. '+(err&&err.message?err.message:'Please refresh and try again.'));
+    }finally{
+      truckAgreeSaving=false;
+      buttons.forEach(btn=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Agree';delete btn.dataset.oldText;});
+    }
+  };
+})();
+</script>
+
+
+<style id="v78342-all-categories-next-action-top-style">
+#hcAllCategoryNextActionsV78342{margin:0 0 18px}
+#hcAllCategoryNextActionsV78342:empty{display:none}
+#hcAllCategoryNextActionsV78342>.hc-v78342-heading{border:3px solid #f59e0b;margin-bottom:12px}
+#hcAllCategoryNextActionsV78342>.hc-v78342-items>section,
+#hcAllCategoryNextActionsV78342>.hc-v78342-items>.card,
+#hcAllCategoryNextActionsV78342>.hc-v78342-items>div{margin-top:12px}
+@media(max-width:720px){#hcAllCategoryNextActionsV78342 .actions{display:grid;grid-template-columns:1fr;gap:10px}#hcAllCategoryNextActionsV78342 .btn{width:100%;min-height:52px}}
+</style>
+<script id="v78342-all-categories-next-action-top">
+/* V7.8.342 — Home-page next-action placement only. Existing transaction logic is unchanged. */
+(function(){
+'use strict';
+const WRAP_ID='hcAllCategoryNextActionsV78342',ITEM_ID='hcAllCategoryNextActionItemsV78342';
+const EXACT_IDS=new Set(['truckingPriorityTransactionsV78266','truckDriverAgreementV78257','truckOwnerApplicationActions','truckOwnerApplicationActionsV78208','trailerRequesterAgreementV78202','trailerRequesterHomeAgreementV78259','trailerRequesterAgreementV78261','trailerAgreementCanonicalV78262','trailerAgreementV78263','trailerAgreementFinalV78264','trailerRequesterAgreementTopV78309','marketplaceCustomerAgreementHome','jobSeekerAgreementHome','hsV300ActionsHome','hsCustomerV301Home','taxiCustomerAgreementHomeV78315','taxiCustomerAgreementHomeV78317']);
+const ACTION_TEXT=/\b(action required|agreement required|agreement is required|accept or decline|accepted.*agree|click agree|confirm completed|mark work complete|waiting for your agreement|owner accepted|driver accepted|new transactions)\b/i;
+const ACTION_BUTTON=/\b(agree|accept|decline|confirm completed|mark work complete|view .* information|pay now|continue to payment)\b/i;
+let busy=false;
+function directHomeChild(home,node){let cur=node;while(cur&&cur.parentElement&&cur.parentElement!==home)cur=cur.parentElement;return cur&&cur.parentElement===home?cur:null;}
+function hasLiveAction(node){if(!node||node.id===WRAP_ID||node.closest('#'+WRAP_ID))return false;if(EXACT_IDS.has(node.id))return true;const text=String(node.textContent||'').replace(/\s+/g,' ').trim();if(!ACTION_TEXT.test(text))return false;return [...node.querySelectorAll('button')].some(b=>!b.disabled&&ACTION_BUTTON.test(String(b.textContent||'').trim()));}
+function candidates(home){const nodes=[];home.querySelectorAll('section,.card').forEach(node=>{if(!hasLiveAction(node))return;const top=directHomeChild(home,node);if(top&&top.id!==WRAP_ID&&!nodes.includes(top))nodes.push(top);});return nodes;}
+function ensureWrap(home){let wrap=document.getElementById(WRAP_ID);if(!wrap){wrap=document.createElement('section');wrap.id=WRAP_ID;wrap.innerHTML='<div class="card hc-v78342-heading"><h2 style="margin:0">🚨 New Transactions — Action Required</h2><p class="muted">Your next required actions from every service appear here first.</p></div><div id="'+ITEM_ID+'" class="hc-v78342-items"></div>';}if(home.firstElementChild!==wrap)home.insertBefore(wrap,home.firstElementChild);return wrap;}
+function place(){if(busy)return;const home=document.getElementById('home');if(!home)return;busy=true;try{const found=candidates(home);let wrap=document.getElementById(WRAP_ID);const existing=wrap&&document.getElementById(ITEM_ID)?document.getElementById(ITEM_ID).children.length:0;if(!found.length&&!existing){if(wrap)wrap.remove();return;}wrap=ensureWrap(home);const items=document.getElementById(ITEM_ID);found.forEach(node=>items.appendChild(node));wrap.style.display=items.children.length?'block':'none';}finally{busy=false;}}
+const priorHome=window.home;if(typeof priorHome==='function')window.home=function(){const result=priorHome.apply(this,arguments);setTimeout(place,0);setTimeout(place,180);return result;};
+const observer=new MutationObserver(()=>setTimeout(place,0));function start(){const home=document.getElementById('home');if(home){observer.observe(home,{childList:true,subtree:true});place();}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+window.hcPlaceAllCategoryNextActionsV78342=place;
+})();
+</script>
