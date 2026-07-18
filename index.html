@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="V7.8.353">
+<meta name="app-version" content="V7.8.133">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Habesha Connect</title>
@@ -10,8 +10,6 @@
 #admin h2{font-size:22px}#admin h3{margin-top:22px}.adminMobileSummary{position:sticky;top:105px;z-index:1;border:2px solid #f59e0b;background:#fffbeb}.adminPendingNumber{font-size:36px;font-weight:900;color:#b45309}.adminQuickFilters{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}.adminQuickFilters .btn{white-space:nowrap;min-height:44px}
 #admin table.adminMobileTable,#admin table.adminMobileTable tbody,#admin table.adminMobileTable tr,#admin table.adminMobileTable td{display:block;width:100%}#admin table.adminMobileTable{background:transparent;border-radius:0}#admin table.adminMobileTable thead,#admin table.adminMobileTable tr:first-child:has(th){display:none}#admin table.adminMobileTable tr{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;margin:0 0 12px;box-shadow:0 5px 14px rgba(15,23,42,.06)}#admin table.adminMobileTable td{border:0;border-bottom:1px solid #eef2f7;padding:9px 4px;text-align:left;overflow-wrap:anywhere;white-space:normal}#admin table.adminMobileTable td:last-child{border-bottom:0}#admin table.adminMobileTable td::before{content:attr(data-label);display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:4px}#admin table.adminMobileTable td[data-label="Actions"],#admin table.adminMobileTable td[data-label="Action"]{padding-top:12px}#admin table.adminMobileTable td .btn,#admin table.adminMobileTable td[data-label="Actions"] button,#admin table.adminMobileTable td[data-label="Action"] button{width:100%;min-height:44px;margin:4px 0;display:block}#admin .tableWrap{overflow-x:visible}.adminDesktopOnly{display:none!important}}
 @media(min-width:721px){.adminMobileSummary{display:none}}
-.hcLanguageMenu{position:fixed;min-width:170px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 12px 28px rgba(15,23,42,.22);z-index:9999}.hcLanguageMenu button{display:block;width:100%;text-align:left;margin:4px 0;background:#fff;color:#111827;border:0;border-radius:9px;padding:10px 12px;font-weight:700;cursor:pointer}.hcLanguageMenu button:hover{background:#f1f5f9}.hcLanguageButton{white-space:nowrap}.hcMobileLanguage{margin-top:8px;width:100%}#google_translate_element{position:fixed!important;left:-10000px!important;top:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}.goog-te-banner-frame,.goog-te-banner-frame.skiptranslate,iframe.goog-te-banner-frame,body>iframe.skiptranslate{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important}html,body{top:0!important;margin-top:0!important;transform:none!important}
-
 
 .adminTopActions{position:relative;margin-bottom:14px}
 .adminTopActions h3{margin-top:0}
@@ -42,13 +40,8 @@
 <header>
   <div class="top"><div><div class="brand">Habesha Connect</div><div class="tag">Community • Customer • Shipping • Rentals • Taxi/Limo • Marketplace • Job Seekers • Trucking • Home Services • Business Directory • Events</div></div><div id="userBox"></div></div>
   <div class="nav" id="nav"></div>
-  <div class="mobilebar"><select id="mobileNav" onchange="openNavPage253(this.value)"></select><button type="button" class="btn hcMobileLanguage" onclick="toggleLanguageMenu(event)">🌐 Language / ቋንቋ</button></div>
+  <div class="mobilebar"><select id="mobileNav" onchange="openNavPage253(this.value)"></select></div>
 </header>
-<div id="hcLanguageMenu" class="hcLanguageMenu hide" role="menu" aria-label="Language selection">
-  <button type="button" onclick="setAppLanguage('en')">English</button>
-  <button type="button" onclick="setAppLanguage('am')">አማርኛ</button>
-</div>
-<div id="google_translate_element" aria-hidden="true"></div>
 <main class="container">
   <section id="home" class="page"></section>
   <section id="account" class="page hide"></section>
@@ -415,7 +408,7 @@ function roleNavPages(){
 function isAllowedPage(p){return rolePages().includes(p)}
 function visiblePages(){return pages.filter(p=>isAllowedPage(p))}
 function taxiNavAllowed(){return !currentUser || ['customer','taxi_limo_owner','taxi_limo_driver','taxi_driver','admin'].includes(currentUser.role)}
-function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p)).filter(p=>p!=='taxi'||taxiNavAllowed());let n=visible.map(p=>`<button onclick="${p==='services'?'openManageMyRoles253()':`show('${p}')`}" id="nav_${p}">${labels[p]}</button>`).join('');n+=`<button type="button" class="hcLanguageButton" onclick="toggleLanguageMenu(event)">🌐 Language / ቋንቋ</button>`;$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
+function nav(){let visible=roleNavPages().filter(p=>isAllowedPage(p)).filter(p=>p!=='taxi'||taxiNavAllowed());let n=visible.map(p=>`<button onclick="${p==='services'?'openManageMyRoles253()':`show('${p}')`}" id="nav_${p}">${labels[p]}</button>`).join('');$('nav').innerHTML=n;$('mobileNav').innerHTML=visible.map(p=>`<option value="${p}">${labels[p]}</option>`).join('')}
 async function openManageMyRoles253(){
  if(!requireLogin())return;
  await show('services');
@@ -578,72 +571,6 @@ async function refreshPageData(p){
  }
 }
 function roleSwitcherHtml(){if(!currentUser)return '';let roles=currentUser.roles||[currentUser.role||'customer'];let opts=roles.map(r=>`<option value="${r}" ${r===currentUser.role?'selected':''}>${(ROLE_INFO[r]?.icon||'')+' '+roleTitle(r)}</option>`).join('');return `<select id="topRoleSwitch" onchange="switchRole(this.value)" style="width:auto;min-width:150px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700">${opts}</select>`}
-let hcGoogleTranslateReady=false;
-let hcGoogleTranslateLoading=false;
-function hcAmharicSelected(){return document.cookie.split(';').some(v=>v.trim()==='googtrans=/en/am');}
-function hcRemoveTranslateBanner(){
-  if(document.documentElement.style.marginTop!=='0px')document.documentElement.style.setProperty('margin-top','0px','important');
-  if(document.body.style.top!=='0px')document.body.style.setProperty('top','0px','important');
-  if(document.body.style.marginTop!=='0px')document.body.style.setProperty('margin-top','0px','important');
-  document.querySelectorAll('.goog-te-banner-frame, iframe.goog-te-banner-frame, body > iframe.skiptranslate').forEach(el=>{
-    if(el.style.display!=='none')el.style.setProperty('display','none','important');
-    if(el.style.height!=='0px')el.style.setProperty('height','0px','important');
-  });
-}
-function googleTranslateElementInit(){
-  try{
-    new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'en,am',autoDisplay:false},'google_translate_element');
-    hcGoogleTranslateReady=true;
-    hcRemoveTranslateBanner();
-  }catch(err){console.warn('Google Translate did not initialize.',err);}
-}
-function hcLoadGoogleTranslate(){
-  if(hcGoogleTranslateReady||hcGoogleTranslateLoading||document.querySelector('script[data-hc-google-translate]'))return;
-  hcGoogleTranslateLoading=true;
-  const script=document.createElement('script');
-  script.src='https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-  script.async=true;
-  script.dataset.hcGoogleTranslate='1';
-  script.onload=()=>{hcGoogleTranslateLoading=false;hcRemoveTranslateBanner();};
-  script.onerror=()=>{hcGoogleTranslateLoading=false;console.warn('Google Translate could not load.');};
-  document.head.appendChild(script);
-}
-if(hcAmharicSelected()){
-  hcLoadGoogleTranslate();
-  let hcBannerCleanupTimer=0;
-  new MutationObserver(()=>{
-    clearTimeout(hcBannerCleanupTimer);
-    hcBannerCleanupTimer=setTimeout(hcRemoveTranslateBanner,80);
-  }).observe(document.documentElement,{childList:true,subtree:true});
-  window.addEventListener('load',()=>{
-    hcRemoveTranslateBanner();
-    setTimeout(hcRemoveTranslateBanner,500);
-    setTimeout(hcRemoveTranslateBanner,1500);
-  },{once:true});
-}
-function toggleLanguageMenu(ev){
-  if(ev){ev.preventDefault();ev.stopPropagation();}
-  const menu=$('hcLanguageMenu');if(!menu)return;
-  const source=ev&&ev.currentTarget;
-  if(source&&source.getBoundingClientRect){
-    const r=source.getBoundingClientRect();
-    menu.style.top=Math.min(window.innerHeight-130,r.bottom+8)+'px';
-    menu.style.left=Math.max(8,Math.min(window.innerWidth-180,r.left))+'px';
-  }
-  menu.classList.toggle('hide');
-}
-function hcSetTranslateCookie(lang){
-  const value=lang==='am'?'/en/am':'/en/en';
-  document.cookie='googtrans='+value+'; path=/; max-age=31536000; SameSite=Lax';
-  if(location.hostname&&location.hostname.includes('.'))document.cookie='googtrans='+value+'; path=/; max-age=31536000; SameSite=Lax; domain=.'+location.hostname;
-}
-function setAppLanguage(lang){
-  $('hcLanguageMenu')?.classList.add('hide');
-  hcSetTranslateCookie(lang);
-  if(lang==='am')hcLoadGoogleTranslate();
-  location.reload();
-}
-document.addEventListener('click',e=>{const menu=$('hcLanguageMenu');if(menu&&!menu.classList.contains('hide')&&!menu.contains(e.target)&&!e.target.closest('.hcLanguageButton,.hcMobileLanguage'))menu.classList.add('hide');});
 function render(){nav();$('userBox').innerHTML=currentUser?`Signed in: <b>${currentUser.name}</b> <span class="pill">${roleTitle(currentUser.role)}</span> ${roleSwitcherHtml()} <button class="btn" onclick="logout()">Logout</button>`:`<button class="btn" onclick="show('account')">Login / Register</button>`;let active=pages.find(p=>!$(p).classList.contains('hide'))||'home';if(!isAllowedPage(active))active='home';renderPage(active).catch(err=>{console.error('Render error',err);if($(active))$(active).innerHTML='<div class="card"><h2>Page loading problem</h2><p>Please refresh the app and try again.</p></div>';})}
 function requireLogin(){if(!currentUser){show('account');return false}if(!isAccountVerified(currentUser)){blockUnverifiedSession(currentUser);return false}return true}
 let loginInProgress331=false;
@@ -4122,6 +4049,51 @@ function adminSuccess(message){
 
 
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='habesha-connect-data.json';a.click();}
+
+/* V7.0.0 Language Support: English / Amharic */
+const LANG_KEY='hc_language';
+const HC_I18N={
+  am:{
+    'Home':'መነሻ','Account':'መለያ','Profile':'መገለጫ','My Services':'የእኔ አገልግሎቶች','Shipping':'ጭነት','Rentals':'ቤት ኪራይ','Marketplace':'ገበያ','Job Seekers':'ስራ ፈላጊዎች','Trucking':'የጭነት መኪና','Business Directory':'የንግድ ማውጫ','Events':'ዝግጅቶች','Messages':'መልዕክቶች','Notifications':'ማሳወቂያዎች','Admin':'አስተዳዳሪ',
+    'Login / Register':'ግባ / ተመዝገብ','Login':'ግባ','Create Account':'መለያ ፍጠር','Logout':'ውጣ','Save':'አስቀምጥ','Cancel':'ሰርዝ','Approve':'አጽድቅ','Decline':'ውድቅ','Delete':'ሰርዝ','Edit':'አስተካክል','Open':'ክፈት','Open My Dashboard':'የእኔን ዳሽቦርድ ክፈት','Admin Dashboard':'የአስተዳዳሪ ዳሽቦርድ','Start Shipping':'ጭነት ጀምር','Find Rentals':'ቤት ኪራይ ፈልግ','Show All':'ሁሉንም አሳይ',
+    'Traveler':'ተጓዥ','Sender':'ላኪ','Property Owner':'የቤት ባለቤት','Rent Seeker':'ቤት ፈላጊ','Truck Driver':'የጭነት መኪና አሽከርካሪ','Business Owner':'የንግድ ባለቤት','Events Organizer':'የዝግጅት አዘጋጅ','Customer':'ደንበኛ','Verified':'ተረጋግጧል','Not Verified':'አልተረጋገጠም','Pending':'በመጠባበቅ ላይ','Approved':'ጸድቋል','Paid':'ተከፍሏል','Available':'ይገኛል','Rented':'ተከራይቷል',
+    'Request Space':'ቦታ ጠይቅ','Request Viewing':'ቤት ለማየት ጠይቅ','Request Viewing - Pay $10':'ቤት ማየት ጠይቅ - $10 ክፈል','Pay Now':'አሁን ክፈል','Pay Traveler':'ተጓዥን ክፈል','Approve Payment':'ክፍያ አጽድቅ','Mark Delivered':'እንደደረሰ ምልክት አድርግ','Pay $25 & Post Property':'$25 ክፈል እና ቤቱን አትም','Pay $10 & Post Trip':'$10 ክፈል እና ጉዞ አትም',
+    'Full Name':'ሙሉ ስም','Phone Number':'ስልክ ቁጥር','Email':'ኢሜይል','Password':'የይለፍ ቃል','New Password':'አዲስ የይለፍ ቃል','Confirm Password':'የይለፍ ቃል ያረጋግጡ','Forgot Password':'የይለፍ ቃል ረሳሁ','Update Password':'የይለፍ ቃል አዘምን','Name':'ስም','Phone':'ስልክ','City':'ከተማ','Status':'ሁኔታ','Payment':'ክፍያ','Payments':'ክፍያዎች','Amount':'መጠን','Time':'ጊዜ','Description':'መግለጫ','Property':'ቤት','Owner':'ባለቤት','Seeker':'ፈላጊ','Traveler commission':'የተጓዥ ኮሚሽን','Trip listing fee refund':'የጉዞ ማስታወቂያ ክፍያ ተመላሽ','Total traveler payout':'ጠቅላላ የተጓዥ ክፍያ',
+    'Available Services':'ያሉ አገልግሎቶች','My Dashboard':'የእኔ ዳሽቦርድ','My Activity':'የእኔ እንቅስቃሴ','My Payment History':'የእኔ የክፍያ ታሪክ','Rental Listings Management':'የቤት ዝርዝር አስተዳደር','Rental Requests Management':'የቤት ማየት ጥያቄዎች አስተዳደር','No rental requests yet.':'እስካሁን የቤት ማየት ጥያቄ የለም።','No rental listings to show yet.':'እስካሁን የሚታይ የቤት ዝርዝር የለም።','Language':'ቋንቋ',
+    'My Service':'የእኔ አገልግሎቶች','Home Services':'የቤት አገልግሎቶች','Taxi/Limo':'ታክሲ/ሊሞ','How It Works':'እንዴት እንደሚሰራ','About':'ስለ እኛ','Contact':'ያግኙን','Help':'እርዳታ','Help / FAQ':'እርዳታ / ተደጋጋሚ ጥያቄዎች','Report Problem':'ችግር ሪፖርት ያድርጉ','Privacy':'ግላዊነት','Terms':'የአጠቃቀም ውሎች','Information & Support':'መረጃ እና ድጋፍ',
+    'Open My Services':'የእኔን አገልግሎቶች ክፈት','Open Shipping':'መላኪያን ክፈት','Open Rentals':'ኪራይን ክፈት','Open Trucking':'ትራክን ክፈት','Open Taxi/Limo':'ታክሲ/ሊሞን ክፈት','Open Home Services':'የቤት አገልግሎቶችን ክፈት','Open Business Directory':'የንግድ ማውጫውን ክፈት','Open Marketplace':'ገበያውን ክፈት','Open Admin Dashboard':'የአስተዳዳሪ ዳሽቦርድን ክፈት',
+    'Signed in:':'ገብተዋል፦','Supabase connected':'Supabase ተገናኝቷል','Not connected':'አልተገናኘም','Show password':'የይለፍ ቃሉን አሳይ','Loading Admin Dashboard...':'የአስተዳዳሪ ዳሽቦርድ በመጫን ላይ...','Please wait.':'እባክዎ ይጠብቁ።','Page loading problem':'ገጹን በመጫን ላይ ችግር ተፈጥሯል','Refresh App':'መተግበሪያውን ያድሱ',
+    'Something stopped this page from opening. Please refresh once. If it continues, send a screenshot of this page.':'ይህ ገጽ እንዳይከፈት ችግር ተፈጥሯል። እባክዎ አንድ ጊዜ ገጹን ያድሱ። ችግሩ ከቀጠለ የዚህን ገጽ ስክሪንሾት ይላኩ።','Please refresh the app and try again.':'እባክዎ መተግበሪያውን ያድሱና እንደገና ይሞክሩ።',
+    'Shipping Dashboard':'የመላኪያ ዳሽቦርድ','Choose what you want to do in Shipping.':'በመላኪያ ውስጥ ማድረግ የሚፈልጉትን ይምረጡ።','Shipping Connect':'የመላኪያ ግንኙነት','Search Filters':'የፍለጋ ማጣሪያዎች','Search route, city, or date':'መንገድ፣ ከተማ ወይም ቀን ይፈልጉ','Find Traveler Trips':'የተጓዥ ጉዞዎችን ፈልግ','Post Item to Ship':'የሚላክ ዕቃ ያስገቡ','Open Trip':'ጉዞ ይክፈቱ','My Open Trips':'የእኔ ክፍት ጉዞዎች','Sender Requests':'የላኪ ጥያቄዎች','View Requests':'ጥያቄዎችን ይመልከቱ','Post a new traveler trip for senders.':'ለላኪዎች አዲስ የተጓዥ ጉዞ ያስገቡ።','Manage trips you already posted.':'ከዚህ በፊት ያስገቧቸውን ጉዞዎች ያስተዳድሩ።','Review requests and update space after accepting.':'ጥያቄዎችን ይመልከቱ እና ከተቀበሉ በኋላ ያለውን ቦታ ያዘምኑ።','Chat with senders.':'ከላኪዎች ጋር ይወያዩ።',
+    'Post Traveler Trip':'የተጓዥ ጉዞ ያስገቡ','Travel Date':'የጉዞ ቀን','Available Space lb':'ያለ ቦታ በፓውንድ','Post Trip':'ጉዞ ያስገቡ','From City':'መነሻ ከተማ','To City':'መድረሻ ከተማ','Choose from main U.S. international-flight cities and major Ethiopia cities.':'ከዋና የአሜሪካ ዓለም አቀፍ በረራ ከተሞች እና ከዋና የኢትዮጵያ ከተሞች ይምረጡ።','Needed By Date':'የሚያስፈልግበት ቀን','Item Description':'የዕቃ መግለጫ','Weight lb':'ክብደት በፓውንድ','Sender Phone':'የላኪ ስልክ','Receiver Name':'የተቀባይ ስም','Receiver Phone':'የተቀባይ ስልክ','Notes':'ማስታወሻ','Submit Item to Admin':'ዕቃውን ለአስተዳዳሪ ያስገቡ','Post your item even when no traveler trip is available yet. You can post U.S. to Ethiopia or Ethiopia to U.S.':'የተጓዥ ጉዞ ባይኖርም ዕቃዎን ማስገባት ይችላሉ። ከአሜሪካ ወደ ኢትዮጵያ ወይም ከኢትዮጵያ ወደ አሜሪካ ማስገባት ይችላሉ።','Pickup details or special notes':'የመውሰጃ ዝርዝር ወይም ልዩ ማስታወሻ','Receiver full name':'የተቀባይ ሙሉ ስም','Example: clothes, documents, small box':'ምሳሌ፦ ልብስ፣ ሰነዶች፣ ትንሽ ሳጥን',
+    'Available Traveler Trips':'ያሉ የተጓዥ ጉዞዎች','Available Trips':'ያሉ ጉዞዎች','Total Trips':'ጠቅላላ ጉዞዎች','Total Shipments':'ጠቅላላ መላኪያዎች','Paid Shipments':'የተከፈሉ መላኪያዎች','Trip':'ጉዞ','Trips':'ጉዞዎች','Shipment':'መላኪያ','Shipments':'መላኪያዎች','Route':'መንገድ','Tracking':'መከታተያ','Weight':'ክብደት','Space':'ቦታ','Available Space':'ያለ ቦታ','Travel Date':'የጉዞ ቀን','Action':'እርምጃ','Actions':'እርምጃዎች','Receiver':'ተቀባይ','From':'ከ','To':'ወደ','Requested':'ተጠይቋል','Accepted':'ተቀብሏል','Delivered':'ደርሷል','Completed':'ተጠናቋል','Cancelled':'ተሰርዟል','Closed':'ተዘግቷል','Open':'ክፍት','Full':'ሞልቷል','In Transit':'በመንገድ ላይ','Payment Pending Admin Review':'ክፍያው የአስተዳዳሪ ምርመራ እየጠበቀ ነው','Pending Admin Approval':'የአስተዳዳሪ ፈቃድ እየጠበቀ ነው','Waiting for traveler response':'የተጓዥ ምላሽ እየጠበቀ ነው','Traveler contact will show after admin approves payment.':'አስተዳዳሪው ክፍያውን ካጸደቀ በኋላ የተጓዥ መገኛ መረጃ ይታያል።','No traveler trips available yet.':'እስካሁን ያለ የተጓዥ ጉዞ የለም።','No shipping requests yet.':'እስካሁን የመላኪያ ጥያቄ የለም።','No shipments yet.':'እስካሁን መላኪያ የለም።','No sender-posted shipping items yet.':'እስካሁን በላኪ የተለጠፈ የመላኪያ ዕቃ የለም።',
+    'Accept':'ተቀበል','Review Sender':'ላኪውን ይገምግሙ','Review Traveler':'ተጓዡን ይገምግሙ','Confirm Agreement / Payment':'ስምምነትን / ክፍያን ያረጋግጡ','Approve Post':'ልጥፉን አጽድቅ','Delivered':'ደርሷል','Opening request...':'ጥያቄውን በመክፈት ላይ...','Request sent':'ጥያቄው ተልኳል','Submit Request':'ጥያቄውን ያስገቡ','Requested Space':'የተጠየቀ ቦታ','Requested Weight':'የተጠየቀ ክብደት','Update Space':'ቦታውን ያዘምኑ',
+    'Sender Shipping Agreement':'የላኪ መላኪያ ስምምነት','Traveler Shipping Agreement':'የተጓዥ መላኪያ ስምምነት','Before payment and before personal contact information is released, please read and agree:':'ክፍያ ከመፈጸሙ እና የግል መገኛ መረጃ ከመጋራቱ በፊት እባክዎ ያንብቡና ይስማሙ፦','Before contact information is released, please read and agree:':'የመገኛ መረጃ ከመጋራቱ በፊት እባክዎ ያንብቡና ይስማሙ፦','Consent record:':'የስምምነት መዝገብ፦','I Agree & Continue':'እስማማለሁ እና እቀጥላለሁ','I Agree':'እስማማለሁ','I have read, understood, and agree to the Traveler Shipping Agreement.':'የተጓዥ መላኪያ ስምምነቱን አንብቤ፣ ተረድቼ እና ተስማምቻለሁ።','I have read, understood, and agree to the Sender Shipping Agreement and certify that my package contains no prohibited or illegal items.':'የላኪ መላኪያ ስምምነቱን አንብቤ፣ ተረድቼ እና ተስማምቻለሁ፤ ጥቅሌም የተከለከለ ወይም ሕገ-ወጥ ዕቃ እንደሌለበት አረጋግጣለሁ።','Shipping transaction not found. Please refresh and try again.':'የመላኪያ ግብይቱ አልተገኘም። እባክዎ ገጹን ያድሱና እንደገና ይሞክሩ።','Consent form could not open. Please refresh.':'የስምምነት ቅጹ ሊከፈት አልቻለም። እባክዎ ገጹን ያድሱ።','Please check the agreement box first.':'እባክዎ መጀመሪያ የስምምነት ሳጥኑን ያረጋግጡ።',
+    'Only travelers can post trips.':'ጉዞ ማስገባት የሚችሉት ተጓዦች ብቻ ናቸው።','From and To cannot be the same.':'መነሻና መድረሻ ተመሳሳይ ሊሆኑ አይችሉም።','Please enter travel date.':'እባክዎ የጉዞ ቀን ያስገቡ።','You cannot post a trip for a previous day.':'ላለፈ ቀን ጉዞ ማስገባት አይችሉም።','Please post traveler trips at least 5 days before the flight date.':'እባክዎ የተጓዥ ጉዞን ከበረራው ቀን ቢያንስ 5 ቀናት በፊት ያስገቡ።','Enter available space.':'ያለውን ቦታ ያስገቡ።','Publish this traveler trip? Sender and traveler will agree on shipping details before payment.':'ይህን የተጓዥ ጉዞ ያትሙ? ላኪውና ተጓዡ ከክፍያ በፊት በመላኪያ ዝርዝሮች ይስማማሉ።','Your profile is still loading on this device. Please refresh once, sign in again, and post the trip. The trip was not submitted to admin yet.':'መገለጫዎ በዚህ መሣሪያ ላይ ገና በመጫን ላይ ነው። እባክዎ አንድ ጊዜ ገጹን ያድሱ፣ እንደገና ይግቡ እና ጉዞውን ያስገቡ። ጉዞው ገና ለአስተዳዳሪ አልተላከም።'
+  }
+};
+function currentLang(){return localStorage.getItem(LANG_KEY)||'en';}
+function tText(s){if(currentLang()==='en')return s;let d=HC_I18N.am||{};let exact=d[s];if(exact)return exact;let out=s;Object.keys(d).sort((a,b)=>b.length-a.length).forEach(k=>{if(out.includes(k))out=out.split(k).join(d[k]);});return out;}
+// V7.8.334B: translate user-visible browser dialogs without changing action logic.
+const __hcNativeAlert334B=window.alert.bind(window);
+const __hcNativeConfirm334B=window.confirm.bind(window);
+const __hcNativePrompt334B=window.prompt.bind(window);
+window.alert=function(message){return __hcNativeAlert334B(tText(String(message??'')));};
+window.confirm=function(message){return __hcNativeConfirm334B(tText(String(message??'')));};
+window.prompt=function(message,defaultValue){return __hcNativePrompt334B(tText(String(message??'')),defaultValue);};
+function translateNodeTree(root){if(!root||currentLang()==='en')return;let skip=['SCRIPT','STYLE','INPUT','TEXTAREA','OPTION','SELECT'];let walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){let p=node.parentElement;if(!p||skip.includes(p.tagName))return NodeFilter.FILTER_REJECT;let v=node.nodeValue;if(!v||!v.trim())return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}});let nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(n=>{n.nodeValue=tText(n.nodeValue);});document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{el.placeholder=tText(el.placeholder);});document.querySelectorAll('button,th,td,label,p,h1,h2,h3,span,option').forEach(el=>{if(el.childNodes.length===1&&el.childNodes[0].nodeType===3)el.textContent=tText(el.textContent);});}
+function languageSwitcherHtml(){return `<select id="langSwitch" onchange="setLanguage(this.value)" style="width:auto;min-width:130px;margin:0 6px;padding:9px;border-radius:10px;font-weight:700"><option value="en" ${currentLang()==='en'?'selected':''}>🇺🇸 English</option><option value="am" ${currentLang()==='am'?'selected':''}>🇪🇹 አማርኛ</option></select>`;}
+function setLanguage(lang){localStorage.setItem(LANG_KEY,lang==='am'?'am':'en');render();setTimeout(()=>translateNodeTree(document.body),0);}
+function applyLanguageUi(){
+  let userBox=$('userBox');
+  if(userBox && !$('langSwitch')) userBox.insertAdjacentHTML('afterbegin',languageSwitcherHtml());
+  let mobile=$('mobileNav'); if(mobile && currentLang()==='am') Array.from(mobile.options).forEach(o=>o.text=tText(o.text));
+  document.documentElement.lang=currentLang()==='am'?'am':'en';
+  translateNodeTree(document.body);
+}
+const _hcRender=render; render=function(){_hcRender();applyLanguageUi();};
+const _hcRenderPage=renderPage; renderPage=async function(p){await _hcRenderPage(p);applyLanguageUi();};
+const _hcShow=show; show=function(p){let r=_hcShow(p);applyLanguageUi();return r;};
 
 // V7.8.44: global click guard. If any async action or Supabase request leaves the page in a bad state,
 // normal navigation buttons still work without needing to refresh/reset the page.
@@ -12065,5 +12037,3 @@ window.__hcVersion='V7.8.213';
   }
 }
 </style>
-
-
