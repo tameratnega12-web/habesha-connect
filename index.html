@@ -10982,7 +10982,7 @@ window.__hcVersion='V7.8.213';
     homeRoot.querySelectorAll(
       '#trailerRequesterHomeAgreementV78259,#trailerRequesterAgreementV78202,#trailerRequesterAgreementV78261,'+
       '#trailerAgreementCanonicalV78262,#trailerAgreementV78263,#trailerOwnerRequesterAgreeV78210,'+
-      '#trailerAgreementBottomV78219,#trailerRequesterAgreementV78264,#trailerRequesterAgreementTopV78309'
+      '#trailerAgreementBottomV78219,#trailerRequesterAgreementV78264'
     ).forEach(el=>el.remove());
 
     const priority=homeRoot.querySelector('#truckingPriorityTransactionsV78266');
@@ -11000,8 +11000,23 @@ window.__hcVersion='V7.8.213';
     if(!homeRoot)return;
     removeDuplicateTrailerAgreementCards(homeRoot);
     const rows=requesterRows();
-    if(!rows.length)return;
-    homeRoot.insertAdjacentHTML('afterbegin',panelHtml(rows));
+    const existing=homeRoot.querySelector('#trailerRequesterAgreementTopV78309');
+    if(!rows.length){if(existing)existing.remove();return;}
+
+    const holder=document.createElement('div');
+    holder.innerHTML=panelHtml(rows).trim();
+    const next=holder.firstElementChild;
+    if(!next)return;
+
+    let panel=existing;
+    if(!panel){
+      panel=next;
+      homeRoot.insertBefore(panel,homeRoot.firstElementChild);
+    }else if(panel.innerHTML!==next.innerHTML){
+      panel.replaceWith(next);
+      panel=next;
+    }
+    if(homeRoot.firstElementChild!==panel)homeRoot.insertBefore(panel,homeRoot.firstElementChild);
   }
 
   function schedule(){requestAnimationFrame(()=>requestAnimationFrame(apply));}
@@ -12383,7 +12398,7 @@ td{vertical-align:top}
 @media(max-width:720px){#hcAllCategoryNextActionsV78342 .actions{display:grid;grid-template-columns:1fr;gap:10px}#hcAllCategoryNextActionsV78342 .btn{width:100%;min-height:52px}}
 </style>
 <script id="v78342-all-categories-next-action-top">
-/* V7.8.343 — Prevent the all-category coordinator from moving native trucking/trailer action containers. Existing transaction logic is unchanged. */
+/* V7.8.344 — Prevent the all-category coordinator from moving native trucking/trailer action containers. Existing transaction logic is unchanged. */
 (function(){
 'use strict';
 const WRAP_ID='hcAllCategoryNextActionsV78342',ITEM_ID='hcAllCategoryNextActionItemsV78342';
@@ -12403,7 +12418,7 @@ function directHomeChild(home,node){let cur=node;while(cur&&cur.parentElement&&c
 function hasLiveAction(node){if(!node||node.id===WRAP_ID||node.closest('#'+WRAP_ID)||isTruckNative(node))return false;if(EXACT_IDS.has(node.id))return true;const text=String(node.textContent||'').replace(/\s+/g,' ').trim();if(!ACTION_TEXT.test(text))return false;return [...node.querySelectorAll('button')].some(b=>!b.disabled&&ACTION_BUTTON.test(String(b.textContent||'').trim()));}
 function candidates(home){const nodes=[];home.querySelectorAll('section,.card').forEach(node=>{if(!hasLiveAction(node))return;const top=directHomeChild(home,node);if(top&&top.id!==WRAP_ID&&!nodes.includes(top))nodes.push(top);});return nodes;}
 function ensureWrap(home){let wrap=document.getElementById(WRAP_ID);if(!wrap){wrap=document.createElement('section');wrap.id=WRAP_ID;wrap.innerHTML='<div class="card hc-v78342-heading"><h2 style="margin:0">🚨 New Transactions — Action Required</h2><p class="muted">Your next required actions from every service appear here first.</p></div><div id="'+ITEM_ID+'" class="hc-v78342-items"></div>';}if(home.firstElementChild!==wrap)home.insertBefore(wrap,home.firstElementChild);return wrap;}
-function place(){if(busy)return;const home=document.getElementById('home');if(!home)return;busy=true;try{const found=candidates(home);let wrap=document.getElementById(WRAP_ID);const existing=wrap&&document.getElementById(ITEM_ID)?document.getElementById(ITEM_ID).children.length:0;if(!found.length&&!existing){if(wrap)wrap.remove();return;}wrap=ensureWrap(home);const items=document.getElementById(ITEM_ID);found.forEach(node=>items.appendChild(node));wrap.style.display=items.children.length?'block':'none';}finally{busy=false;}}
+function place(){if(busy)return;const home=document.getElementById('home');if(!home)return;const role=String((typeof currentUser!=='undefined'&&currentUser&&currentUser.role)||'').trim().toLowerCase();if(role==='driver'||role==='truck_owner'){const stale=document.getElementById(WRAP_ID);if(stale)stale.remove();return;}busy=true;try{const found=candidates(home);let wrap=document.getElementById(WRAP_ID);const existing=wrap&&document.getElementById(ITEM_ID)?document.getElementById(ITEM_ID).children.length:0;if(!found.length&&!existing){if(wrap)wrap.remove();return;}wrap=ensureWrap(home);const items=document.getElementById(ITEM_ID);found.forEach(node=>items.appendChild(node));wrap.style.display=items.children.length?'block':'none';}finally{busy=false;}}
 const priorHome=window.home;if(typeof priorHome==='function')window.home=function(){const result=priorHome.apply(this,arguments);setTimeout(place,0);setTimeout(place,180);return result;};
 const observer=new MutationObserver(()=>setTimeout(place,0));function start(){const home=document.getElementById('home');if(home){observer.observe(home,{childList:true,subtree:true});place();}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();

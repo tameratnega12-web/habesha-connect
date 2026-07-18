@@ -9,3 +9,9 @@ Exact fix only:
 
 ## V7.8.343 Trucking layout stability fix
 The V7.8.342 all-category next-action display controller now excludes the existing native trucking and trailer action containers. This prevents two display controllers from repeatedly moving the same trucking section, which caused page shaking, sidebar displacement, and scroll trapping. No workflow, status, Supabase, email, or action-handler logic was changed.
+
+## V7.8.344 — Trucking Shake / Scroll Stabilization
+- Fixed the trucking/trailer home-page shake caused by competing DOM layout observers.
+- Made the trailer agreement top panel idempotent so it is not deleted and rebuilt after every mutation.
+- Disabled the all-category next-action mover for native Truck Driver and Truck Owner dashboards.
+- No workflow, status, Supabase, form, email, approval, or action-handler code was changed.
