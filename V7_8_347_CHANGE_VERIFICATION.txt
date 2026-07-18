@@ -1,0 +1,14 @@
+V7.8.347 — Taxi/Limo Driver Application RLS Fix
+
+Changed only:
+1. Added supabase/v7_8_347_taxi_driver_application_rls_fix.sql.
+2. Aligned taxi_driver_applications permissions with the app's existing anon/authenticated Supabase access pattern.
+3. Replaced conflicting old policies and added explicit table grants.
+4. Kept required form-field checks on INSERT.
+5. Updated only the Taxi/Limo driver save error message to name the exact SQL file.
+
+Not changed:
+- Trucking or trailer flow
+- Taxi/Limo owner, vehicle, ride, hire, or admin workflow
+- Other categories
+- Existing table data
