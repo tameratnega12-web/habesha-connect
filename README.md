@@ -1,13 +1,6 @@
-Habesha Agenagn V7.8.339 — Phase 4 Professional Visual Polish
+Habesha Agenagn V7.8.341 — Exact V7.8.335 Flow Restore
 
-Base: V7.8.338
+Base: V7.8.335 Require Admin Verification BEFORE ACCESS.
 
-Presentation-only changes:
-- More consistent card radius, shadows, spacing, and typography
-- Clearer button hierarchy and keyboard focus states
-- Improved form field focus and readability
-- More polished service icons and dashboard surfaces
-- Larger, consistent phone touch targets and single-column mobile actions
-- Reduced-motion accessibility support
-
-No JavaScript, Supabase, SQL, transaction flow, status, approval, email, form action, or button behavior was changed in this phase.
+This release removes all Phase 1–4 presentation overlays by restoring the original V7.8.335 application files exactly.
+No transaction flow, Supabase SQL, approvals, emails, statuses, forms, action buttons, or translations were changed.
