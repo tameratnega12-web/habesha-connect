@@ -14,3 +14,12 @@ Display-only update for the Home dashboards.
 - All other categories
 
 The ZIP includes the complete current Supabase folder from V7.8.354. No new SQL is required for this display-only change.
+
+## V7.8.356 — Email-Verified Account Auto-Activation
+- Removed the normal manual-admin approval requirement for new accounts.
+- Supabase email confirmation now activates the matching `profiles` row automatically.
+- Existing email-confirmed users are backfilled as active by the included SQL migration.
+- Admin notification for every new registration was removed.
+- Other category approvals and transaction workflows were not changed.
+
+Run `supabase/v7_8_356_email_verified_account_auto_activation.sql` once in Supabase SQL Editor before testing.
