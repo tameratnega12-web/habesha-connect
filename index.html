@@ -12502,3 +12502,110 @@ window.hcPlaceAllCategoryNextActionsV78342=place;
   window.__hcVersion='V7.8.348';
 })();
 </script>
+<script id="v78354-marketplace-seller-request-visibility-fix">
+/* V7.8.354 Marketplace only.
+   Fixes approved customer requests not appearing on the seller dashboard.
+   Keeps the intended sequence:
+   listing approved -> customer request -> admin approves request -> seller accept/decline
+   -> admin approves accepted transaction -> customer agrees -> seller information released. */
+(function(){
+  'use strict';
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const finished=new Set(['Completed','Cancelled','Admin Declined','Seller Declined','Connection Declined']);
+
+  function listingForRequest(r){
+    const key=String(r&&r.itemId||'');
+    return (data.market||[]).find(m=>String(m.dbId||m.id)===key)||null;
+  }
+  function requestSellerEmail(r){
+    const listing=listingForRequest(r);
+    return norm((r&&r.sellerEmail)||(listing&&listing.sellerEmail));
+  }
+  function requestSellerName(r){
+    const listing=listingForRequest(r);
+    return (r&&r.sellerName)||(listing&&listing.seller)||'Seller';
+  }
+  function requestSellerPhone(r){
+    const listing=listingForRequest(r);
+    return (r&&r.sellerPhone)||(listing&&listing.sellerPhone)||'';
+  }
+
+  // Avoid an embedded join hiding the entire request when an older RLS policy blocks the related listing.
+  window.loadSupabaseMarketplace=async function(){
+    if(!authReady())return;
+    const listings=await hcSupabase.from('marketplace_listings').select('*').order('created_at',{ascending:false});
+    if(!listings.error)data.market=(listings.data||[]).map(mapSupabaseMarketListing);
+    else console.warn('Marketplace listings load error',listings.error);
+
+    const reqs=await hcSupabase.from('marketplace_purchase_requests').select('*').order('created_at',{ascending:false});
+    if(!reqs.error){
+      data.marketRequests=(reqs.data||[]).map(row=>{
+        const item=(data.market||[]).find(m=>String(m.dbId||m.id)===String(row.listing_id))||{};
+        return {
+          id:row.id,dbId:row.id,itemId:row.listing_id,
+          itemTitle:item.title||row.item_title||'Marketplace Item',
+          buyerName:row.buyer_name||'Buyer',buyerEmail:row.buyer_email||'',buyerPhone:row.buyer_phone||'',
+          sellerName:item.seller||row.seller_name||'Seller',sellerEmail:item.sellerEmail||row.seller_email||'',sellerPhone:item.sellerPhone||row.seller_phone||'',
+          message:row.message||'',status:marketDbStatusToUi(row.status,'request'),
+          createdAt:row.created_at?new Date(row.created_at).toLocaleString():''
+        };
+      });
+    }else console.warn('Marketplace requests load error',reqs.error);
+
+    try{
+      const uid=await marketAuthUserId();
+      if(uid){const saved=await hcSupabase.from('marketplace_saved_items').select('listing_id').eq('user_id',uid);if(!saved.error)data.savedMarketItems=(saved.data||[]).map(x=>x.listing_id);}
+    }catch(e){console.warn('Marketplace saved items load skipped',e);}
+    persistOnly();
+  };
+
+  // Use listing ownership as a fallback when an older request row has no copied seller email.
+  window.marketRequestCard=function(r){
+    if(!r||finished.has(r.status))return '';
+    const sellerEmail=requestSellerEmail(r);
+    const isSeller=currentUser&&sellerEmail===norm(currentUser.email);
+    const isBuyer=currentUser&&norm(r.buyerEmail)===norm(currentUser.email);
+    const isAdmin=currentUser&&currentUser.role==='admin';
+    const sellerName=requestSellerName(r);
+    let actions='';
+    if(isSeller&&r.status==='Admin Approved - Waiting Seller')actions=`<button class="btn primary" type="button" onclick="marketSellerAcceptReq('${r.id}')">Accept</button><button class="btn danger" type="button" onclick="marketSellerDeclineReq('${r.id}')">Decline</button>`;
+    if(isAdmin&&r.status==='Seller Accepted - Waiting Admin')actions=`<button class="btn primary" type="button" onclick="marketAdminApproveConnection('${r.id}')">Approve Transaction</button>`;
+    if(isBuyer&&r.status==='Connection Approved')actions=`<button class="btn primary" type="button" onclick="marketBuyerAgree('${r.id}')">Agree & View Seller Information</button>`;
+    return `<div class="item" data-market-request354="${esc(r.id)}"><b>${esc(r.itemTitle)}</b><p>${esc(r.buyerName)} wants to buy from ${esc(sellerName)}</p><span class="pill ${String(r.status).includes('Approved')?'good':'warn'}">${esc(r.status==='Connection Approved'?'Admin Approved — Waiting Customer Agreement':r.status)}</span><div class="actions">${actions}</div></div>`;
+  };
+
+  const oldAccept=window.marketSellerAcceptReq;
+  window.marketSellerAcceptReq=async function(id){
+    const r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+    if(!r||!currentUser||requestSellerEmail(r)!==norm(currentUser.email))return alert('Seller only.');
+    r.sellerEmail=r.sellerEmail||currentUser.email;
+    r.sellerName=r.sellerName||currentUser.name||requestSellerName(r);
+    r.sellerPhone=r.sellerPhone||currentUser.phone||requestSellerPhone(r);
+    return oldAccept.call(this,id);
+  };
+  const oldDecline=window.marketSellerDeclineReq;
+  window.marketSellerDeclineReq=async function(id){
+    const r=(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+    if(!r||!currentUser||requestSellerEmail(r)!==norm(currentUser.email))return alert('Seller only.');
+    r.sellerEmail=r.sellerEmail||currentUser.email;
+    return oldDecline.call(this,id);
+  };
+
+  // Force a fresh Supabase read whenever Marketplace opens so seller actions appear immediately.
+  const priorMarketplace=window.marketplace;
+  window.marketplace=function(){
+    const out=priorMarketplace.apply(this,arguments);
+    if(authReady()&&!window.__marketRefresh354){
+      window.__marketRefresh354=true;
+      Promise.resolve(loadSupabaseMarketplace()).then(()=>{
+        window.__marketRefresh354=false;
+        if(currentPage==='marketplace')priorMarketplace();
+        if(currentPage==='home'&&typeof home==='function')home();
+      }).catch(e=>{window.__marketRefresh354=false;console.warn('Marketplace V354 refresh failed',e);});
+    }
+    return out;
+  };
+  window.__hcVersion='V7.8.354';
+})();
+</script>

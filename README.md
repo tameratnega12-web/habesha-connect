@@ -1,16 +1,23 @@
-# Habesha Agenagn V7.8.353
+# Habesha Agenagn V7.8.354
 
-## Exact fix
-Business Owner profile -> Admin approval -> Customer Business Directory visibility.
+## Marketplace seller request visibility fix
 
-The previous policy could let the Admin screen show a local Approved state while Supabase kept the row pending. V7.8.353 aligns the Business Directory table permissions with the project's existing custom sign-in architecture, synchronizes old approved status values, and keeps the current customer fresh-load code.
+Fixed only the Marketplace transaction flow:
+
+1. Seller posts an item.
+2. Admin approves the listing.
+3. Customer requests the item.
+4. Admin approves the customer request.
+5. The approved request appears on the correct seller dashboard with Accept and Decline.
+6. Seller accepts or declines.
+7. Admin approves a seller-accepted transaction.
+8. Customer clicks Agree.
+9. Seller name, phone, and email are released to the customer.
 
 ## Required Supabase step
-Run this file once in Supabase SQL Editor:
 
-`supabase/v7_8_353_business_directory_approval_visibility_alignment.sql`
+Run once in Supabase SQL Editor:
 
-Then deploy the included `index.html`, sign out/in or refresh, approve the business again if it is still pending, and open Customer -> Find Business.
+`supabase/v7_8_354_marketplace_seller_request_visibility_flow.sql`
 
-## Package
-This package contains the latest `index.html` and the complete current Supabase SQL folder. It contains no previous ZIPs, archived folders, verification reports, or duplicate project copies.
+The ZIP includes the complete current Supabase SQL folder. No other category workflow was changed.
