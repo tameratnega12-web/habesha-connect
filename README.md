@@ -1,43 +1,27 @@
-# Habesha Agenagn V7.8.355
+# Habesha Agenagn V7.8.356 — Hybrid Admin Workflow
 
-Display-only update for the Home dashboards.
+Base: V7.8.355.
 
-## Fixed
-- Business Owner: **Your New Activity** appears at the very top.
-- Job Seeker: **Your New Activity** appears at the very top.
-- Marketplace: **Your New Activity** appears at the very top.
+## Hybrid workflow
+Admin remains responsible for:
+- New-user account verification
+- First-time and higher-risk listing/profile approval
+- Shipping/travel, Taxi/Limo owner/driver/vehicle verification
+- Payments, refunds, payouts, disputes, reports, suspicious activity, and account actions
+
+Routine actions between approved users now bypass unnecessary admin approval:
+- Jobs: applicant goes directly to employer
+- Rentals: seeker request goes directly to property owner
+- Trucking jobs: driver application goes directly to truck owner
+- Trailer rentals: renter request goes directly to trailer owner; payment/admin control remains
+- Marketplace: customer request goes directly to seller; after seller accepts, customer can Agree without another admin click
+- Home Services: customer request goes directly to the approved provider
 
 ## Unchanged
-- Business and Jobs workflows
-- Marketplace request, Accept/Decline, Agree, and contact-release flow
-- Supabase tables, policies, RPCs, and SQL
-- All other categories
+- Existing category layouts and top activity sections
+- User verification requirement
+- Listing approval controls
+- Payment/payout and dispute controls
+- Supabase schema and existing SQL set
 
-The ZIP includes the complete current Supabase folder from V7.8.354. No new SQL is required for this display-only change.
-
-## V7.8.357 — Email-Verified Account Auto-Activation
-- Removed the normal manual-admin approval requirement for new accounts.
-- Supabase email confirmation now activates the matching `profiles` row automatically.
-- Existing email-confirmed users are backfilled as active by the included SQL migration.
-- Admin notification for every new registration was removed.
-- Other category approvals and transaction workflows were not changed.
-
-Run `supabase/v7_8_356_email_verified_account_auto_activation.sql` once in Supabase SQL Editor before testing.
-
-
-V7.8.357 signup profile fix:
-- Supabase Auth trigger now creates the profile automatically.
-- Removed the browser-side profile upsert that failed under RLS before email confirmation.
-- Run supabase/v7_8_357_auth_profile_creation_and_email_activation.sql once.
-
-## V7.8.358 — Reused Email Profile Reconciliation
-- Fixes the duplicate `profiles_email_key` error from V7.8.357.
-- Reuses and reconnects an existing profile row by email instead of inserting a duplicate.
-- Safely repairs existing Auth users and profiles.
-- Keeps automatic activation after Supabase email confirmation.
-- No category or transaction workflows were changed.
-
-Run only this new correction SQL now:
-`supabase/v7_8_358_reused_email_profile_reconciliation.sql`
-
-This script is safe to run after the failed or partial V7.8.357 migration.
+No new SQL is required for this workflow update. The ZIP contains the complete current Supabase folder.

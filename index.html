@@ -263,7 +263,7 @@ async function safeAsync(promise,ms,label){
 function normalizeRoles(profile){let roles=Array.isArray(profile?.roles)?profile.roles.filter(Boolean):[];let base=profile?.role||profile?.active_role||'customer';if(base&&!roles.includes(base))roles.unshift(base);roles=[...new Set(roles.length?roles:['customer'])];return roles}
 function roleTitle(role){return (ROLE_INFO[role]&&ROLE_INFO[role].title)||role}
 function upsertLocalUser(profile){if(!profile||!profile.email)return null;let u=data.users.find(x=>x.email===profile.email);let roles=normalizeRoles(profile);let savedRole=localStorage.getItem('hc_active_role_'+profile.email);let activeRole=(savedRole&&roles.includes(savedRole))?savedRole:(profile.active_role&&roles.includes(profile.active_role)?profile.active_role:(profile.role&&roles.includes(profile.role)?profile.role:roles[0]));let cleaned={id:profile.id||profile.profile_id||'',auth_user_id:profile.auth_user_id||'',name:profile.name||profile.full_name||profile.email,phone:profile.phone||'',email:profile.email,role:activeRole,active_role:activeRole,roles,verified:!!profile.verified,city:profile.city||''};if(u)Object.assign(u,cleaned);else data.users.push(cleaned);return data.users.find(x=>x.email===profile.email)}
-async function loadSupabaseProfile(user){if(!authReady()||!user)return null;let {data:profile,error}=await hcSupabase.from('profiles').select('*').eq('auth_user_id',user.id).maybeSingle();if(error)console.warn('Profile load error',error);let emailConfirmed=!!(user.email_confirmed_at||user.confirmed_at);if(!profile){profile={auth_user_id:user.id,name:user.user_metadata?.name||user.email,phone:user.user_metadata?.phone||'',email:user.email,role:user.user_metadata?.role||'customer',roles:user.user_metadata?.roles||[user.user_metadata?.role||'customer'],active_role:user.user_metadata?.active_role||user.user_metadata?.role||'customer',verified:emailConfirmed,email_auto_activated_at:emailConfirmed?new Date().toISOString():null};let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();profile=res.data||profile;}else if(emailConfirmed&&profile.verified!==true&&!profile.email_auto_activated_at){let activatedAt=new Date().toISOString();let res=await hcSupabase.from('profiles').update({verified:true,email_auto_activated_at:activatedAt}).eq('auth_user_id',user.id).select().single();if(res.error)console.warn('Automatic email-verification activation error',res.error);else profile=res.data||Object.assign(profile,{verified:true,email_auto_activated_at:activatedAt});}return upsertLocalUser(profile)}
+async function loadSupabaseProfile(user){if(!authReady()||!user)return null;let {data:profile,error}=await hcSupabase.from('profiles').select('*').eq('auth_user_id',user.id).maybeSingle();if(error)console.warn('Profile load error',error);if(!profile){profile={auth_user_id:user.id,name:user.user_metadata?.name||user.email,phone:user.user_metadata?.phone||'',email:user.email,role:user.user_metadata?.role||'customer',roles:user.user_metadata?.roles||[user.user_metadata?.role||'customer'],active_role:user.user_metadata?.active_role||user.user_metadata?.role||'customer',verified:false};let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();profile=res.data||profile;}return upsertLocalUser(profile)}
 function isAccountVerified(user){return !!(user&&(user.role==='admin'||user.verified===true));}
 async function blockUnverifiedSession(user){
  if(isAccountVerified(user))return false;
@@ -273,7 +273,7 @@ async function blockUnverifiedSession(user){
  if(authReady())try{await hcSupabase.auth.signOut();}catch(e){console.warn('Could not clear unverified Supabase session',e);}
  render();
  show('account');
- alert('Your account is not active. Please verify your email first. If your email is already verified, contact support@habeshaagenagn.com.');
+ alert('Your account is waiting for admin verification. You cannot use Customer or any other service until an admin verifies your account.');
  return true;
 }
 async function initAuth(){if(!authReady()){console.warn('Supabase config not loaded. Please check configuration.');return;}let {data:sessionData}=await hcSupabase.auth.getSession();if(sessionData&&sessionData.session&&sessionData.session.user){let u=await loadSupabaseProfile(sessionData.session.user);if(u){if(await blockUnverifiedSession(u))return;currentUser=u;data.currentUser=currentUser;safeSetHC(data);render();setTimeout(()=>refreshCurrentPage(),120);}}}
@@ -633,27 +633,29 @@ async function register(){
    let {data:authData,error}=await hcSupabase.auth.signUp({email,password:pass,options:{data:{name,phone,role,roles:selected,active_role:role}}});
    if(error)return alert(error.message);
    let authUser=authData.user;
-   let emailConfirmed=!!(authUser&&(authUser.email_confirmed_at||authUser.confirmed_at));
-   // V7.8.357: the database auth trigger creates and maintains the profile.
-   // Avoid a second browser-side profiles upsert, which can be blocked by RLS
-   // immediately after sign-up while there is no active session yet.
-   let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:emailConfirmed,email_auto_activated_at:emailConfirmed?new Date().toISOString():null};
+   let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:false};
+   if(authUser){
+     let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();
+     if(res.error){console.warn('Profile save error',res.error);alert('Account created, but profile roles were not saved. Please run the V6 SQL migration if you have not run it yet.');}
+   }
    upsertLocalUser(profile);
    currentUser=null;data.currentUser=null;safeSetHC(data);
    if(authData.session)try{await hcSupabase.auth.signOut();}catch(e){console.warn('Could not sign out pending account',e);}
-   addNote(email,emailConfirmed?'Account created and activated.':'Account created. Please verify your email to activate it.');
-   sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:emailConfirmed?'Your account is active. You can sign in now.':'Your account was created. Please use the verification link sent by Habesha Agenagn, then sign in.',buttonText:'Open Sign In',page:'account',details:{Phone:phone,Status:emailConfirmed?'Active':'Email verification required'}});
-   alert(emailConfirmed?'Account created successfully. You can sign in now.':'Account created successfully. Please check your email and verify your address, then sign in.');
+   addNote(email,'Account created. Waiting for admin verification.');
+   sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your account was created and is waiting for admin verification. You can sign in after an admin verifies your account.',buttonText:'Open Sign In',page:'account',details:{Phone:phone,Status:'Waiting for admin verification'}});
+   sendAdminEmailNotice('New user needs verification','A new user registered and must be verified before using the app.',{Name:name,Email:email,Phone:phone,Status:'Not Verified'});
+   alert('Account created successfully. Please wait for admin verification before signing in.');
    show('account');
    return;
  }
  if(data.users.some(u=>u.email===email))return alert('Account already exists');
- let u={name,phone,email,pass,role,roles:selected,active_role:role,verified:true,email_auto_activated_at:new Date().toISOString()};
+ let u={name,phone,email,pass,role,roles:selected,active_role:role,verified:false};
  data.users.push(u);currentUser=null;data.currentUser=null;
- addNote(email,'Account created and activated.');
- sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your account is active. You can sign in now.',buttonText:'Open Sign In',page:'account',details:{Phone:phone,Status:'Active'}});
+ addNote(email,'Account created. Waiting for admin verification.');
+ sendEmailNotice({to:email,name,subject:'Welcome to Habesha Agenagn',summary:'Your account was created and is waiting for admin verification. You can sign in after an admin verifies your account.',buttonText:'Open Sign In',page:'account',details:{Phone:phone,Status:'Waiting for admin verification'}});
+ sendAdminEmailNotice('New user needs verification','A new user registered and must be verified before using the app.',{Name:name,Email:email,Phone:phone,Status:'Not Verified'});
  save();
- alert('Account created successfully. You can sign in now.');
+ alert('Account created successfully. Please wait for admin verification before signing in.');
  show('account');
 }
 async function logout(){currentUser=null;save();show('home');if(authReady())fireAndForget(hcSupabase.auth.signOut(),'Supabase sign out')}
@@ -12644,5 +12646,59 @@ window.hcPlaceAllCategoryNextActionsV78342=place;
     return out;
   };
   window.__hcVersion='V7.8.354';
+})();
+</script>
+<script id="v78356-hybrid-admin-routine-actions">
+/* V7.8.356 Hybrid Admin workflow. Routine actions between approved users bypass admin. */
+(function(){
+  'use strict';
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const findMarketReq=id=>(data.marketRequests||[]).find(x=>String(x.id)===String(id)||String(x.dbId)===String(id));
+
+  window.marketSellerAcceptReq=async function(id){
+    const r=findMarketReq(id);
+    if(!r||!currentUser||norm(r.sellerEmail)!==norm(currentUser.email))return alert('Seller only.');
+    if(r.status!=='Admin Approved - Waiting Seller')return alert('This request is not waiting for your response.');
+    r.status='Connection Approved';
+    const res=await updateMarketRequestDb(r,r.status);
+    if(res.error){r.status='Admin Approved - Waiting Seller';return alert('Could not accept Marketplace request: '+res.error.message);}
+    addNote(r.buyerEmail,'Seller accepted your Marketplace request. Click Agree to receive seller information: '+r.itemTitle);
+    try{await Promise.resolve(sendEmailNotice({to:r.buyerEmail,name:r.buyerName,subject:'Marketplace seller accepted — your agreement is required',summary:'The seller accepted your request. Open Marketplace and click Agree to receive the seller contact information.',buttonText:'Open Marketplace',page:'marketplace',details:{Item:r.itemTitle,Seller:r.sellerName,Status:'Waiting for Customer Agreement'}}));}catch(e){console.warn('Marketplace hybrid email skipped',e);}
+    persistOnly();
+    try{if(typeof loadSupabaseMarketplace==='function')await loadSupabaseMarketplace();}catch(e){console.warn(e);}
+    if(currentPage==='home'&&typeof home==='function')home();else if(typeof marketplace==='function')marketplace();
+    alert('Accepted. The customer can now agree and view your contact information.');
+  };
+
+  window.submitHomeServiceRequest=async function(){
+    if(!requireLogin())return;
+    const svc=(data.homeServicePosts||[]).find(p=>String(p.id)===String(activeHomeServiceRequestId)||String(p.dbId)===String(activeHomeServiceRequestId));
+    if(!svc)return alert('Service not found. Please choose the service again.');
+    let phone=($('hsReqPhone')?.value||'').trim();
+    let city=($('hsReqCity')?.value||'').trim();
+    let preferredDate=($('hsReqDate')?.value||'').trim();
+    let time=($('hsReqTime')?.value||'').trim();
+    let details=($('hsReqDetails')?.value||'').trim();
+    if(!phone){phone=prompt('Your phone number:',currentUser.phone||'')||'';if(!phone)return;}
+    if(!city){city=prompt('Service city / area:','')||'';if(!city)return;}
+    if(!preferredDate){preferredDate=prompt('Preferred date:',typeof addDaysIso==='function'?addDaysIso(1):'')||'';if(!preferredDate)return;}
+    if(!time){time=prompt('Preferred time:','')||'';if(!time)return;}
+    if(!details){details=prompt('Describe what you need:','')||'';if(!details)return;}
+    if(!confirm('Send this service request directly to '+(svc.providerName||'the provider')+'?'))return;
+    const req={id:'HSR'+Date.now().toString().slice(-6),serviceId:svc.dbId||svc.id,serviceLocalRef:svc.id,serviceTitle:svc.title,providerName:svc.providerName,providerEmail:svc.providerEmail,providerPhone:svc.providerPhone||'',customerName:currentUser.name,customerEmail:currentUser.email,customerPhone:phone,city,preferredDate,preferredTime:time,details,status:'Pending Provider Review',createdAt:new Date().toLocaleString()};
+    const res=await syncHomeServiceRequestToSupabase(req,svc);
+    if(res.error)return alert('Home service request was not saved to Supabase: '+res.error.message);
+    if(res.data){req.id=res.data.local_ref||req.id;req.dbId=res.data.id;}
+    data.homeServiceRequests.unshift(req);
+    addNote(req.providerEmail,'New home service request from '+req.customerName+' for '+req.serviceTitle+'. Please accept or decline.');
+    addNote(req.customerEmail,'Your home service request was sent directly to '+(req.providerName||'the provider')+'.');
+    try{await Promise.resolve(sendEmailNotice({to:req.providerEmail,name:req.providerName,subject:'New home service customer request',summary:'A customer requested your approved service. Please accept or decline from your Home Services dashboard.',buttonText:'Open Home Services',page:'home_services',details:{Service:req.serviceTitle,Customer:req.customerName,Phone:req.customerPhone,City:req.city,PreferredDate:req.preferredDate,PreferredTime:req.preferredTime,Details:req.details,Status:'Pending Provider Review'}}));}catch(e){console.warn('Home service hybrid email skipped',e);}
+    activeHomeServiceRequestId='';
+    persistOnly();
+    alert('Request sent directly to the provider.');
+    homeServices();
+  };
+
+  window.__hcVersion='V7.8.356';
 })();
 </script>
