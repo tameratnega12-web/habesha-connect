@@ -634,11 +634,10 @@ async function register(){
    if(error)return alert(error.message);
    let authUser=authData.user;
    let emailConfirmed=!!(authUser&&(authUser.email_confirmed_at||authUser.confirmed_at));
+   // V7.8.357: the database auth trigger creates and maintains the profile.
+   // Avoid a second browser-side profiles upsert, which can be blocked by RLS
+   // immediately after sign-up while there is no active session yet.
    let profile={auth_user_id:authUser?authUser.id:null,name,phone,email,role,roles:selected,active_role:role,verified:emailConfirmed,email_auto_activated_at:emailConfirmed?new Date().toISOString():null};
-   if(authUser){
-     let res=await hcSupabase.from('profiles').upsert(profile,{onConflict:'email'}).select().single();
-     if(res.error){console.warn('Profile save error',res.error);alert('Account created, but profile roles were not saved. Please run the V6 SQL migration if you have not run it yet.');}
-   }
    upsertLocalUser(profile);
    currentUser=null;data.currentUser=null;safeSetHC(data);
    if(authData.session)try{await hcSupabase.auth.signOut();}catch(e){console.warn('Could not sign out pending account',e);}
